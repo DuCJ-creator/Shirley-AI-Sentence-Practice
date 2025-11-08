@@ -224,9 +224,18 @@
             animation: pulse 1.5s infinite;
         }
         @keyframes pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.7; }
-            100% { transform: scale(1); opacity: 1; }
+            0% { 
+                transform: scale(1);
+                opacity: 1; 
+            }
+            50% { 
+                transform: scale(1.2);
+                opacity: 0.7; 
+            }
+            100% { 
+                transform: scale(1);
+                opacity: 1; 
+            }
         }
         .progress-bar {
             height: 12px;
@@ -479,10 +488,11 @@
         let mediaRecorder;
         let audioChunks = [];
         let isRecording = false;
-        let practicedSentences = [];
+        let practicedSentences = []; // 記錄所有10句完整句子
         let sentenceSource = 'manual';
         let selectedLevel = null;
         let currentStream = null;
+        let practiceStartTime = null;
 
         // DOM elements
         const sentenceSourcePage = document.getElementById('sentence-source-page');
@@ -532,7 +542,7 @@
             });
         });
 
-        // Load sentences from local CSV (GitHub)
+        // Load sentences from local CSV
         async function loadLevelSentences() {
             if (!selectedLevel) {
                 showStatusMessage('Please select a difficulty level first', 'error', levelInput);
@@ -559,7 +569,7 @@
             }
         }
 
-        // Fetch from local CSV (no CORS issue)
+        // Fetch from local CSV
         async function fetchLevelSentences(level) {
             const response = await fetch(`level${level}.csv`);
             if (!response.ok) throw new Error(`Failed to load Level ${level}`);
@@ -608,8 +618,9 @@
                 return;
             }
             sentences = sentenceArray;
-            practicedSentences = [...sentenceArray];
+            practicedSentences = [...sentenceArray]; // 記錄所有10句
             currentSentenceIndex = 0;
+            practiceStartTime = new Date(); // 記錄開始時間
             sentenceSourcePage.classList.add('hidden');
             practicePage.classList.remove('hidden');
             showCurrentSentence();
@@ -745,9 +756,15 @@
             const reportDiv = document.createElement('div');
             reportDiv.className = 'container';
             reportDiv.style.display = 'none';
-            const date = new Date().toLocaleDateString('en-US', {
+            
+            // 使用練習開始時間作為報告時間
+            const date = practiceStartTime.toLocaleDateString('en-US', {
                 year: 'numeric', month: 'long', day: 'numeric'
             });
+            const time = practiceStartTime.toLocaleTimeString('en-US', {
+                hour: '2-digit', minute: '2-digit'
+            });
+
             reportDiv.innerHTML = `
                 <div class="report-section">
                     <div class="report-header">
@@ -757,7 +774,7 @@
                         <div class="report-info-item"><span class="report-info-label">Class:</span> ${className}</div>
                         <div class="report-info-item"><span class="report-info-label">Seat No:</span> ${seatNo}</div>
                         <div class="report-info-item"><span class="report-info-label">Name:</span> ${name}</div>
-                        <div class="report-info-item"><span class="report-info-label">Date:</span> ${date}</div>
+                        <div class="report-info-item"><span class="report-info-label">Date:</span> ${date} ${time}</div>
                     </div>
                     <div class="sentence-list">
                         <h3>Practice Sentences:</h3>
