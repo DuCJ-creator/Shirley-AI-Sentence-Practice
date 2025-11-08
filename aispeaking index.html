@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shirley's AI Assistant in Speaking</title>
+    <style>
+        /* 保持所有CSS樣式不變 */
+        :root {
+            --primary-color: #4a6fa5;
+            --secondary-color: #6b8cbc;
+            --accent-color: #ff7e5f;
+            --light-color: #f5f7fa;
+            --dark-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --error-color: #e74c3c;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: var(--dark-color);
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+        }
+        h1, h2, h3 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.2em;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.1);
+        }
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        .btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-bottom: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        .btn:hover::before {
+            left: 100%;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .btn-accent {
+            background: linear-gradient(135deg, var(--accent-color), #ff9a7f);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, var(--success-color), #27ae60);
+        }
+        .btn-warning {
+            background: linear-gradient(135deg, var(--warning-color), #e67e22);
+        }
+        .btn-error {
+            background: linear-gradient(135deg, var(--error-color), #c0392b);
+        }
+        .hidden {
+            display: none !important;
+        }
+        .practice-item {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-left: 5px solid var(--primary-color);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease;
+        }
+        .practice-item:hover {
+            transform: translateY(-2px);
+        }
+        .sentence-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .sentence-number {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        .sentence-source {
+            font-size: 14px;
+            color: #666;
+        }
+        .sentence-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .sentence-text {
+            flex-grow: 1;
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--dark-color);
+        }
+        .audio-btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: white;
+            margin-left: 15px;
+            padding: 12px;
+            border-radius: 50%;
+            min-width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .audio-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        .recording-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .recording-btn {
+            padding: 18px 35px;
+            border-radius: 50px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 250px;
+            font-size: 18px;
+        }
+        .recording-indicator {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            background-color: var(--error-color);
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .progress-bar {
+            height: 12px;
+            background: #e9ecef;
+            border-radius: 10px;
+            margin: 25px 0;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .progress {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+        .report-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 2px solid #e9ecef;
+        }
+        .report-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid var(--primary-color);
+        }
+        .report-info-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .report-info-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .report-info-label {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        .sentence-list {
+            margin: 20px 0;
+        }
+        .sentence-score-item {
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-color);
+        }
+        .print-btn {
+            display: block;
+            margin: 30px auto 0;
+            max-width: 200px;
+        }
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            gap: 15px;
+        }
+        .navigation .btn {
+            width: auto;
+            flex: 1;
+        }
+        .status-message {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        }
+        .status-error {
+            background: linear-gradient(135deg, rgba(231, 76, 60, 0.1), rgba(192, 57, 43, 0.1));
+            color: var(--error-color);
+            border: 2px solid var(--error-color);
+        }
+        .status-info {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.1), rgba(41, 128, 185, 0.1));
+            color: var(--primary-color);
+            border: 2px solid var(--primary-color);
+        }
+        .welcome-message {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #666;
+            font-size: 1.1em;
+        }
+        .sentence-source {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .sentence-source-btn {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .sentence-source-btn:hover {
+            background: #e9ecef;
+        }
+        .sentence-source-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        .level-selection {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .level-btn {
+            padding: 12px;
+            text-align: center;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .level-btn:hover {
+            background: #e9ecef;
+        }
+        .level-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        /* 手機適配 */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { padding: 20px; border-radius: 10px; }
+            h1 { font-size: 1.8em; }
+            .practice-item { padding: 20px; }
+            .sentence-container { flex-direction: column; align-items: flex-start; padding: 15px; }
+            .audio-btn { margin-left: 0; margin-top: 15px; align-self: center; }
+            .report-info-line { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .navigation { flex-direction: column; }
+            .btn { padding: 18px; }
+            .sentence-source { flex-direction: column; }
+            .level-selection { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 480px) {
+            body { padding: 5px; }
+            .container { padding: 15px; }
+            h1 { font-size: 1.5em; }
+            .sentence-text { font-size: 16px; }
+            .recording-btn { padding: 20px; font-size: 16px; }
+            .level-selection { grid-template-columns: 1fr; }
+        }
+        /* 列印樣式 */
+        @media print {
+            body { background: white !important; padding: 0; }
+            .container { box-shadow: none !important; border-radius: 0 !important; }
+            .btn { display: none !important; }
+            .practice-item, .report-section { break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sentence Source Selection -->
+        <div id="sentence-source-page">
+            <h1>Shirley's AI Assistant in Speaking</h1>
+            <div class="welcome-message">
+                Please select your sentence source to start practicing.
+            </div>
+            <div class="form-group">
+                <label>Sentence Source</label>
+                <div class="sentence-source">
+                    <div class="sentence-source-btn active" data-source="manual">Enter Manually</div>
+                    <div class="sentence-source-btn" data-source="level">From Sentence Bank</div>
+                </div>
+                <div id="manual-input" class="sentence-input">
+                    <label for="sentences">Practice Sentences (one per line, maximum 10)</label>
+                    <textarea id="sentences" placeholder="Enter or paste sentences to practice, one per line"></textarea>
+                </div>
+                <div id="level-input" class="sentence-input hidden">
+                    <label>Select Difficulty Level</label>
+                    <div class="level-selection">
+                        <div class="level-btn" data-level="1">Level 1</div>
+                        <div class="level-btn" data-level="2">Level 2</div>
+                        <div class="level-btn" data-level="3">Level 3</div>
+                        <div class="level-btn" data-level="4">Level 4</div>
+                        <div class="level-btn" data-level="5">Level 5</div>
+                        <div class="level-btn" data-level="6">Level 6</div>
+                    </div>
+                    <button id="load-level-sentences" class="btn btn-accent" style="margin-top: 15px;">Load 10 Random Sentences</button>
+                </div>
+            </div>
+            <button id="start-practice" class="btn">Start Practice</button>
+        </div>
+        <!-- Practice Page -->
+        <div id="practice-page" class="hidden">
+            <h1>English Pronunciation Practice</h1>
+            <div class="progress-bar">
+                <div id="progress" class="progress"></div>
+            </div>
+            <div id="practice-container">
+                <!-- Practice items will be dynamically generated here -->
+            </div>
+            <div class="navigation">
+                <button id="prev-sentence" class="btn">Previous</button>
+                <button id="next-sentence" class="btn">Next</button>
+            </div>
+            <button id="finish-practice" class="btn btn-accent">Finish Practice</button>
+        </div>
+        <!-- Report Modal -->
+        <div id="report-modal" class="hidden">
+            <div style="background:white; padding:24px; border-radius:12px; max-width:500px; margin:0 auto;">
+                <h2 style="text-align:center; margin-bottom:20px;">Print Report</h2>
+                <div class="form-group">
+                    <label for="report-class">Class</label>
+                    <input type="text" id="report-class-input" placeholder="e.g., 5A">
+                </div>
+                <div class="form-group">
+                    <label for="report-seat">Seat No.</label>
+                    <input type="text" id="report-seat-input" placeholder="e.g., 12">
+                </div>
+                <div class="form-group">
+                    <label for="report-name">Name</label>
+                    <input type="text" id="report-name-input" placeholder="e.g., Shirley">
+                </div>
+                <button id="generate-report" class="btn btn-accent">Generate Report</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let sentences = [];
+        let currentSentenceIndex = 0;
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+        let practicedSentences = [];
+        let sentenceSource = 'manual';
+        let selectedLevel = null;
+        let currentStream = null;
+
+        // DOM elements
+        const sentenceSourcePage = document.getElementById('sentence-source-page');
+        const practicePage = document.getElementById('practice-page');
+        const reportModal = document.getElementById('report-modal');
+        const startPracticeBtn = document.getElementById('start-practice');
+        const finishPracticeBtn = document.getElementById('finish-practice');
+        const prevSentenceBtn = document.getElementById('prev-sentence');
+        const nextSentenceBtn = document.getElementById('next-sentence');
+        const generateReportBtn = document.getElementById('generate-report');
+        const practiceContainer = document.getElementById('practice-container');
+        const progressBar = document.getElementById('progress');
+        const manualInput = document.getElementById('manual-input');
+        const levelInput = document.getElementById('level-input');
+        const loadLevelSentencesBtn = document.getElementById('load-level-sentences');
+
+        // Event listeners
+        startPracticeBtn.addEventListener('click', startPractice);
+        finishPracticeBtn.addEventListener('click', showReportModal);
+        prevSentenceBtn.addEventListener('click', showPreviousSentence);
+        nextSentenceBtn.addEventListener('click', showNextSentence);
+        generateReportBtn.addEventListener('click', generateReport);
+        loadLevelSentencesBtn.addEventListener('click', loadLevelSentences);
+
+        // Sentence source selection
+        document.querySelectorAll('.sentence-source-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.sentence-source-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                sentenceSource = this.getAttribute('data-source');
+                if (sentenceSource === 'manual') {
+                    manualInput.classList.remove('hidden');
+                    levelInput.classList.add('hidden');
+                } else {
+                    manualInput.classList.add('hidden');
+                    levelInput.classList.remove('hidden');
+                }
+            });
+        });
+
+        // Level selection
+        document.querySelectorAll('.level-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                selectedLevel = this.getAttribute('data-level');
+            });
+        });
+
+        // Load sentences from local CSV (GitHub)
+        async function loadLevelSentences() {
+            if (!selectedLevel) {
+                showStatusMessage('Please select a difficulty level first', 'error', levelInput);
+                return;
+            }
+            try {
+                showStatusMessage(`Loading sentences from Level ${selectedLevel}...`, 'info', levelInput);
+                const levelData = await fetchLevelSentences(selectedLevel);
+                if (levelData.length === 0) {
+                    showStatusMessage('No sentences found for this level', 'error', levelInput);
+                    return;
+                }
+                const shuffled = [...levelData].sort(() => 0.5 - Math.random());
+                const selectedData = shuffled.slice(0, 10);
+                const formattedSentences = selectedData.map((item, index) => 
+                    `${item.sentence} [${index + 1}/10 - Level ${selectedLevel}, Sentence ${item.number}]`
+                );
+                document.getElementById('sentences').value = formattedSentences.join('\n');
+                showStatusMessage(`✅ Loaded 10 sentences from Level ${selectedLevel}`, 'info', levelInput);
+            } catch (error) {
+                console.error('Load failed:', error);
+                document.getElementById('sentences').value = '';
+                showStatusMessage(`❌ ${error.message}`, 'error', levelInput);
+            }
+        }
+
+        // Fetch from local CSV (no CORS issue)
+        async function fetchLevelSentences(level) {
+            const response = await fetch(`level${level}.csv`);
+            if (!response.ok) throw new Error(`Failed to load Level ${level}`);
+            const text = await response.text();
+            const lines = text.trim().split('\n');
+            return lines
+                .map(line => line.trim())
+                .filter(line => line)
+                .map((line, idx) => {
+                    const firstComma = line.indexOf(',');
+                    if (firstComma === -1) return { number: `${idx+1}`, sentence: line };
+                    return {
+                        number: line.substring(0, firstComma).trim(),
+                        sentence: line.substring(firstComma + 1).trim()
+                    };
+                });
+        }
+
+        // Show status message
+        function showStatusMessage(message, type, container = document.body) {
+            const existing = container.querySelector('.status-message');
+            if (existing) existing.remove();
+            const el = document.createElement('div');
+            el.className = `status-message status-${type}`;
+            el.textContent = message;
+            container.insertBefore(el, container.firstChild);
+            setTimeout(() => el.remove(), type === 'error' ? 8000 : 5000);
+        }
+
+        // Start practice
+        function startPractice() {
+            let sentenceArray = [];
+            if (sentenceSource === 'manual') {
+                sentenceArray = document.getElementById('sentences').value
+                    .split('\n').map(s => s.trim()).filter(s => s);
+            } else {
+                sentenceArray = document.getElementById('sentences').value
+                    .split('\n').map(s => s.trim()).filter(s => s);
+                if (sentenceArray.length === 0) {
+                    showStatusMessage('❌ Please load sentences from Sentence Bank first', 'error');
+                    return;
+                }
+            }
+            if (sentenceArray.length === 0) {
+                showStatusMessage('❌ Please enter at least one sentence', 'error');
+                return;
+            }
+            sentences = sentenceArray;
+            practicedSentences = [...sentenceArray];
+            currentSentenceIndex = 0;
+            sentenceSourcePage.classList.add('hidden');
+            practicePage.classList.remove('hidden');
+            showCurrentSentence();
+            updateProgress();
+        }
+
+        // Show current sentence
+        function showCurrentSentence() {
+            practiceContainer.innerHTML = '';
+            const sentence = sentences[currentSentenceIndex];
+            const sentenceMatch = sentence.match(/^(.+?)\s*\[(\d+\/10)\s*-\s*(Level\s+\d+,\s*Sentence\s+\d+)\]$/);
+            const displaySentence = sentenceMatch ? sentenceMatch[1] : sentence;
+            const practiceNumber = sentenceMatch ? sentenceMatch[2] : `${currentSentenceIndex + 1}/10`;
+            const sentenceInfo = sentenceMatch ? sentenceMatch[3] : null;
+
+            practiceContainer.innerHTML = `
+                <div class="practice-item">
+                    <div class="sentence-header">
+                        <div class="sentence-number">Sentence ${practiceNumber}</div>
+                        ${sentenceInfo ? `<div class="sentence-source">${sentenceInfo}</div>` : ''}
+                    </div>
+                    <div class="sentence-container">
+                        <div class="sentence-text">${displaySentence}</div>
+                        <button class="audio-btn" data-sentence="${displaySentence}" title="Listen to original">🔊</button>
+                    </div>
+                    <div class="recording-controls">
+                        <button id="record-btn" class="btn recording-btn btn-success">🎤 Start Recording</button>
+                        <div id="recording-indicator" class="hidden">
+                            <span class="recording-indicator"></span> 🔴 Recording...
+                        </div>
+                        <div id="recording-error" class="hidden status-error" style="margin-top: 10px;">
+                            ❌ Recording failed. Please check microphone permissions.
+                        </div>
+                    </div>
+                    <div id="playback-section" class="hidden">
+                        <p>🎧 Your recording:</p>
+                        <audio id="playback-audio" controls style="width: 100%; margin: 15px 0;"></audio>
+                    </div>
+                </div>
+            `;
+
+            document.querySelector('.audio-btn').addEventListener('click', function() {
+                const utter = new SpeechSynthesisUtterance(this.getAttribute('data-sentence'));
+                utter.lang = 'en-US'; utter.rate = 0.9;
+                speechSynthesis.speak(utter);
+            });
+
+            document.getElementById('record-btn').addEventListener('click', toggleRecording);
+        }
+
+        // Toggle recording
+        async function toggleRecording() {
+            if (!isRecording) {
+                await startRecording();
+            } else {
+                stopRecording();
+            }
+        }
+
+        // Start recording
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                currentStream = stream;
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const url = URL.createObjectURL(blob);
+                    document.getElementById('playback-audio').src = url;
+                    document.getElementById('playback-section').classList.remove('hidden');
+                };
+                mediaRecorder.start();
+                isRecording = true;
+                document.getElementById('record-btn').textContent = '🛑 Stop Recording';
+                document.getElementById('record-btn').classList.remove('btn-success');
+                document.getElementById('record-btn').classList.add('btn-error');
+                document.getElementById('recording-indicator').classList.remove('hidden');
+            } catch (err) {
+                alert('Microphone access denied');
+            }
+        }
+
+        // Stop recording
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                    currentStream = null;
+                }
+                document.getElementById('record-btn').textContent = '🎤 Record Again';
+                document.getElementById('record-btn').classList.remove('btn-error');
+                document.getElementById('record-btn').classList.add('btn-success');
+                document.getElementById('recording-indicator').classList.add('hidden');
+            }
+        }
+
+        // Navigation
+        function showPreviousSentence() {
+            if (currentSentenceIndex > 0) {
+                currentSentenceIndex--;
+                showCurrentSentence();
+                updateProgress();
+            }
+        }
+        function showNextSentence() {
+            if (currentSentenceIndex < sentences.length - 1) {
+                currentSentenceIndex++;
+                showCurrentSentence();
+                updateProgress();
+            }
+        }
+        function updateProgress() {
+            const progress = ((currentSentenceIndex + 1) / sentences.length) * 100;
+            progressBar.style.width = `${progress}%`;
+        }
+
+        // Report
+        function showReportModal() {
+            reportModal.classList.remove('hidden');
+        }
+        function generateReport() {
+            const className = document.getElementById('report-class-input').value;
+            const seatNo = document.getElementById('report-seat-input').value;
+            const name = document.getElementById('report-name-input').value;
+            if (!className || !seatNo || !name) {
+                alert('Please fill in all fields');
+                return;
+            }
+            const reportDiv = document.createElement('div');
+            reportDiv.className = 'container';
+            reportDiv.style.display = 'none';
+            const date = new Date().toLocaleDateString('en-US', {
+                year: 'numeric', month: 'long', day: 'numeric'
+            });
+            reportDiv.innerHTML = `
+                <div class="report-section">
+                    <div class="report-header">
+                        <h1>English Pronunciation Practice Report</h1>
+                    </div>
+                    <div class="report-info-line">
+                        <div class="report-info-item"><span class="report-info-label">Class:</span> ${className}</div>
+                        <div class="report-info-item"><span class="report-info-label">Seat No:</span> ${seatNo}</div>
+                        <div class="report-info-item"><span class="report-info-label">Name:</span> ${name}</div>
+                        <div class="report-info-item"><span class="report-info-label">Date:</span> ${date}</div>
+                    </div>
+                    <div class="sentence-list">
+                        <h3>Practice Sentences:</h3>
+                        ${practicedSentences.map((s, i) => `
+                            <div class="sentence-score-item">
+                                <div><strong>Sentence ${i + 1}:</strong> ${s.replace(/\s*$$.*?$$/, '')}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <p style="text-align:center; font-size:1.3em; margin-top:30px; color:#4a6fa5;">
+                        You are awesome! Please keep practicing as practice makes perfect! 😊
+                    </p>
+                </div>
+            `;
+            document.body.appendChild(reportDiv);
+            reportModal.classList.add('hidden');
+            window.print();
+            document.body.removeChild(reportDiv);
+        }
+    </script>
+</body>
+</html>
