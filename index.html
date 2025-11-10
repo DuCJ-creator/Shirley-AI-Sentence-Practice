@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Shirley's AI Assistant in Speaking — Final Fix</title>
+  <title>Shirley's AI Assistant in Speaking — Simple Matching</title>
   <style>
     :root{ --primary-color:#4a6fa5;--secondary-color:#6b8cbc;--accent-color:#ff7e5f; --light-color:#f5f7fa;--dark-color:#2c3e50;--success-color:#2ecc71; --warning-color:#f39c12;--error-color:#e74c3c; }
     *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}
@@ -130,19 +130,9 @@
   </div>
   <script>
     // Global state
-    let sentences=[], currentSentenceIndex=0, mediaRecorder, audioChunks=[], isRecording=false,
+    let sentences=[], currentIndex=0, mediaRecorder, audioChunks=[], isRecording=false,
         practicedSentences=[], sentenceSource='manual', selectedLevel=null, currentStream=null;
     const feedbackResults = [];
-    let noiseRMS = 0;
-    // Relaxed thresholds
-    const STRICT = {
-      minVoicedSec: 1.2,
-      minSRConfidence: 0,  // ← confidence check removed
-      minWords: 3,
-      minPitchSamples: 8,
-      maxPauseRatio: 0.6,
-      minSNRFactor: 4
-    };
     const stripBracketTail = (s)=> s.replace(/\s*\[[^\]]*\]\s*$/, '');
     // DOM refs
     const sentenceSourcePage=document.getElementById('sentence-source-page');
@@ -150,8 +140,8 @@
     const reportModal=document.getElementById('report-modal');
     const startPracticeBtn=document.getElementById('start-practice');
     const finishPracticeBtn=document.getElementById('finish-practice');
-    const prevSentenceBtn=document.getElementById('prev-sentence');
-    const nextSentenceBtn=document.getElementById('next-sentence');
+    const prevBtn=document.getElementById('prev-sentence');
+    const nextBtn=document.getElementById('next-sentence');
     const generateReportBtn=document.getElementById('generate-report');
     const practiceContainer=document.getElementById('practice-container');
     const progressBar=document.getElementById('progress');
@@ -159,27 +149,14 @@
     const levelInput=document.getElementById('level-input');
     const loadLevelSentencesBtn=document.getElementById('load-level-sentences');
     // UI helpers
-    function showStatusMessage(message,type,container=document.body){ const existing=container.querySelector('.status-message'); if(existing) existing.remove(); const el=document.createElement('div'); el.className=`status-message status-${type}`; el.textContent=message; container.insertBefore(el,container.firstChild); setTimeout(()=>el.remove(), type==='error'?8000:5000); }
+    function showStatusMessage(message,type,container=document.body){ const existing=container.querySelector('.status-message'); if(existing) existing.remove(); const el=document.createElement('div'); el.className=`status-message status-${type}`; el.textContent=message; container.insertBefore(el,container.firstChild); setTimeout(()=>el.remove(), 5000); }
     document.querySelectorAll('.sentence-source-btn').forEach(btn=>{ btn.addEventListener('click',function(){ document.querySelectorAll('.sentence-source-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active'); sentenceSource = this.getAttribute('data-source'); if(sentenceSource==='manual'){ manualInput.classList.remove('hidden'); levelInput.classList.add('hidden'); } else { manualInput.classList.add('hidden'); levelInput.classList.remove('hidden'); } }); });
     document.querySelectorAll('.level-btn').forEach(btn=>{ btn.addEventListener('click',function(){ document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active'); selectedLevel=this.getAttribute('data-level'); }); });
     async function fetchLevelSentences(level){ const resp = await fetch(`level${level}.csv`); if(!resp.ok) throw new Error(`Failed to load Level ${level}`); const text = await resp.text(); const lines = text.trim().split('\n'); return lines.map(l=>l.trim()).filter(Boolean).map((line,idx)=>{ const firstComma=line.indexOf(','); if(firstComma===-1) return { number:`${idx+1}`, sentence:line }; return { number: line.substring(0,firstComma).trim(), sentence: line.substring(firstComma+1).trim() }; }); }
     async function loadLevelSentences(){ if(!selectedLevel){ showStatusMessage('Please select a difficulty level first','error',levelInput); return; } try{ showStatusMessage(`Loading sentences from Level ${selectedLevel}...`,'info',levelInput); const rows = await fetchLevelSentences(selectedLevel); if(rows.length===0){ showStatusMessage('No sentences found for this level','error',levelInput); return; } const shuffled=[...rows].sort(()=>0.5-Math.random()); const chosen=shuffled.slice(0,10); const formatted = chosen.map((item,idx)=> `${item.sentence} [${idx+1}/10 - Level ${selectedLevel}, Sentence ${item.number}]`); document.getElementById('sentences').value = formatted.join('\n'); showStatusMessage(`✅ Loaded 10 sentences from Level ${selectedLevel}`,'info',levelInput); }catch(e){ console.error(e); document.getElementById('sentences').value=''; showStatusMessage(`❌ ${e.message}`,'error',levelInput); } }
     loadLevelSentencesBtn.addEventListener('click',loadLevelSentences);
-    startPracticeBtn.addEventListener('click', ()=>{ 
-      let arr = document.getElementById('sentences').value.split('\n').map(s=>s.trim()).filter(Boolean); 
-      if(sentenceSource==='level' && arr.length===0){ showStatusMessage('❌ Please load sentences from Sentence Bank first','error'); return; } 
-      if(arr.length===0){ showStatusMessage('❌ Please enter at least one sentence','error'); return; } 
-      if(arr.length>10) arr = arr.slice(0,10); 
-      sentences=arr; 
-      practicedSentences=[...arr]; 
-      currentSentenceIndex=0; 
-      feedbackResults.length = sentences.length; 
-      sentenceSourcePage.classList.add('hidden'); 
-      practicePage.classList.remove('hidden'); 
-      showCurrentSentence(); 
-      updateProgress(); 
-    });
-    function showCurrentSentence(){ practiceContainer.innerHTML=''; const raw = sentences[currentSentenceIndex]; const m = raw.match(/^[\s\S]+?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*-\s*Level\s*(\d+)\s*,\s*Sentence\s*([^\]]+)\s*\]\s*$/i); const displaySentence = m ? raw.replace(/\s*\[[^\]]*\]\s*$/,'').trim() : stripBracketTail(raw).trim(); const practiceNumber  = m ? `${m[1]}/${m[2]}` : `${currentSentenceIndex+1}/${sentences.length}`; const levelNo = m ? m[3] : null; const sentNo = m ? m[4].trim() : null; const sourceLabel = (levelNo && sentNo) ? `Level ${levelNo}；${sentNo}` : '';
+    startPracticeBtn.addEventListener('click', ()=>{ let arr = document.getElementById('sentences').value.split('\n').map(s=>s.trim()).filter(Boolean); if(sentenceSource==='level' && arr.length===0){ showStatusMessage('❌ Please load sentences from Sentence Bank first','error'); return; } if(arr.length===0){ showStatusMessage('❌ Please enter at least one sentence','error'); return; } if(arr.length>10) arr = arr.slice(0,10); sentences=arr; practicedSentences=[...arr]; currentIndex=0; feedbackResults.length = sentences.length; sentenceSourcePage.classList.add('hidden'); practicePage.classList.remove('hidden'); showCurrent(); updateProgress(); });
+    function showCurrent(){ practiceContainer.innerHTML=''; const raw = sentences[currentIndex]; const m = raw.match(/^[\s\S]+?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*-\s*Level\s*(\d+)\s*,\s*Sentence\s*([^\]]+)\s*\]\s*$/i); const displaySentence = m ? raw.replace(/\s*\[[^\]]*\]\s*$/,'').trim() : stripBracketTail(raw).trim(); const practiceNumber  = m ? `${m[1]}/${m[2]}` : `${currentIndex+1}/${sentences.length}`; const levelNo = m ? m[3] : null; const sentNo = m ? m[4].trim() : null; const sourceLabel = (levelNo && sentNo) ? `Level ${levelNo}；${sentNo}` : '';
       practiceContainer.innerHTML = `
         <div class="practice-item">
           <div class="sentence-header">
@@ -205,13 +182,12 @@
               <div style="padding:12px;border-radius:8px;background:#f8f9fa;margin-top:8px;">
                 <div><strong>Total Score:</strong> <span id="fb-total">-</span>/100</div>
                 <div>Accuracy: <span id="fb-acc">-</span> | Fluency: <span id="fb-flu">-</span> | Prosody: <span id="fb-pro">-</span></div>
-                <div style="margin-top:6px;">WPM: <span id="fb-wpm">-</span> · Pauses: <span id="fb-pause">-</span> · PitchVar: <span id="fb-pitch">-</span> · SNR×: <span id="fb-snr">-</span></div>
+                <div style="margin-top:6px;">WPM: <span id="fb-wpm">-</span> · Pauses: <span id="fb-pause">-</span> · PitchVar: <span id="fb-pitch">-</span></div>
                 <div style="margin-top:6px;">Transcript: <span id="fb-hyp">-</span></div>
                 <div style="margin-top:2px;">Target: <span id="fb-ref">-</span></div>
                 <div style="margin-top:10px;"><strong>Tips:</strong>
                   <ul id="fb-tips" style="margin-left:20px;"></ul>
                 </div>
-                <div id="fb-note" style="margin-top:6px;color:#a67c00;"></div>
               </div>
             </div>
           </div>
@@ -220,92 +196,14 @@
       document.getElementById('record-btn').addEventListener('click', toggleRecording);
       const fbPanel = document.getElementById('feedback-panel'); fbPanel.classList.remove('hidden');
       window.renderFeedbackStatus = function(msg){ const s = document.getElementById('feedback-status'); const r = document.getElementById('feedback-result'); s.textContent = msg; s.style.display = 'block'; r.style.display = 'none'; }
-      window.renderFeedbackResult = function(res){ const s = document.getElementById('feedback-status'); const r = document.getElementById('feedback-result'); if(res?.flags?.noSpeech){ s.textContent = res.notes?.[0] || 'No valid speech detected. Please try again.'; s.style.display = 'block'; r.style.display = 'none'; feedbackResults[currentSentenceIndex]=res; return; } document.getElementById('fb-total').textContent = res.scores.total; document.getElementById('fb-acc').textContent   = res.scores.accuracy; document.getElementById('fb-flu').textContent   = res.scores.fluency; document.getElementById('fb-pro').textContent   = res.scores.prosody; document.getElementById('fb-wpm').textContent   = res.metrics.wpm; document.getElementById('fb-pause').textContent = res.metrics.pauseRatio; document.getElementById('fb-pitch').textContent = res.metrics.pitchVar; if(typeof res.metrics.snr !== 'undefined'){ document.getElementById('fb-snr').textContent = res.metrics.snr; } const tipsUl = document.getElementById('fb-tips'); tipsUl.innerHTML = ''; (res.tips||[]).forEach(t=>{ const li=document.createElement('li'); li.textContent=t; tipsUl.appendChild(li); }); document.getElementById('fb-hyp').textContent = res.transcripts?.hypText || ''; document.getElementById('fb-ref').textContent = res.transcripts?.targetText || ''; const note = document.getElementById('fb-note'); note.textContent = res.notes?.[0] || ''; s.style.display = 'none'; r.style.display = 'block'; feedbackResults[currentSentenceIndex]=res; }
+      window.renderFeedbackResult = function(res){ const s = document.getElementById('feedback-status'); const r = document.getElementById('feedback-result'); document.getElementById('fb-total').textContent = res.scores.total; document.getElementById('fb-acc').textContent   = res.scores.accuracy; document.getElementById('fb-flu').textContent   = res.scores.fluency; document.getElementById('fb-pro').textContent   = res.scores.prosody; document.getElementById('fb-wpm').textContent   = res.metrics.wpm; document.getElementById('fb-pause').textContent = res.metrics.pauseRatio; document.getElementById('fb-pitch').textContent = res.metrics.pitchVar; const tipsUl = document.getElementById('fb-tips'); tipsUl.innerHTML = ''; (res.tips||[]).forEach(t=>{ const li=document.createElement('li'); li.textContent=t; tipsUl.appendChild(li); }); document.getElementById('fb-hyp').textContent = res.transcripts?.hypText || ''; document.getElementById('fb-ref').textContent = res.transcripts?.targetText || ''; s.style.display = 'none'; r.style.display = 'block'; feedbackResults[currentIndex]=res; }
     }
-    document.getElementById('prev-sentence').addEventListener('click', ()=>{ if(currentSentenceIndex>0){ currentSentenceIndex--; showCurrentSentence(); updateProgress(); } });
-    document.getElementById('next-sentence').addEventListener('click', ()=>{ if(currentSentenceIndex<sentences.length-1){ currentSentenceIndex++; showCurrentSentence(); updateProgress(); } });
-    function updateProgress(){ const p=((currentSentenceIndex+1)/sentences.length)*100; progressBar.style.width=p+'%'; }
-    // Recording
+    prevBtn.addEventListener('click', ()=>{ if(currentIndex>0){ currentIndex--; showCurrent(); updateProgress(); } });
+    nextBtn.addEventListener('click', ()=>{ if(currentIndex<sentences.length-1){ currentIndex++; showCurrent(); updateProgress(); } });
+    function updateProgress(){ const p=((currentIndex+1)/sentences.length)*100; progressBar.style.width=p+'%'; }
     async function toggleRecording(){ if(!isRecording) await startRecording(); else stopRecording(); }
-    async function startRecording(){ 
-      try{ 
-        const stream = await navigator.mediaDevices.getUserMedia({audio:true}); 
-        noiseRMS = await (async ()=>{ 
-          const ac = new (window.AudioContext || window.webkitAudioContext)(); 
-          const src = ac.createMediaStreamSource(stream); 
-          const analyser = ac.createAnalyser(); 
-          analyser.fftSize = 2048; 
-          src.connect(analyser); 
-          const buf = new Float32Array(analyser.fftSize); 
-          let sum = 0, count = 0; 
-          const start = performance.now(); 
-          while(performance.now() - start < 300){ 
-            analyser.getFloatTimeDomainData(buf); 
-            for(let i=0;i<buf.length;i++){ sum += buf[i]*buf[i]; } 
-            count += buf.length; 
-            await new Promise(r=>setTimeout(r, 16)); 
-          } 
-          ac.close?.(); 
-          return count ? Math.sqrt(sum / count) : 0; 
-        })(); 
-        mediaRecorder = new MediaRecorder(stream); 
-        currentStream=stream; 
-        audioChunks=[]; 
-        mediaRecorder.ondataavailable=e=>audioChunks.push(e.data); 
-        mediaRecorder.onstop=async ()=>{ 
-          const rawBlob = new Blob(audioChunks,{type:'audio/webm'}); 
-          const cleanBlob = await (window.PronunciationFeedback?.trimSilence(rawBlob).catch(()=>rawBlob) || rawBlob); 
-          const url = URL.createObjectURL(cleanBlob); 
-          document.getElementById('playback-audio').src=url; 
-          document.getElementById('playback-section').classList.remove('hidden'); 
-          const displaySentence = document.querySelector('.audio-btn')?.getAttribute('data-sentence') || ''; 
-          if(window.renderFeedbackStatus){ window.renderFeedbackStatus('Analyzing pronunciation…'); } 
-          if(window.PronunciationFeedback){ 
-            window.PronunciationFeedback.analyzePronunciation({ 
-              blob: cleanBlob, 
-              targetText: displaySentence, 
-              baselineNoiseRMS: noiseRMS 
-            }).then(res => { 
-              if(res && (res.lowConfidence || res.flags?.noSpeech)){ 
-                window.renderFeedbackStatus && window.renderFeedbackStatus(res.notes?.[0] || '辨識信心偏低或未偵測到有效語音，請在安靜環境重錄或靠近麥克風。'); 
-                feedbackResults[currentSentenceIndex]=res; 
-                return; 
-              } 
-              window.renderFeedbackResult ? window.renderFeedbackResult(res) : console.log(res); 
-            }).catch(err => window.renderFeedbackStatus && window.renderFeedbackStatus('❌ Analysis failed: '+(err?.message||err))); 
-          } 
-        }; 
-        mediaRecorder.start(); 
-        isRecording=true; 
-        const btn=document.getElementById('record-btn'); 
-        btn.textContent='🛑 Stop Recording'; 
-        btn.classList.remove('btn-success'); 
-        btn.classList.add('btn-error'); 
-        document.getElementById('recording-indicator').classList.remove('hidden'); 
-      }catch(err){ 
-        alert('Microphone access denied'); 
-      } 
-    }
-    function stopRecording(){ 
-      if(mediaRecorder && isRecording){ 
-        mediaRecorder.stop(); 
-        isRecording=false; 
-        if(currentStream){ 
-          currentStream.getTracks().forEach(t=>t.stop()); 
-          currentStream=null; 
-        } 
-        const btn=document.getElementById('record-btn'); 
-        btn.textContent='🎤 Record Again'; 
-        btn.classList.remove('btn-error'); 
-        btn.classList.add('btn-success'); 
-        document.getElementById('recording-indicator').classList.add('hidden'); 
-
-        // 👇 關鍵：強制延遲 300ms 釋放麥克風
-        setTimeout(() => {
-          // nothing to do, just ensure mic is released
-        }, 300);
-      } 
-    }
+    async function startRecording(){ try{ const stream = await navigator.mediaDevices.getUserMedia({audio:true}); mediaRecorder = new MediaRecorder(stream); currentStream=stream; audioChunks=[]; mediaRecorder.ondataavailable=e=>audioChunks.push(e.data); mediaRecorder.onstop=async ()=>{ const rawBlob = new Blob(audioChunks,{type:'audio/webm'}); const cleanBlob = await (window.PronunciationFeedback?.trimSilence(rawBlob).catch(()=>rawBlob) || rawBlob); const url = URL.createObjectURL(cleanBlob); document.getElementById('playback-audio').src=url; document.getElementById('playback-section').classList.remove('hidden'); const displaySentence = document.querySelector('.audio-btn')?.getAttribute('data-sentence') || ''; if(window.renderFeedbackStatus){ window.renderFeedbackStatus('Analyzing pronunciation…'); } if(window.PronunciationFeedback){ window.PronunciationFeedback.analyzePronunciation({ blob: cleanBlob, targetText: displaySentence }) .then(res => { window.renderFeedbackResult ? window.renderFeedbackResult(res) : console.log(res); }) .catch(err => window.renderFeedbackStatus && window.renderFeedbackStatus('❌ Analysis failed: '+(err?.message||err))); } }; mediaRecorder.start(); isRecording=true; const btn=document.getElementById('record-btn'); btn.textContent='🛑 Stop Recording'; btn.classList.remove('btn-success'); btn.classList.add('btn-error'); document.getElementById('recording-indicator').classList.remove('hidden'); }catch(err){ alert('Microphone access denied'); } }
+    function stopRecording(){ if(mediaRecorder && isRecording){ mediaRecorder.stop(); isRecording=false; if(currentStream){ currentStream.getTracks().forEach(t=>t.stop()); currentStream=null; } const btn=document.getElementById('record-btn'); btn.textContent='🎤 Record Again'; btn.classList.remove('btn-error'); btn.classList.add('btn-success'); document.getElementById('recording-indicator').classList.add('hidden'); } }
     finishPracticeBtn.addEventListener('click', ()=>{ reportModal.classList.remove('hidden'); });
     generateReportBtn.addEventListener('click', generateReport);
     function safeNum(x, digits=2){ if(x==null || isNaN(x)) return '-'; const f=parseFloat(x); return isFinite(f)? f.toFixed(digits) : '-'; }
@@ -316,7 +214,7 @@
       const seatNo=document.getElementById('report-seat-input').value.trim();
       const name=document.getElementById('report-name-input').value.trim();
       if(!className||!seatNo||!name){ alert('Please fill in all fields'); return; }
-      const valid = feedbackResults.filter(r=>r && !r.flags?.noSpeech);
+      const valid = feedbackResults.filter(r=>r);
       const totals = {
         total: avg(valid.map(r=>r.scores?.total)),
         acc:   avg(valid.map(r=>r.scores?.accuracy)),
@@ -325,7 +223,6 @@
         wpm:   avg(valid.map(r=>r.metrics?.wpm)),
         pause: avg(valid.map(r=>r.metrics?.pauseRatio)),
         pitch: avg(valid.map(r=>r.metrics?.pitchVar)),
-        snr:   avg(valid.map(r=>r.metrics?.snr)),
       };
       const encouragement = pickEncouragement(totals.total);
       const reportDiv=document.createElement('div');
@@ -336,8 +233,8 @@
         const main = m ? s.replace(/\s*\[[^\]]*\]\s*$/,'').trim() : stripBracketTail(s).trim();
         const source = m ? ` <span style="color:#666;font-size:0.95em;">（Level ${m[3]}；${(m[4]||'').trim()}）</span>` : '';
         const r = feedbackResults[i];
-        const lineScore = (r && !r.flags?.noSpeech) ? ` — <strong>${r.scores.total}</strong>/100 (A:${r.scores.accuracy} F:${r.scores.fluency} P:${r.scores.prosody})` : ' — <em>no valid speech</em>';
-        const lineMeta  = (r && !r.flags?.noSpeech) ? ` | WPM ${r.metrics.wpm}, Pauses ${safeNum(r.metrics.pauseRatio,2)}, SNR× ${safeNum(r.metrics.snr,2)}` : '';
+        const lineScore = ` — <strong>${r.scores.total}</strong>/100 (A:${r.scores.accuracy} F:${r.scores.fluency} P:${r.scores.prosody})`;
+        const lineMeta  = ` | WPM ${r.metrics.wpm}, Pauses ${safeNum(r.metrics.pauseRatio,2)}`;
         return `
           <div class="sentence-score-item">
             <div><strong>Sentence ${i+1}:</strong> ${main}${source}${lineScore}${lineMeta}</div>
@@ -359,11 +256,11 @@
             <div class="report-info-item"><span class="report-info-label">Date:</span> ${date}</div>
           </div>
           <div class="report-section" style="margin-top:10px;">
-            <h3>Session Summary (Final Fix)</h3>
+            <h3>Session Summary (Simple Matching)</h3>
             <ul style="margin-left:20px;">
-              <li>Sentences practiced: <strong>${sentences.length}</strong>; Valid analyses: <strong>${valid.length}</strong></li>
+              <li>Sentences practiced: <strong>${sentences.length}</strong></li>
               <li>Average Score: <strong>${totals.total==null?'-':Math.round(totals.total)}</strong>/100 (Acc ${safeNum(totals.acc)}, Flu ${safeNum(totals.flu)}, Pro ${safeNum(totals.pro)})</li>
-              <li>Avg WPM: <strong>${totals.wpm==null?'-':Math.round(totals.wpm)}</strong> · Avg Pauses: <strong>${safeNum(totals.pause,2)}</strong> · Avg PitchVar: <strong>${totals.pitch==null?'-':Math.round(totals.pitch)}</strong> · Avg SNR×: <strong>${safeNum(totals.snr,2)}</strong></li>
+              <li>Avg WPM: <strong>${totals.wpm==null?'-':Math.round(totals.wpm)}</strong> · Avg Pauses: <strong>${safeNum(totals.pause,2)}</strong> · Avg PitchVar: <strong>${totals.pitch==null?'-':Math.round(totals.pitch)}</strong></li>
             </ul>
             ${topTips?`<div style="margin-top:8px;"><strong>Focus Tips:</strong><ul style="margin-left:20px;">${topTips}</ul></div>`:''}
             <div style="margin-top:10px;padding:12px;background:#f8fff5;border:1px solid #cdeccd;border-radius:8px;">
@@ -385,7 +282,7 @@
       document.body.removeChild(reportDiv);
     }
   </script>
-  <!-- === Embedded pronunciation-feedback.js with absMax check === -->
+  <!-- === Simplified pronunciation analysis (no gating) === -->
   <script>
   (function (global) {
     const supportsSR = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -575,99 +472,73 @@
         }
       });
     }
-    async function analyzePronunciation({ blob, targetText, hypTextWhenSRUnavailable='', baselineNoiseRMS=0 }){
-      // 🔑 新增：absMax 語音強度檢查
-      const { pcm: testPcm } = await decodeToPCM(blob);
-      const absMax = testPcm.reduce((max, x) => Math.max(max, Math.abs(x)), 0);
-      if (absMax < 0.01) {
-        return {
-          ok: true,
-          flags: { noSpeech: true, fails: ['absMaxTooLow'] },
-          srSupported: false,
-          transcripts: { hypText: '', targetText },
-          metrics: { similarity:0, wer:1, wpm:0, pauseRatio:0, pitchVar:0, snr:0 },
-          scores: { accuracy:0, fluency:0, prosody:0, total:0 },
-          notes: ['偵測不到足夠語音強度：請確認麥克風正常運作並大聲朗讀。'],
-          tips: ['請試著對著麥克風清晰朗讀，聲音需超過環境噪音。']
-        };
-      }
-
-      const feats = await analyzeAudioFeatures(blob);
-      const speechRMS = Math.sqrt(Math.max(feats.energyMean, 0));
-      const noise = Math.max(baselineNoiseRMS || 1e-9, 1e-9);
-      const snrFactor = (speechRMS / noise);
+    // ✅ 核心：無 gating 的 analyzePronunciation
+    async function analyzePronunciation({ blob, targetText, hypTextWhenSRUnavailable='' }){
       const sr = await speechToText();
       const srOk = !!sr.ok;
-      const srConf = sr?.confidence ?? 0;
+      const hypText = srOk ? sr.text : hypTextWhenSRUnavailable;
 
       const refTokens0 = tokenize(targetText);
-      const hypText = srOk ? sr.text : hypTextWhenSRUnavailable;
       const hypTokens0 = tokenize(hypText);
       const refTokens = dropFillers(expandEquivalents(refTokens0));
       const hypTokens = dropFillers(expandEquivalents(hypTokens0));
 
-      const voicedSec = feats.duration * (1 - feats.pauseRatio);
-      // 🔑 移除 confidence 檢查，只看 srOk
-      const gates = {
-        voicedSecPass: voicedSec >= STRICT.minVoicedSec,
-        srPass: srOk, // ← 關鍵修改
-        wordsPass: (hypTokens.length >= STRICT.minWords),
-        snrPass: (snrFactor >= STRICT.minSNRFactor),
-        pausePass: (feats.pauseRatio <= STRICT.maxPauseRatio),
-      };
+      const sim = (refTokens.length || hypTokens.length) ? similarity(refTokens, hypTokens) : 0;
+      const wer = refTokens.length ? WER(refTokens, hypTokens) : (hypTokens.length > 0 ? 1 : 0);
 
-      const pitchSamples = (async ()=>{
-        const { pcm, sampleRate } = await decodeToPCM(blob);
-        const frameSize = Math.floor(sampleRate * 0.03), hop = Math.floor(frameSize * 0.5);
-        let energies=[]; for(let i=0;i+frameSize<pcm.length;i+=hop){ let s=0; for(let j=0;j<frameSize;j++){ const v=pcm[i+j]; s+=v*v; } energies.push(s/frameSize); }
-        const sorted=[...energies].sort((a,b)=>a-b); const voicedThr = sorted[Math.floor(sorted.length*0.35)] || 0;
-        function estPitch(frame){ let maxLag=Math.floor(sampleRate/80), minLag=Math.floor(sampleRate/500); let bestLag=0,best=-Infinity; for(let lag=minLag; lag<=maxLag; lag++){ let sum=0; for(let i=0;i+lag<frame.length;i++){ sum+=frame[i]*frame[i+lag]; } if(sum>best){ best=sum; bestLag=lag; } } return bestLag? (sampleRate/bestLag):0; }
-        let cnt=0; for(let i=0;i+frameSize<pcm.length;i+=hop){ const frame = pcm.slice(i, i+frameSize); const e = energies[Math.floor(i/hop)] || 0; if(e<=voicedThr) continue; const p = estPitch(frame); if(p>60 && p<400) cnt++; } return cnt; })();
-      const pitchCnt = await pitchSamples;
-      const pitchPass = (pitchCnt >= STRICT.minPitchSamples);
+      const feats = await analyzeAudioFeatures(blob);
+      const wpm = wordsPerMinute(Math.max(hypTokens.length, 1), feats.duration);
+      const wpmScore = (() => {
+        if (wpm >= 110 && wpm <= 180) return 100;
+        if (wpm < 60) return 40 * (wpm / 60);
+        if (wpm > 220) return Math.max(20, 100 - (wpm - 180));
+        if (wpm < 110) return 60 + (wpm - 60) * (40 / 50);
+        return 100 - (wpm - 180) * (100 / 40);
+      })();
+      const pauseScore = Math.max(0, 100 - (feats.pauseRatio * 200));
+      const fluencyScore = Math.round(0.7 * wpmScore + 0.3 * pauseScore);
+      const pv = feats.pitchVar;
+      const prosodyScore = (() => {
+        if (pv === 0) return 50;
+        if (pv < 150) return 60 + (pv / 150) * 20;
+        if (pv < 1200) return 80 + (Math.min(pv, 1200) - 150) * (20 / 1050);
+        return Math.max(65, 100 - (pv - 1200) / 8);
+      })();
 
-      if(!(gates.voicedSecPass && gates.srPass && gates.wordsPass && gates.snrPass && gates.pausePass && pitchPass)){
-        const fails = Object.entries({...gates, pitchPass}).filter(([,v])=>!v).map(([k])=>k);
-        return {
-          ok:true,
-          flags:{ noSpeech:true, fails },
-          srSupported: srOk,
-          transcripts:{ hypText: srOk ? sr.text : '', targetText },
-          metrics:{ similarity:0, wer:1, wpm:0, pauseRatio:+feats.pauseRatio.toFixed(3), pitchVar:Math.round(feats.pitchVar), snr:+snrFactor.toFixed(2) },
-          scores:{ accuracy:0, fluency:0, prosody:0, total:0 },
-          notes:[ '未偵測到有效語音：請靠近麥克風、在安靜環境錄製；朗讀至少 1.2 秒並清楚吐字。' ],
-          tips:[
-            '請清楚朗讀整句，不要只發出氣音或環境聲。',
-            '若使用筆電內建麥克風，建議靠近 15–20 cm。'
-          ]
-        };
+      let accuracyScore = Math.max(0, Math.min(100, Math.round(sim * 100)));
+      if (!srOk && hypTextWhenSRUnavailable === '') {
+        accuracyScore = 0;
       }
 
-      const sim = (refTokens.length && hypTokens.length) ? similarity(refTokens, hypTokens) : 0;
-      const wer = (refTokens.length && hypTokens.length) ? WER(refTokens, hypTokens) : 1;
-      let accuracyScore = Math.max(0, Math.min(100, Math.round(sim*100)));
-      const wpm = wordsPerMinute(Math.max(hypTokens.length, 1), feats.duration);
-      const wpmScore = (()=>{ if(wpm>=110 && wpm<=180) return 100; if(wpm<60) return 40*(wpm/60); if(wpm>220) return Math.max(20, 100-(wpm-180)); if(wpm<110) return 60 + (wpm-60)*(40/50); return 100 - (wpm-180)*(100/40); })();
-      const pauseScore = Math.max(0, 100 - (feats.pauseRatio*200));
-      const fluencyScore = Math.round(0.7*wpmScore + 0.3*pauseScore);
-      const pv = feats.pitchVar;
-      const prosodyScore = (()=> { if(pv===0) return 50; if(pv<150) return 60 + (pv/150)*20; if(pv<1200) return 80 + (Math.min(pv,1200)-150)*(20/1050); return Math.max(65, 100 - (pv-1200)/8); })();
-      const total = Math.round(0.6*accuracyScore + 0.2*fluencyScore + 0.2*prosodyScore);
+      const total = Math.round(0.6 * accuracyScore + 0.2 * fluencyScore + 0.2 * prosodyScore);
+
       const tips = [];
-      if(wer>0.25 || accuracyScore<75) tips.push('多練習單字連讀與重音位置；逐句比對關鍵字避免漏字。');
-      if(wpm<100) tips.push('語速略慢，可嘗試跟讀原音，提升節奏與連貫度。');
-      if(wpm>190) tips.push('語速偏快，注意斷句與清晰度。');
-      if(feats.pauseRatio>0.25) tips.push('停頓較多，建議先分段練習，再逐步合併整句。');
-      if(prosodyScore<80) tips.push('語調較單調，嘗試在重讀詞提高音高或時長。');
-      if(tips.length===0) tips.push('發音整體表現良好，保持練習！');
+      if (wer > 0.25 || accuracyScore < 75) tips.push('多練習單字連讀與重音位置；逐句比對關鍵字避免漏字。');
+      if (wpm < 100) tips.push('語速略慢，可嘗試跟讀原音，提升節奏與連貫度。');
+      if (wpm > 190) tips.push('語速偏快，注意斷句與清晰度。');
+      if (feats.pauseRatio > 0.25) tips.push('停頓較多，建議先分段練習，再逐步合併整句。');
+      if (prosodyScore < 80) tips.push('語調較單調，嘗試在重讀詞提高音高或時長。');
+      if (tips.length === 0) tips.push('發音整體表現良好，保持練習！');
+
       return {
-        ok:true,
+        ok: true,
         srSupported: srOk,
-        transcripts: { hypText: sr.text, targetText },
-        metrics: { similarity:+sim.toFixed(3), wer:+wer.toFixed(3), wpm:Math.round(wpm), pauseRatio:+feats.pauseRatio.toFixed(3), pitchVar:Math.round(pv), snr:+snrFactor.toFixed(2) },
-        scores: { accuracy:accuracyScore, fluency:fluencyScore, prosody:prosodyScore, total },
+        transcripts: { hypText: hypText, targetText: targetText },
+        metrics: {
+          similarity: +sim.toFixed(3),
+          wer: +wer.toFixed(3),
+          wpm: Math.round(wpm),
+          pauseRatio: +feats.pauseRatio.toFixed(3),
+          pitchVar: Math.round(pv)
+        },
+        scores: {
+          accuracy: accuracyScore,
+          fluency: fluencyScore,
+          prosody: prosodyScore,
+          total: total
+        },
         notes: [],
-        tips
+        tips: tips
       };
     }
     global.PronunciationFeedback = { analyzePronunciation, trimSilence };
