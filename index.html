@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Shirley's AI Assistant in Speaking — Adjusted Gating</title>
+  <title>Shirley's AI Assistant in Speaking — Fixed Noise Calibration</title>
   <style>
     :root{ --primary-color:#4a6fa5;--secondary-color:#6b8cbc;--accent-color:#ff7e5f; --light-color:#f5f7fa;--dark-color:#2c3e50;--success-color:#2ecc71; --warning-color:#f39c12;--error-color:#e74c3c; }
     *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}
@@ -133,18 +133,23 @@
     let sentences=[], currentSentenceIndex=0, mediaRecorder, audioChunks=[], isRecording=false,
         practicedSentences=[], sentenceSource='manual', selectedLevel=null, currentStream=null;
     // Per-sentence feedback storage
-    const feedbackResults = []; // index -> {scores, metrics, transcripts, flags}
-    // Adjusted thresholds for better recall
-    let noiseRMS = 0;
+    const feedbackResults = [];
+    // Fixed noise baseline — calibrated once at start
+    let noiseRMS = 0.01;
+    let noiseCalibrated = false;
+
+    // Adjusted thresholds
     const STRICT = {
-      minVoicedSec: 1.2,      // allow shorter utterances
-      minSRConfidence: 0.5,   // more tolerant of SR confidence
-      minWords: 3,            // at least 3 words
-      minPitchSamples: 8,     // significantly lower pitch requirement
-      maxPauseRatio: 0.6,     // allow more pauses
-      minSNRFactor: 4         // work in noisier environments
+      minVoicedSec: 1.2,
+      minSRConfidence: 0.5,
+      minWords: 3,
+      minPitchSamples: 8,
+      maxPauseRatio: 0.6,
+      minSNRFactor: 4
     };
+
     const stripBracketTail = (s)=> s.replace(/\s*\[[^\]]*\]\s*$/, '');
+
     // DOM refs
     const sentenceSourcePage=document.getElementById('sentence-source-page');
     const practicePage=document.getElementById('practice-page');
@@ -159,6 +164,40 @@
     const manualInput=document.getElementById('manual-input');
     const levelInput=document.getElementById('level-input');
     const loadLevelSentencesBtn=document.getElementById('load-level-sentences');
+
+    // Noise calibration (once per session)
+    async function calibrateNoiseOnce() {
+      if (noiseCalibrated) return;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+        const ac = new (window.AudioContext || window.webkitAudioContext)();
+        const src = ac.createMediaStreamSource(stream);
+        const analyser = ac.createAnalyser();
+        analyser.fftSize = 2048;
+        src.connect(analyser);
+        const buf = new Float32Array(analyser.fftSize);
+        let sum = 0, count = 0;
+        const start = performance.now();
+        while (performance.now() - start < 500) {
+          analyser.getFloatTimeDomainData(buf);
+          for (let i = 0; i < buf.length; i++) {
+            sum += buf[i] * buf[i];
+          }
+          count += buf.length;
+          await new Promise(r => setTimeout(r, 16));
+        }
+        ac.close?.();
+        stream.getTracks().forEach(t => t.stop());
+        noiseRMS = count ? Math.sqrt(sum / count) : 0.01;
+        noiseCalibrated = true;
+        console.log("✅ Noise baseline calibrated:", noiseRMS);
+      } catch (e) {
+        console.warn("⚠️ Noise calibration failed, using default", e);
+        noiseRMS = 0.01;
+        noiseCalibrated = true;
+      }
+    }
+
     // UI helpers
     function showStatusMessage(message,type,container=document.body){ const existing=container.querySelector('.status-message'); if(existing) existing.remove(); const el=document.createElement('div'); el.className=`status-message status-${type}`; el.textContent=message; container.insertBefore(el,container.firstChild); setTimeout(()=>el.remove(), type==='error'?8000:5000); }
     // Source buttons
@@ -170,7 +209,21 @@
     async function loadLevelSentences(){ if(!selectedLevel){ showStatusMessage('Please select a difficulty level first','error',levelInput); return; } try{ showStatusMessage(`Loading sentences from Level ${selectedLevel}...`,'info',levelInput); const rows = await fetchLevelSentences(selectedLevel); if(rows.length===0){ showStatusMessage('No sentences found for this level','error',levelInput); return; } const shuffled=[...rows].sort(()=>0.5-Math.random()); const chosen=shuffled.slice(0,10); const formatted = chosen.map((item,idx)=> `${item.sentence} [${idx+1}/10 - Level ${selectedLevel}, Sentence ${item.number}]`); document.getElementById('sentences').value = formatted.join('\n'); showStatusMessage(`✅ Loaded 10 sentences from Level ${selectedLevel}`,'info',levelInput); }catch(e){ console.error(e); document.getElementById('sentences').value=''; showStatusMessage(`❌ ${e.message}`,'error',levelInput); } }
     loadLevelSentencesBtn.addEventListener('click',loadLevelSentences);
     // Start practice
-    startPracticeBtn.addEventListener('click', ()=>{ let arr = document.getElementById('sentences').value.split('\n').map(s=>s.trim()).filter(Boolean); if(sentenceSource==='level' && arr.length===0){ showStatusMessage('❌ Please load sentences from Sentence Bank first','error'); return; } if(arr.length===0){ showStatusMessage('❌ Please enter at least one sentence','error'); return; } if(arr.length>10) arr = arr.slice(0,10); sentences=arr; practicedSentences=[...arr]; currentSentenceIndex=0; feedbackResults.length = sentences.length; sentenceSourcePage.classList.add('hidden'); practicePage.classList.remove('hidden'); showCurrentSentence(); updateProgress(); });
+    startPracticeBtn.addEventListener('click', ()=>{ 
+      calibrateNoiseOnce(); // 👈 關鍵：只校準一次
+      let arr = document.getElementById('sentences').value.split('\n').map(s=>s.trim()).filter(Boolean); 
+      if(sentenceSource==='level' && arr.length===0){ showStatusMessage('❌ Please load sentences from Sentence Bank first','error'); return; } 
+      if(arr.length===0){ showStatusMessage('❌ Please enter at least one sentence','error'); return; } 
+      if(arr.length>10) arr = arr.slice(0,10); 
+      sentences=arr; 
+      practicedSentences=[...arr]; 
+      currentSentenceIndex=0; 
+      feedbackResults.length = sentences.length; 
+      sentenceSourcePage.classList.add('hidden'); 
+      practicePage.classList.remove('hidden'); 
+      showCurrentSentence(); 
+      updateProgress(); 
+    });
     function showCurrentSentence(){ practiceContainer.innerHTML=''; const raw = sentences[currentSentenceIndex]; const m = raw.match(/^[\s\S]+?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*-\s*Level\s*(\d+)\s*,\s*Sentence\s*([^\]]+)\s*\]\s*$/i); const displaySentence = m ? raw.replace(/\s*\[[^\]]*\]\s*$/,'').trim() : stripBracketTail(raw).trim(); const practiceNumber  = m ? `${m[1]}/${m[2]}` : `${currentSentenceIndex+1}/${sentences.length}`; const levelNo = m ? m[3] : null; const sentNo = m ? m[4].trim() : null; const sourceLabel = (levelNo && sentNo) ? `Level ${levelNo}；${sentNo}` : '';
       practiceContainer.innerHTML = `
         <div class="practice-item">
@@ -220,8 +273,63 @@
     function updateProgress(){ const p=((currentSentenceIndex+1)/sentences.length)*100; progressBar.style.width=p+'%'; }
     // Recording
     async function toggleRecording(){ if(!isRecording) await startRecording(); else stopRecording(); }
-    async function startRecording(){ try{ const stream = await navigator.mediaDevices.getUserMedia({audio:true}); noiseRMS = await (async ()=>{ const ac = new (window.AudioContext || window.webkitAudioContext)(); const src = ac.createMediaStreamSource(stream); const analyser = ac.createAnalyser(); analyser.fftSize = 2048; src.connect(analyser); const buf = new Float32Array(analyser.fftSize); let sum = 0, count = 0; const start = performance.now(); while(performance.now() - start < 300){ analyser.getFloatTimeDomainData(buf); for(let i=0;i<buf.length;i++){ sum += buf[i]*buf[i]; } count += buf.length; await new Promise(r=>setTimeout(r, 16)); } ac.close?.(); return count ? Math.sqrt(sum / count) : 0; })(); mediaRecorder = new MediaRecorder(stream); currentStream=stream; audioChunks=[]; mediaRecorder.ondataavailable=e=>audioChunks.push(e.data); mediaRecorder.onstop=async ()=>{ const rawBlob = new Blob(audioChunks,{type:'audio/webm'}); const cleanBlob = await (window.PronunciationFeedback?.trimSilence(rawBlob).catch(()=>rawBlob) || rawBlob); const url = URL.createObjectURL(cleanBlob); document.getElementById('playback-audio').src=url; document.getElementById('playback-section').classList.remove('hidden'); const displaySentence = document.querySelector('.audio-btn')?.getAttribute('data-sentence') || ''; if(window.renderFeedbackStatus){ window.renderFeedbackStatus('Analyzing pronunciation…'); } if(window.PronunciationFeedback){ window.PronunciationFeedback.analyzePronunciation({ blob: cleanBlob, targetText: displaySentence, baselineNoiseRMS: noiseRMS }) .then(res => { if(res && (res.lowConfidence || res.flags?.noSpeech)){ window.renderFeedbackStatus && window.renderFeedbackStatus(res.notes?.[0] || '辨識信心偏低或未偵測到有效語音，請在安靜環境重錄或靠近麥克風。'); feedbackResults[currentSentenceIndex]=res; return; } window.renderFeedbackResult ? window.renderFeedbackResult(res) : console.log(res); }) .catch(err => window.renderFeedbackStatus && window.renderFeedbackStatus('❌ Analysis failed: '+(err?.message||err))); } }; mediaRecorder.start(); isRecording=true; const btn=document.getElementById('record-btn'); btn.textContent='🛑 Stop Recording'; btn.classList.remove('btn-success'); btn.classList.add('btn-error'); document.getElementById('recording-indicator').classList.remove('hidden'); }catch(err){ alert('Microphone access denied'); } }
-    function stopRecording(){ if(mediaRecorder && isRecording){ mediaRecorder.stop(); isRecording=false; if(currentStream){ currentStream.getTracks().forEach(t=>t.stop()); currentStream=null; } const btn=document.getElementById('record-btn'); btn.textContent='🎤 Record Again'; btn.classList.remove('btn-error'); btn.classList.add('btn-success'); document.getElementById('recording-indicator').classList.add('hidden'); } }
+    async function startRecording(){ 
+      try{ 
+        const stream = await navigator.mediaDevices.getUserMedia({audio:true}); 
+        // 🔴 移除原有的 noiseRMS 動態採集！
+        mediaRecorder = new MediaRecorder(stream); 
+        currentStream=stream; 
+        audioChunks=[]; 
+        mediaRecorder.ondataavailable=e=>audioChunks.push(e.data); 
+        mediaRecorder.onstop=async ()=>{ 
+          const rawBlob = new Blob(audioChunks,{type:'audio/webm'}); 
+          const cleanBlob = await (window.PronunciationFeedback?.trimSilence(rawBlob).catch(()=>rawBlob) || rawBlob); 
+          const url = URL.createObjectURL(cleanBlob); 
+          document.getElementById('playback-audio').src=url; 
+          document.getElementById('playback-section').classList.remove('hidden'); 
+          const displaySentence = document.querySelector('.audio-btn')?.getAttribute('data-sentence') || ''; 
+          if(window.renderFeedbackStatus){ window.renderFeedbackStatus('Analyzing pronunciation…'); } 
+          if(window.PronunciationFeedback){ 
+            window.PronunciationFeedback.analyzePronunciation({ 
+              blob: cleanBlob, 
+              targetText: displaySentence, 
+              baselineNoiseRMS: noiseRMS // 👈 使用一次性校準的值
+            }).then(res => { 
+              if(res && (res.lowConfidence || res.flags?.noSpeech)){ 
+                window.renderFeedbackStatus && window.renderFeedbackStatus(res.notes?.[0] || '辨識信心偏低或未偵測到有效語音，請在安靜環境重錄或靠近麥克風。'); 
+                feedbackResults[currentSentenceIndex]=res; 
+                return; 
+              } 
+              window.renderFeedbackResult ? window.renderFeedbackResult(res) : console.log(res); 
+            }).catch(err => window.renderFeedbackStatus && window.renderFeedbackStatus('❌ Analysis failed: '+(err?.message||err))); 
+          } 
+        }; 
+        mediaRecorder.start(); 
+        isRecording=true; 
+        const btn=document.getElementById('record-btn'); 
+        btn.textContent='🛑 Stop Recording'; 
+        btn.classList.remove('btn-success'); 
+        btn.classList.add('btn-error'); 
+        document.getElementById('recording-indicator').classList.remove('hidden'); 
+      }catch(err){ 
+        alert('Microphone access denied'); 
+      } 
+    }
+    function stopRecording(){ 
+      if(mediaRecorder && isRecording){ 
+        mediaRecorder.stop(); 
+        isRecording=false; 
+        if(currentStream){ 
+          currentStream.getTracks().forEach(t=>t.stop()); 
+          currentStream=null; 
+        } 
+        const btn=document.getElementById('record-btn'); 
+        btn.textContent='🎤 Record Again'; 
+        btn.classList.remove('btn-error'); 
+        btn.classList.add('btn-success'); 
+        document.getElementById('recording-indicator').classList.add('hidden'); 
+      } 
+    }
     // Report
     finishPracticeBtn.addEventListener('click', ()=>{ reportModal.classList.remove('hidden'); });
     generateReportBtn.addEventListener('click', generateReport);
@@ -278,7 +386,7 @@
             <div class="report-info-item"><span class="report-info-label">Date:</span> ${date}</div>
           </div>
           <div class="report-section" style="margin-top:10px;">
-            <h3>Session Summary (Adjusted Gating)</h3>
+            <h3>Session Summary (Fixed Noise Calibration)</h3>
             <ul style="margin-left:20px;">
               <li>Sentences practiced: <strong>${sentences.length}</strong>; Valid analyses: <strong>${valid.length}</strong></li>
               <li>Average Score: <strong>${totals.total==null?'-':Math.round(totals.total)}</strong>/100 (Acc ${safeNum(totals.acc)}, Flu ${safeNum(totals.flu)}, Pro ${safeNum(totals.pro)})</li>
@@ -304,7 +412,7 @@
       document.body.removeChild(reportDiv);
     }
   </script>
-  <!-- === Embedded pronunciation-feedback.js (with adjusted gating logic) === -->
+  <!-- === Embedded pronunciation-feedback.js (no change) === -->
   <script>
   (function (global) {
     const supportsSR = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
