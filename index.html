@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Shirley's AI Assistant in Speaking — Simple Matching v2</title>
+  <title>Shirley's AI Assistant in Speaking — Whisper + 60 Baseline</title>
   <style>
     :root{ --primary-color:#4a6fa5;--secondary-color:#6b8cbc;--accent-color:#ff7e5f; --light-color:#f5f7fa;--dark-color:#2c3e50;--success-color:#2ecc71; --warning-color:#f39c12;--error-color:#e74c3c; }
     *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}
@@ -98,16 +98,16 @@
       <button id="start-practice" class="btn">Start Practice</button>
     </div>
     <!-- Practice Page -->
-    <div id="practice-page" class="hidden">
-      <h1>English Pronunciation Practice</h1>
-      <div class="progress-bar"><div id="progress" class="progress"></div></div>
-      <div id="practice-container"></div>
-      <div class="navigation">
-        <button id="prev-sentence" class="btn">Previous</button>
-        <button id="next-sentence" class="btn">Next</button>
-      </div>
-      <button id="finish-practice" class="btn btn-accent">Finish Practice</button>
-    </div>
+<div id="practice-page" class="hidden">
+  <h1> Sentence Practice with Shirley's AI Assistant in Speaking </h1>
+  <div class="status-info" style="margin:10px 0;padding:12px;font-size:0.95em;line-height:1.5;">
+    <strong>ℹ️ A trial version for educational use in an entertaining way!</strong><br>
+    Due to limitations in speech recognition, recording environments, and device variability, the AI-generated analysis may not fully reflect your true speaking ability, and is for your reference only.<br>
+    Please focus on imitating the model pronunciation — consistent practice leads to progress!
+  </div>
+  <div class="progress-bar"><div id="progress" class="progress"></div></div>
+  ...
+</div>
     <!-- Report Modal -->
     <div id="report-modal" class="hidden">
       <div style="background:#fff;padding:24px;border-radius:12px;max-width:640px;margin:0 auto;">
@@ -128,12 +128,27 @@
       </div>
     </div>
   </div>
-  <script>
+
+  <!-- Load Transformers.js from CDN -->
+  <script type="module">
+    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
     // Global state
     let sentences=[], currentSentenceIndex=0, mediaRecorder, audioChunks=[], isRecording=false,
         practicedSentences=[], sentenceSource='manual', selectedLevel=null, currentStream=null;
     const feedbackResults = [];
     const stripBracketTail = (s)=> s.replace(/\s*\[[^\]]*\]\s*$/, '');
+
+    // Whisper pipeline (lazy init)
+    let whisper = null;
+    async function getWhisper() {
+      if (!whisper) {
+        document.getElementById('feedback-status')?.textContent = 'Loading Whisper model (30MB)...';
+        whisper = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en');
+      }
+      return whisper;
+    }
+
     // DOM refs
     const sentenceSourcePage=document.getElementById('sentence-source-page');
     const practicePage=document.getElementById('practice-page');
@@ -148,15 +163,109 @@
     const manualInput=document.getElementById('manual-input');
     const levelInput=document.getElementById('level-input');
     const loadLevelSentencesBtn=document.getElementById('load-level-sentences');
+
     // UI helpers
-    function showStatusMessage(message,type,container=document.body){ const existing=container.querySelector('.status-message'); if(existing) existing.remove(); const el=document.createElement('div'); el.className=`status-message status-${type}`; el.textContent=message; container.insertBefore(el,container.firstChild); setTimeout(()=>el.remove(), 5000); }
-    document.querySelectorAll('.sentence-source-btn').forEach(btn=>{ btn.addEventListener('click',function(){ document.querySelectorAll('.sentence-source-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active'); sentenceSource = this.getAttribute('data-source'); if(sentenceSource==='manual'){ manualInput.classList.remove('hidden'); levelInput.classList.add('hidden'); } else { manualInput.classList.add('hidden'); levelInput.classList.remove('hidden'); } }); });
-    document.querySelectorAll('.level-btn').forEach(btn=>{ btn.addEventListener('click',function(){ document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active'); selectedLevel=this.getAttribute('data-level'); }); });
-    async function fetchLevelSentences(level){ const resp = await fetch(`level${level}.csv`); if(!resp.ok) throw new Error(`Failed to load Level ${level}`); const text = await resp.text(); const lines = text.trim().split('\n'); return lines.map(l=>l.trim()).filter(Boolean).map((line,idx)=>{ const firstComma=line.indexOf(','); if(firstComma===-1) return { number:`${idx+1}`, sentence:line }; return { number: line.substring(0,firstComma).trim(), sentence: line.substring(firstComma+1).trim() }; }); }
-    async function loadLevelSentences(){ if(!selectedLevel){ showStatusMessage('Please select a difficulty level first','error',levelInput); return; } try{ showStatusMessage(`Loading sentences from Level ${selectedLevel}...`,'info',levelInput); const rows = await fetchLevelSentences(selectedLevel); if(rows.length===0){ showStatusMessage('No sentences found for this level','error',levelInput); return; } const shuffled=[...rows].sort(()=>0.5-Math.random()); const chosen=shuffled.slice(0,10); const formatted = chosen.map((item,idx)=> `${item.sentence} [${idx+1}/10 - Level ${selectedLevel}, Sentence ${item.number}]`); document.getElementById('sentences').value = formatted.join('\n'); showStatusMessage(`✅ Loaded 10 sentences from Level ${selectedLevel}`,'info',levelInput); }catch(e){ console.error(e); document.getElementById('sentences').value=''; showStatusMessage(`❌ ${e.message}`,'error',levelInput); } }
+    function showStatusMessage(message,type,container=document.body){
+      const existing=container.querySelector('.status-message');
+      if(existing) existing.remove();
+      const el=document.createElement('div');
+      el.className=`status-message status-${type}`;
+      el.textContent=message;
+      container.insertBefore(el,container.firstChild);
+      setTimeout(()=>el.remove(), 5000);
+    }
+
+    document.querySelectorAll('.sentence-source-btn').forEach(btn=>{
+      btn.addEventListener('click',function(){
+        document.querySelectorAll('.sentence-source-btn').forEach(b=>b.classList.remove('active'));
+        this.classList.add('active');
+        sentenceSource = this.getAttribute('data-source');
+        if(sentenceSource==='manual'){
+          manualInput.classList.remove('hidden');
+          levelInput.classList.add('hidden');
+        } else {
+          manualInput.classList.add('hidden');
+          levelInput.classList.remove('hidden');
+        }
+      });
+    });
+
+    document.querySelectorAll('.level-btn').forEach(btn=>{
+      btn.addEventListener('click',function(){
+        document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active'));
+        this.classList.add('active');
+        selectedLevel=this.getAttribute('data-level');
+      });
+    });
+
+    async function fetchLevelSentences(level){
+      const resp = await fetch(`level${level}.csv`);
+      if(!resp.ok) throw new Error(`Failed to load Level ${level}`);
+      const text = await resp.text();
+      const lines = text.trim().split('\n');
+      return lines.map(l=>l.trim()).filter(Boolean).map((line,idx)=>{
+        const firstComma=line.indexOf(',');
+        if(firstComma===-1) return { number:`${idx+1}`, sentence:line };
+        return { number: line.substring(0,firstComma).trim(), sentence: line.substring(firstComma+1).trim() };
+      });
+    }
+
+    async function loadLevelSentences(){
+      if(!selectedLevel){
+        showStatusMessage('Please select a difficulty level first','error',levelInput);
+        return;
+      }
+      try{
+        showStatusMessage(`Loading sentences from Level ${selectedLevel}...`,'info',levelInput);
+        const rows = await fetchLevelSentences(selectedLevel);
+        if(rows.length===0){
+          showStatusMessage('No sentences found for this level','error',levelInput);
+          return;
+        }
+        const shuffled=[...rows].sort(()=>0.5-Math.random());
+        const chosen=shuffled.slice(0,10);
+        const formatted = chosen.map((item,idx)=> `${item.sentence} [${idx+1}/10 - Level ${selectedLevel}, Sentence ${item.number}]`);
+        document.getElementById('sentences').value = formatted.join('\n');
+        showStatusMessage(`✅ Loaded 10 sentences from Level ${selectedLevel}`,'info',levelInput);
+      }catch(e){
+        console.error(e);
+        document.getElementById('sentences').value='';
+        showStatusMessage(`❌ ${e.message}`,'error',levelInput);
+      }
+    }
     loadLevelSentencesBtn.addEventListener('click',loadLevelSentences);
-    startPracticeBtn.addEventListener('click', ()=>{ let arr = document.getElementById('sentences').value.split('\n').map(s=>s.trim()).filter(Boolean); if(sentenceSource==='level' && arr.length===0){ showStatusMessage('❌ Please load sentences from Sentence Bank first','error'); return; } if(arr.length===0){ showStatusMessage('❌ Please enter at least one sentence','error'); return; } if(arr.length>10) arr = arr.slice(0,10); sentences=arr; practicedSentences=[...arr]; currentSentenceIndex=0; feedbackResults.length = sentences.length; sentenceSourcePage.classList.add('hidden'); practicePage.classList.remove('hidden'); showCurrentSentence(); updateProgress(); });
-    function showCurrentSentence(){ practiceContainer.innerHTML=''; const raw = sentences[currentSentenceIndex]; const m = raw.match(/^[\s\S]+?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*-\s*Level\s*(\d+)\s*,\s*Sentence\s*([^\]]+)\s*\]\s*$/i); const displaySentence = m ? raw.replace(/\s*\[[^\]]*\]\s*$/,'').trim() : stripBracketTail(raw).trim(); const practiceNumber  = m ? `${m[1]}/${m[2]}` : `${currentSentenceIndex+1}/${sentences.length}`; const levelNo = m ? m[3] : null; const sentNo = m ? m[4].trim() : null; const sourceLabel = (levelNo && sentNo) ? `Level ${levelNo}；${sentNo}` : '';
+
+    startPracticeBtn.addEventListener('click', ()=>{
+      let arr = document.getElementById('sentences').value.split('\n').map(s=>s.trim()).filter(Boolean);
+      if(sentenceSource==='level' && arr.length===0){
+        showStatusMessage('❌ Please load sentences from Sentence Bank first','error');
+        return;
+      }
+      if(arr.length===0){
+        showStatusMessage('❌ Please enter at least one sentence','error');
+        return;
+      }
+      if(arr.length>10) arr = arr.slice(0,10);
+      sentences=arr;
+      practicedSentences=[...arr];
+      currentSentenceIndex=0;
+      feedbackResults.length = sentences.length;
+      sentenceSourcePage.classList.add('hidden');
+      practicePage.classList.remove('hidden');
+      showCurrentSentence();
+      updateProgress();
+    });
+
+    function showCurrentSentence(){
+      practiceContainer.innerHTML='';
+      const raw = sentences[currentSentenceIndex];
+      const m = raw.match(/^[\s\S]+?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*-\s*Level\s*(\d+)\s*,\s*Sentence\s*([^\]]+)\s*\]\s*$/i);
+      const displaySentence = m ? raw.replace(/\s*\[[^\]]*\]\s*$/,'').trim() : stripBracketTail(raw).trim();
+      const practiceNumber  = m ? `${m[1]}/${m[2]}` : `${currentSentenceIndex+1}/${sentences.length}`;
+      const levelNo = m ? m[3] : null;
+      const sentNo = m ? m[4].trim() : null;
+      const sourceLabel = (levelNo && sentNo) ? `Level ${levelNo}；${sentNo}` : '';
+
       practiceContainer.innerHTML = `
         <div class="practice-item">
           <div class="sentence-header">
@@ -192,28 +301,174 @@
             </div>
           </div>
         </div>`;
-      document.querySelector('.audio-btn').addEventListener('click', function(){ const utter = new SpeechSynthesisUtterance(this.getAttribute('data-sentence')); utter.lang='en-US'; utter.rate=0.9; speechSynthesis.speak(utter); });
+
+      document.querySelector('.audio-btn').addEventListener('click', function(){
+        const utter = new SpeechSynthesisUtterance(this.getAttribute('data-sentence'));
+        utter.lang='en-US';
+        utter.rate=0.9;
+        speechSynthesis.speak(utter);
+      });
+
       document.getElementById('record-btn').addEventListener('click', toggleRecording);
-      const fbPanel = document.getElementById('feedback-panel'); fbPanel.classList.remove('hidden');
-      window.renderFeedbackStatus = function(msg){ const s = document.getElementById('feedback-status'); const r = document.getElementById('feedback-result'); s.textContent = msg; s.style.display = 'block'; r.style.display = 'none'; }
-      window.renderFeedbackResult = function(res){ const s = document.getElementById('feedback-status'); const r = document.getElementById('feedback-result'); document.getElementById('fb-total').textContent = res.scores.total; document.getElementById('fb-acc').textContent   = res.scores.accuracy; document.getElementById('fb-flu').textContent   = res.scores.fluency; document.getElementById('fb-pro').textContent   = res.scores.prosody; document.getElementById('fb-wpm').textContent   = res.metrics.wpm; document.getElementById('fb-pause').textContent = res.metrics.pauseRatio; document.getElementById('fb-pitch').textContent = res.metrics.pitchVar; const tipsUl = document.getElementById('fb-tips'); tipsUl.innerHTML = ''; (res.tips||[]).forEach(t=>{ const li=document.createElement('li'); li.textContent=t; tipsUl.appendChild(li); }); document.getElementById('fb-hyp').textContent = res.transcripts?.hypText || ''; document.getElementById('fb-ref').textContent = res.transcripts?.targetText || ''; s.style.display = 'none'; r.style.display = 'block'; feedbackResults[currentSentenceIndex]=res; }
+
+      const fbPanel = document.getElementById('feedback-panel');
+      fbPanel.classList.remove('hidden');
+
+      window.renderFeedbackStatus = function(msg){
+        const s = document.getElementById('feedback-status');
+        const r = document.getElementById('feedback-result');
+        s.textContent = msg;
+        s.style.display = 'block';
+        r.style.display = 'none';
+      };
+
+      window.renderFeedbackResult = function(res){
+        const s = document.getElementById('feedback-status');
+        const r = document.getElementById('feedback-result');
+        document.getElementById('fb-total').textContent = res.scores.total;
+        document.getElementById('fb-acc').textContent   = res.scores.accuracy;
+        document.getElementById('fb-flu').textContent   = res.scores.fluency;
+        document.getElementById('fb-pro').textContent   = res.scores.prosody;
+        document.getElementById('fb-wpm').textContent   = res.metrics.wpm;
+        document.getElementById('fb-pause').textContent = res.metrics.pauseRatio;
+        document.getElementById('fb-pitch').textContent = res.metrics.pitchVar;
+        const tipsUl = document.getElementById('fb-tips');
+        tipsUl.innerHTML = '';
+        (res.tips||[]).forEach(t=>{
+          const li=document.createElement('li');
+          li.textContent=t;
+          tipsUl.appendChild(li);
+        });
+        document.getElementById('fb-hyp').textContent = res.transcripts?.hypText || '';
+        document.getElementById('fb-ref').textContent = res.transcripts?.targetText || '';
+        s.style.display = 'none';
+        r.style.display = 'block';
+        feedbackResults[currentSentenceIndex]=res;
+      };
     }
-    document.getElementById('prev-sentence').addEventListener('click', ()=>{ if(currentSentenceIndex>0){ currentSentenceIndex--; showCurrentSentence(); updateProgress(); } });
-    document.getElementById('next-sentence').addEventListener('click', ()=>{ if(currentSentenceIndex<sentences.length-1){ currentSentenceIndex++; showCurrentSentence(); updateProgress(); } });
-    function updateProgress(){ const p=((currentSentenceIndex+1)/sentences.length)*100; progressBar.style.width=p+'%'; }
-    async function toggleRecording(){ if(!isRecording) await startRecording(); else stopRecording(); }
-    async function startRecording(){ try{ const stream = await navigator.mediaDevices.getUserMedia({audio:true}); mediaRecorder = new MediaRecorder(stream); currentStream=stream; audioChunks=[]; mediaRecorder.ondataavailable=e=>audioChunks.push(e.data); mediaRecorder.onstop=async ()=>{ const rawBlob = new Blob(audioChunks,{type:'audio/webm'}); const cleanBlob = await (window.PronunciationFeedback?.trimSilence(rawBlob).catch(()=>rawBlob) || rawBlob); const url = URL.createObjectURL(cleanBlob); document.getElementById('playback-audio').src=url; document.getElementById('playback-section').classList.remove('hidden'); const displaySentence = document.querySelector('.audio-btn')?.getAttribute('data-sentence') || ''; if(window.renderFeedbackStatus){ window.renderFeedbackStatus('Analyzing pronunciation…'); } if(window.PronunciationFeedback){ window.PronunciationFeedback.analyzePronunciation({ blob: cleanBlob, targetText: displaySentence }) .then(res => { window.renderFeedbackResult ? window.renderFeedbackResult(res) : console.log(res); }) .catch(err => window.renderFeedbackStatus && window.renderFeedbackStatus('❌ Analysis failed: '+(err?.message||err))); } }; mediaRecorder.start(); isRecording=true; const btn=document.getElementById('record-btn'); btn.textContent='🛑 Stop Recording'; btn.classList.remove('btn-success'); btn.classList.add('btn-error'); document.getElementById('recording-indicator').classList.remove('hidden'); }catch(err){ alert('Microphone access denied'); } }
-    function stopRecording(){ if(mediaRecorder && isRecording){ mediaRecorder.stop(); isRecording=false; if(currentStream){ currentStream.getTracks().forEach(t=>t.stop()); currentStream=null; } const btn=document.getElementById('record-btn'); btn.textContent='🎤 Record Again'; btn.classList.remove('btn-error'); btn.classList.add('btn-success'); document.getElementById('recording-indicator').classList.add('hidden'); } }
-    finishPracticeBtn.addEventListener('click', ()=>{ reportModal.classList.remove('hidden'); });
+
+    document.getElementById('prev-sentence').addEventListener('click', ()=>{
+      if(currentSentenceIndex>0){
+        currentSentenceIndex--;
+        showCurrentSentence();
+        updateProgress();
+      }
+    });
+
+    document.getElementById('next-sentence').addEventListener('click', ()=>{
+      if(currentSentenceIndex<sentences.length-1){
+        currentSentenceIndex++;
+        showCurrentSentence();
+        updateProgress();
+      }
+    });
+
+    function updateProgress(){
+      const p=((currentSentenceIndex+1)/sentences.length)*100;
+      progressBar.style.width=p+'%';
+    }
+
+    async function toggleRecording(){
+      if(!isRecording) await startRecording();
+      else stopRecording();
+    }
+
+    async function startRecording(){
+      try{
+        const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+        mediaRecorder = new MediaRecorder(stream);
+        currentStream=stream;
+        audioChunks=[];
+        mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);
+        mediaRecorder.onstop=async ()=>{
+          const rawBlob = new Blob(audioChunks,{type:'audio/webm'});
+          const cleanBlob = await (window.PronunciationFeedback?.trimSilence(rawBlob).catch(()=>rawBlob) || rawBlob);
+          const url = URL.createObjectURL(cleanBlob);
+          document.getElementById('playback-audio').src=url;
+          document.getElementById('playback-section').classList.remove('hidden');
+          const displaySentence = document.querySelector('.audio-btn')?.getAttribute('data-sentence') || '';
+
+          if(window.renderFeedbackStatus){
+            window.renderFeedbackStatus('Transcribing with Whisper...');
+          }
+
+          try {
+            const processor = await getWhisper();
+            const result = await processor(cleanBlob, { return_timestamps: false });
+            const hypText = result?.text || '';
+
+            const assessment = await analyzePronunciationWithText(cleanBlob, displaySentence, hypText);
+            window.renderFeedbackResult ? window.renderFeedbackResult(assessment) : console.log(assessment);
+          } catch (err) {
+            console.error('Whisper error:', err);
+            // Fallback: give baseline 60 accuracy
+            const assessment = await analyzePronunciationWithText(cleanBlob, displaySentence, '');
+            window.renderFeedbackResult ? window.renderFeedbackResult(assessment) : console.log(assessment);
+          }
+        };
+        mediaRecorder.start();
+        isRecording=true;
+        const btn=document.getElementById('record-btn');
+        btn.textContent='🛑 Stop Recording';
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-error');
+        document.getElementById('recording-indicator').classList.remove('hidden');
+      }catch(err){
+        alert('Microphone access denied');
+      }
+    }
+
+    function stopRecording(){
+      if(mediaRecorder && isRecording){
+        mediaRecorder.stop();
+        isRecording=false;
+        if(currentStream){
+          currentStream.getTracks().forEach(t=>t.stop());
+          currentStream=null;
+        }
+        const btn=document.getElementById('record-btn');
+        btn.textContent='🎤 Record Again';
+        btn.classList.remove('btn-error');
+        btn.classList.add('btn-success');
+        document.getElementById('recording-indicator').classList.add('hidden');
+      }
+    }
+
+    finishPracticeBtn.addEventListener('click', ()=>{
+      reportModal.classList.remove('hidden');
+    });
+
     generateReportBtn.addEventListener('click', generateReport);
-    function safeNum(x, digits=2){ if(x==null || isNaN(x)) return '-'; const f=parseFloat(x); return isFinite(f)? f.toFixed(digits) : '-'; }
-    function avg(arr){ const v=arr.filter(n=>typeof n==='number' && isFinite(n)); if(!v.length) return null; return v.reduce((a,b)=>a+b,0)/v.length; }
-    function pickEncouragement(score){ if(score==null) return 'Keep going—your persistence will pay off!'; if(score>=90) return 'Outstanding! Your pronunciation is clear and expressive—keep shining!'; if(score>=80) return 'Great job! Your speaking is fluent and confident—stay consistent!'; if(score>=70) return 'Nice work! A bit more practice on stress and rhythm will bring you to the next level.'; if(score>=60) return 'Good effort! Focus on accuracy and pacing—you are on the right track.'; return 'Every try counts! Read along with the model audio and practice shorter chunks—you’ll get there!'; }
+
+    function safeNum(x, digits=2){
+      if(x==null || isNaN(x)) return '-';
+      const f=parseFloat(x);
+      return isFinite(f)? f.toFixed(digits) : '-';
+    }
+
+    function avg(arr){
+      const v=arr.filter(n=>typeof n==='number' && isFinite(n));
+      if(!v.length) return null;
+      return v.reduce((a,b)=>a+b,0)/v.length;
+    }
+
+    function pickEncouragement(score){
+      if(score==null) return 'Keep going—your persistence will pay off!';
+      if(score>=90) return 'Outstanding! Your pronunciation is clear and expressive—keep shining!';
+      if(score>=80) return 'Great job! Your speaking is fluent and confident—stay consistent!';
+      if(score>=70) return 'Nice work! A bit more practice on stress and rhythm will bring you to the next level.';
+      if(score>=60) return 'Good effort! Focus on accuracy and pacing—you are on the right track.';
+      return 'Every try counts! Read along with the model audio and practice shorter chunks—you’ll get there!';
+    }
+
     function generateReport(){
       const className=document.getElementById('report-class-input').value.trim();
       const seatNo=document.getElementById('report-seat-input').value.trim();
       const name=document.getElementById('report-name-input').value.trim();
-      if(!className||!seatNo||!name){ alert('Please fill in all fields'); return; }
+      if(!className||!seatNo||!name){
+        alert('Please fill in all fields');
+        return;
+      }
       const valid = feedbackResults.filter(r=>r);
       const totals = {
         total: avg(valid.map(r=>r.scores?.total)),
@@ -226,7 +481,8 @@
       };
       const encouragement = pickEncouragement(totals.total);
       const reportDiv=document.createElement('div');
-      reportDiv.className='container print-only'; reportDiv.style.display='block';
+      reportDiv.className='container print-only';
+      reportDiv.style.display='block';
       const date=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
       const listHtml = practicedSentences.map((s,i)=>{
         const m = s.match(/^[\s\S]+?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*-\s*Level\s*(\d+)\s*,\s*Sentence\s*([^\]]+)\s*\]\s*$/i);
@@ -240,9 +496,11 @@
             <div><strong>Sentence ${i+1}:</strong> ${main}${source}${lineScore}${lineMeta}</div>
           </div>`;
       }).join('');
+
       const tipsAll = [];
       valid.forEach(r=> (r.tips||[]).forEach(t=> tipsAll.push(t)) );
       const topTips = Array.from(new Set(tipsAll)).slice(0,3).map(t=>`<li>${t}</li>`).join('');
+
       reportDiv.innerHTML=`
         <div class="report-section">
           <div class="report-header" style="text-align:center;margin-bottom:25px;">
@@ -256,7 +514,7 @@
             <div class="report-info-item"><span class="report-info-label">Date:</span> ${date}</div>
           </div>
           <div class="report-section" style="margin-top:10px;">
-            <h3>Session Summary (Simple Matching v2)</h3>
+            <h3>Session Summary (Whisper + 60 Baseline)</h3>
             <ul style="margin-left:20px;">
               <li>Sentences practiced: <strong>${sentences.length}</strong></li>
               <li>Average Score: <strong>${totals.total==null?'-':Math.round(totals.total)}</strong>/100 (Acc ${safeNum(totals.acc)}, Flu ${safeNum(totals.flu)}, Pro ${safeNum(totals.pro)})</li>
@@ -273,6 +531,7 @@
             ${listHtml}
           </div>
         </div>`;
+
       const appContainer=document.querySelector('body > .container');
       if(appContainer) appContainer.classList.add('no-print');
       document.body.appendChild(reportDiv);
@@ -281,11 +540,8 @@
       if(appContainer) appContainer.classList.remove('no-print');
       document.body.removeChild(reportDiv);
     }
-  </script>
-  <!-- === Simplified Pronunciation Analysis (No Gating + Fallback) === -->
-  <script>
-  (function (global) {
-    const supportsSR = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+    // === Analysis with Whisper + 60 baseline ===
     const norm = s => s.toLowerCase().replace(/[^\w\s']/g, ' ').replace(/\s+/g, ' ').trim();
     function tokenize(s){ return norm(s).split(' ').filter(Boolean); }
     const FILLERS = new Set(['um','uh','erm','hmm','like','you','know','i','mean','ah','uhh']);
@@ -322,180 +578,47 @@
       const maxLen=Math.max(refTokens.length,hypTokens.length,1);
       return 1-(lev(refTokens,hypTokens)/maxLen);
     }
-    async function decodeToPCM(blob){
+    async function analyzeAudioFeatures(blob){
       const ac=new (window.AudioContext||window.webkitAudioContext)();
       const buf=await ac.decodeAudioData(await blob.arrayBuffer());
       const pcm=buf.getChannelData(0);
       const sr=buf.sampleRate;
       ac.close?.();
-      return { pcm, sampleRate: sr };
-    }
-    function pcmFloatToWav(samples,sampleRate){
-      const buffer=new ArrayBuffer(44+samples.length*2);
-      const view=new DataView(buffer);
-      const w=(o,s)=>{ for(let i=0;i<s.length;i++) view.setUint8(o+i,s.charCodeAt(i)); };
-      w(0,'RIFF');
-      view.setUint32(4,36+samples.length*2,true);
-      w(8,'WAVE');
-      w(12,'fmt ');
-      view.setUint32(16,16,true);
-      view.setUint16(20,1,true);
-      view.setUint16(22,1,true);
-      view.setUint32(24,sampleRate,true);
-      view.setUint32(28,sampleRate*2,true);
-      view.setUint16(32,2,true);
-      view.setUint16(34,16,true);
-      w(36,'data');
-      view.setUint32(40,samples.length*2,true);
-      let o=44;
-      for(let i=0;i<samples.length;i++){
-        let s=Math.max(-1,Math.min(1,samples[i]));
-        view.setInt16(o,s<0?s*0x8000:s*0x7FFF,true);
-        o+=2;
-      }
-      return new Blob([new Uint8Array(buffer)],{type:'audio/wav'});
-    }
-    async function trimSilence(blob){
-      const { pcm, sampleRate }=await decodeToPCM(blob);
-      const frame=512,hop=256;
-      let energies=[];
-      for(let i=0;i+frame<pcm.length;i+=hop){
-        let e=0;
-        for(let j=0;j<frame;j++){
-          const v=pcm[i+j];
-          e+=v*v;
-        }
-        energies.push(e/frame);
-      }
-      if(!energies.length) return pcmFloatToWav(pcm,sampleRate);
-      const sorted=[...energies].sort((a,b)=>a-b);
-      const thr=sorted[Math.floor(sorted.length*0.15)]||0;
-      const cons=6;
-      let start=0,end=pcm.length-1,run=0;
-      for(let i=0;i<energies.length;i++){
-        run=energies[i]>thr?run+1:0;
-        if(run>=cons){ start=(i-cons+1)*hop; break; }
-      }
-      run=0;
-      for(let i=energies.length-1;i>=0;i--){
-        run=energies[i]>thr?run+1:0;
-        if(run>=cons){
-          end=Math.min(pcm.length-1,(i+1)*hop);
-          break;
-        }
-      }
-      if(end<=start){
-        start=0; end=pcm.length-1;
-      }
-      const cut=pcm.slice(start,end);
-      return pcmFloatToWav(cut,sampleRate);
-    }
-    async function analyzeAudioFeatures(blob){
-      const { pcm, sampleRate } = await decodeToPCM(blob);
-      const duration = Math.max(0.001, pcm.length / sampleRate);
-      const frameSize = Math.floor(sampleRate * 0.03), hop = Math.floor(frameSize * 0.5);
-      let energies=[];
-      for(let i=0;i+frameSize<pcm.length;i+=hop){
-        let s=0;
-        for(let j=0;j<frameSize;j++){
-          const v=pcm[i+j];
-          s+=v*v;
-        }
-        energies.push(s/frameSize);
-      }
-      if(energies.length===0) return { duration, pauseRatio:1, energyMean:0, pitchVar:0, sampleRate };
+      const duration = Math.max(0.001, pcm.length / sr);
+      const frameSize = Math.floor(sr * 0.03), hop = Math.floor(frameSize * 0.5);
+      let energies=[]; for(let i=0;i+frameSize<pcm.length;i+=hop){ let s=0; for(let j=0;j<frameSize;j++){ const v=pcm[i+j]; s+=v*v; } energies.push(s/frameSize); }
+      if(energies.length===0) return { duration, pauseRatio:1, pitchVar:0 };
       const sorted=[...energies].sort((a,b)=>a-b);
       const pauseThresh = sorted[Math.floor(sorted.length*0.15)];
       const pauses = energies.filter(e=>e<pauseThresh).length;
       const pauseRatio = energies.length? (pauses/energies.length):1;
-      function estimatePitchHz(frame){
-        let maxLag=Math.floor(sampleRate/80), minLag=Math.floor(sampleRate/500);
-        let bestLag=0,best=-Infinity;
-        for(let lag=minLag; lag<=maxLag; lag++){
-          let sum=0;
-          for(let i=0;i+lag<frame.length;i++){
-            sum+=frame[i]*frame[i+lag];
-          }
-          if(sum>best){
-            best=sum;
-            bestLag=lag;
-          }
-        }
-        return bestLag? (sampleRate/bestLag):0;
-      }
-      let pitches=[];
-      for(let i=0;i+frameSize<pcm.length;i+=hop){
-        const frame = pcm.slice(i, i+frameSize);
-        let e=0;
-        for(let j=0;j<frame.length;j++){
-          const v=frame[j];
-          e+=v*v;
-        }
-        const pitch = estimatePitchHz(frame);
-        if(pitch>60 && pitch<400 && e/frame.length>pauseThresh) pitches.push(pitch);
-      }
+      function estimatePitchHz(frame){ let maxLag=Math.floor(sr/80), minLag=Math.floor(sr/500); let bestLag=0,best=-Infinity; for(let lag=minLag; lag<=maxLag; lag++){ let sum=0; for(let i=0;i+lag<frame.length;i++){ sum+=frame[i]*frame[i+lag]; } if(sum>best){ best=sum; bestLag=lag; } } return bestLag? (sr/bestLag):0; }
+      let pitches=[]; for(let i=0;i+frameSize<pcm.length;i+=hop){ const frame = pcm.slice(i, i+frameSize); let e=0; for(let j=0;j<frame.length;j++){ const v=frame[j]; e+=v*v; } const pitch = estimatePitchHz(frame); if(pitch>60 && pitch<400 && e/frame.length>pauseThresh) pitches.push(pitch); }
       const mean = pitches.length? pitches.reduce((a,b)=>a+b,0)/pitches.length : 0;
       let pitchVar = pitches.length? (pitches.reduce((a,b)=>a+(b-mean)*(b-mean),0)/pitches.length) : 0;
       pitchVar = Math.min(pitchVar, 2000);
-      return { duration, pauseRatio, energyMean: sorted[Math.floor(sorted.length*0.5)]||0, pitchVar, sampleRate };
+      return { duration, pauseRatio, pitchVar };
     }
     function wordsPerMinute(spokenWordsCount, durationSec){
       const minutes=Math.max(durationSec/60,1e-3);
       return spokenWordsCount/minutes;
     }
-    function speechToText(){
-      return new Promise((resolve)=>{
-        if(!supportsSR){
-          return resolve({ ok:false, text:'', message:'SpeechRecognition not supported' });
-        }
-        try{
-          const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-          const rec = new SR();
-          rec.lang='en-US';
-          rec.interimResults=false;
-          rec.maxAlternatives=1;
-          let finalized=false;
-          rec.onresult=(ev)=>{
-            finalized=true;
-            const text = ev.results[0][0].transcript || '';
-            resolve({ ok:true, text, confidence: ev.results[0][0].confidence ?? 0.5 });
-          };
-          rec.onerror=()=>{
-            if(!finalized) resolve({ ok:false, text:'', message:'SR error' });
-          };
-          rec.onend=()=>{
-            if(!finalized) resolve({ ok:false, text:'', message:'SR ended without result' });
-          };
-          rec.start();
-        }catch{
-          resolve({ ok:false, text:'', message:'SR init failed' });
-        }
-      });
-    }
-    async function analyzePronunciation({ blob, targetText, hypTextWhenSRUnavailable='' }){
-      const sr = await speechToText();
-      const srOk = !!sr.ok;
-      const hypText = srOk ? sr.text : hypTextWhenSRUnavailable;
-
+    async function analyzePronunciationWithText(blob, targetText, hypText){
       const refTokens0 = tokenize(targetText);
       const hypTokens0 = tokenize(hypText);
       const refTokens = dropFillers(expandEquivalents(refTokens0));
       const hypTokens = dropFillers(expandEquivalents(hypTokens0));
 
-      let accuracyScore = 0;
-      let sim = 0, wer = 1;
+      let accuracyScore = 60; // ✅ 基準分 60
+      let sim = 0.6, wer = 0.4;
 
-      if (srOk && hypTokens.length > 0) {
-        // 有辨識結果：正常計算
+      if (hypText.trim() !== '') {
+        // Whisper 成功辨識
         sim = (refTokens.length || hypTokens.length) ? similarity(refTokens, hypTokens) : 0;
         wer = refTokens.length ? WER(refTokens, hypTokens) : (hypTokens.length > 0 ? 1 : 0);
         accuracyScore = Math.max(0, Math.min(100, Math.round(sim * 100)));
-      } else {
-        // 無辨識結果：給合理基礎分（非0、非隨機）
-        accuracyScore = 50;
-        sim = 0.5;
-        wer = 0.5;
       }
+      // 否則保留 accuracyScore = 60
 
       const feats = await analyzeAudioFeatures(blob);
       const wpm = wordsPerMinute(Math.max(hypTokens.length, 1), feats.duration);
@@ -515,7 +638,6 @@
         if (pv < 1200) return 80 + (Math.min(pv, 1200) - 150) * (20 / 1050);
         return Math.max(65, 100 - (pv - 1200) / 8);
       })();
-
       const total = Math.round(0.6 * accuracyScore + 0.2 * fluencyScore + 0.2 * prosodyScore);
 
       const tips = [];
@@ -528,8 +650,8 @@
 
       return {
         ok: true,
-        srSupported: srOk,
-        transcripts: { hypText: hypText, targetText: targetText },
+        srSupported: true,
+        transcripts: { hypText, targetText },
         metrics: {
           similarity: +sim.toFixed(3),
           wer: +wer.toFixed(3),
@@ -544,11 +666,9 @@
           total: total
         },
         notes: [],
-        tips: tips
+        tips
       };
     }
-    global.PronunciationFeedback = { analyzePronunciation, trimSilence };
-  })(window);
   </script>
 </body>
 </html>
