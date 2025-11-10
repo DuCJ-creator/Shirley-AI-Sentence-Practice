@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Shirley's AI Assistant in Speaking — Ultra-Strict Gating v2</title>
+  <title>Shirley's AI Assistant in Speaking — Adjusted Gating</title>
   <style>
     :root{ --primary-color:#4a6fa5;--secondary-color:#6b8cbc;--accent-color:#ff7e5f; --light-color:#f5f7fa;--dark-color:#2c3e50;--success-color:#2ecc71; --warning-color:#f39c12;--error-color:#e74c3c; }
     *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}
@@ -134,15 +134,15 @@
         practicedSentences=[], sentenceSource='manual', selectedLevel=null, currentStream=null;
     // Per-sentence feedback storage
     const feedbackResults = []; // index -> {scores, metrics, transcripts, flags}
-    // Ultra-strict thresholds — v2 tightened
+    // Adjusted thresholds for better recall
     let noiseRMS = 0;
     const STRICT = {
-      minVoicedSec: 2.0,
-      minSRConfidence: 0.85,
-      minWords: 4, // will be dynamically adjusted
-      minPitchSamples: 20,
-      maxPauseRatio: 0.4,
-      minSNRFactor: 8,
+      minVoicedSec: 1.2,      // allow shorter utterances
+      minSRConfidence: 0.5,   // more tolerant of SR confidence
+      minWords: 3,            // at least 3 words
+      minPitchSamples: 8,     // significantly lower pitch requirement
+      maxPauseRatio: 0.6,     // allow more pauses
+      minSNRFactor: 4         // work in noisier environments
     };
     const stripBracketTail = (s)=> s.replace(/\s*\[[^\]]*\]\s*$/, '');
     // DOM refs
@@ -278,7 +278,7 @@
             <div class="report-info-item"><span class="report-info-label">Date:</span> ${date}</div>
           </div>
           <div class="report-section" style="margin-top:10px;">
-            <h3>Session Summary (Ultra-Strict Analysis)</h3>
+            <h3>Session Summary (Adjusted Gating)</h3>
             <ul style="margin-left:20px;">
               <li>Sentences practiced: <strong>${sentences.length}</strong>; Valid analyses: <strong>${valid.length}</strong></li>
               <li>Average Score: <strong>${totals.total==null?'-':Math.round(totals.total)}</strong>/100 (Acc ${safeNum(totals.acc)}, Flu ${safeNum(totals.flu)}, Pro ${safeNum(totals.pro)})</li>
@@ -304,7 +304,7 @@
       document.body.removeChild(reportDiv);
     }
   </script>
-  <!-- === Embedded pronunciation-feedback.js v2 (Ultra-Strict + Energy Balance Check) === -->
+  <!-- === Embedded pronunciation-feedback.js (with adjusted gating logic) === -->
   <script>
   (function (global) {
     const supportsSR = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -506,47 +506,14 @@
       const hypTokens0 = tokenize(hypText);
       const refTokens = dropFillers(expandEquivalents(refTokens0));
       const hypTokens = dropFillers(expandEquivalents(hypTokens0));
-      // Dynamic min words: at least 60% of target or 3 words
-      const dynamicMinWords = Math.max(3, Math.ceil(refTokens.length * 0.6));
-      const wordsPass = hypTokens.length >= dynamicMinWords;
-      // Energy balance check (NEW)
-      let energyBalancePass = true;
-      try {
-        const { pcm, sampleRate } = await decodeToPCM(blob);
-        const frameSize = Math.floor(sampleRate * 0.03);
-        const hop = Math.floor(frameSize * 0.5);
-        const energies = [];
-        for (let i = 0; i + frameSize < pcm.length; i += hop) {
-          let e = 0;
-          for (let j = 0; j < frameSize; j++) e += pcm[i + j] ** 2;
-          energies.push(e / frameSize);
-        }
-        if (energies.length >= 6) {
-          const chunkSize = Math.ceil(energies.length / 3);
-          const chunks = [
-            energies.slice(0, chunkSize),
-            energies.slice(chunkSize, chunkSize * 2),
-            energies.slice(chunkSize * 2)
-          ].map(c => c.reduce((a, b) => a + b, 0) / (c.length || 1));
-          const minChunk = Math.min(...chunks);
-          const maxChunk = Math.max(...chunks);
-          const balanceRatio = minChunk / (maxChunk || 1);
-          energyBalancePass = balanceRatio >= 0.15;
-        }
-      } catch (e) {
-        console.warn('Energy balance check failed', e);
-      }
-      // Ultra-strict gating
       const voicedSec = feats.duration * (1 - feats.pauseRatio);
       const gates = {
         voicedSecPass: voicedSec >= STRICT.minVoicedSec,
         srPass: (srOk && srConf >= STRICT.minSRConfidence),
-        wordsPass,
+        wordsPass: (hypTokens.length >= STRICT.minWords),
         snrPass: (snrFactor >= STRICT.minSNRFactor),
         pausePass: (feats.pauseRatio <= STRICT.maxPauseRatio),
-        energyBalancePass
       };
-      // Count pitch samples
       const pitchSamples = (async ()=>{
         const { pcm, sampleRate } = await decodeToPCM(blob);
         const frameSize = Math.floor(sampleRate * 0.03), hop = Math.floor(frameSize * 0.5);
@@ -556,7 +523,7 @@
         let cnt=0; for(let i=0;i+frameSize<pcm.length;i+=hop){ const frame = pcm.slice(i, i+frameSize); const e = energies[Math.floor(i/hop)] || 0; if(e<=voicedThr) continue; const p = estPitch(frame); if(p>60 && p<400) cnt++; } return cnt; })();
       const pitchCnt = await pitchSamples;
       const pitchPass = (pitchCnt >= STRICT.minPitchSamples);
-      if(!(gates.voicedSecPass && gates.srPass && gates.wordsPass && gates.snrPass && gates.pausePass && gates.energyBalancePass && pitchPass)){
+      if(!(gates.voicedSecPass && gates.srPass && gates.wordsPass && gates.snrPass && gates.pausePass && pitchPass)){
         const fails = Object.entries({...gates, pitchPass}).filter(([,v])=>!v).map(([k])=>k);
         return {
           ok:true,
@@ -565,11 +532,10 @@
           transcripts:{ hypText: srOk ? sr.text : '', targetText },
           metrics:{ similarity:0, wer:1, wpm:0, pauseRatio:+feats.pauseRatio.toFixed(3), pitchVar:Math.round(feats.pitchVar), snr:+snrFactor.toFixed(2) },
           scores:{ accuracy:0, fluency:0, prosody:0, total:0 },
-          notes:[ '未偵測到有效語音（Ultra-Strict）：請靠近麥克風、在安靜環境錄製；朗讀至少 2 秒並清楚吐字。' ],
+          notes:[ '未偵測到有效語音：請靠近麥克風、在安靜環境錄製；朗讀至少 1.2 秒並清楚吐字。' ],
           tips:[
             '請清楚朗讀整句，不要只發出氣音或環境聲。',
-            '若使用筆電內建麥克風，建議靠近 15–20 cm。',
-            '確保整句發音完整，避免只念開頭或結尾。'
+            '若使用筆電內建麥克風，建議靠近 15–20 cm。'
           ]
         };
       }
