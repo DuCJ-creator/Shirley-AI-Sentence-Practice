@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Shirley's AI Assistant in Speaking — Simple Matching</title>
+  <title>Shirley's AI Assistant in Speaking — Simple Matching v2</title>
   <style>
     :root{ --primary-color:#4a6fa5;--secondary-color:#6b8cbc;--accent-color:#ff7e5f; --light-color:#f5f7fa;--dark-color:#2c3e50;--success-color:#2ecc71; --warning-color:#f39c12;--error-color:#e74c3c; }
     *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}
@@ -256,7 +256,7 @@
             <div class="report-info-item"><span class="report-info-label">Date:</span> ${date}</div>
           </div>
           <div class="report-section" style="margin-top:10px;">
-            <h3>Session Summary (Simple Matching)</h3>
+            <h3>Session Summary (Simple Matching v2)</h3>
             <ul style="margin-left:20px;">
               <li>Sentences practiced: <strong>${sentences.length}</strong></li>
               <li>Average Score: <strong>${totals.total==null?'-':Math.round(totals.total)}</strong>/100 (Acc ${safeNum(totals.acc)}, Flu ${safeNum(totals.flu)}, Pro ${safeNum(totals.pro)})</li>
@@ -282,7 +282,7 @@
       document.body.removeChild(reportDiv);
     }
   </script>
-  <!-- === Simplified Pronunciation Analysis (No Gating) === -->
+  <!-- === Simplified Pronunciation Analysis (No Gating + Fallback) === -->
   <script>
   (function (global) {
     const supportsSR = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -482,8 +482,20 @@
       const refTokens = dropFillers(expandEquivalents(refTokens0));
       const hypTokens = dropFillers(expandEquivalents(hypTokens0));
 
-      const sim = (refTokens.length || hypTokens.length) ? similarity(refTokens, hypTokens) : 0;
-      const wer = refTokens.length ? WER(refTokens, hypTokens) : (hypTokens.length > 0 ? 1 : 0);
+      let accuracyScore = 0;
+      let sim = 0, wer = 1;
+
+      if (srOk && hypTokens.length > 0) {
+        // 有辨識結果：正常計算
+        sim = (refTokens.length || hypTokens.length) ? similarity(refTokens, hypTokens) : 0;
+        wer = refTokens.length ? WER(refTokens, hypTokens) : (hypTokens.length > 0 ? 1 : 0);
+        accuracyScore = Math.max(0, Math.min(100, Math.round(sim * 100)));
+      } else {
+        // 無辨識結果：給合理基礎分（非0、非隨機）
+        accuracyScore = 50;
+        sim = 0.5;
+        wer = 0.5;
+      }
 
       const feats = await analyzeAudioFeatures(blob);
       const wpm = wordsPerMinute(Math.max(hypTokens.length, 1), feats.duration);
@@ -503,8 +515,6 @@
         if (pv < 1200) return 80 + (Math.min(pv, 1200) - 150) * (20 / 1050);
         return Math.max(65, 100 - (pv - 1200) / 8);
       })();
-
-      let accuracyScore = Math.max(0, Math.min(100, Math.round(sim * 100)));
 
       const total = Math.round(0.6 * accuracyScore + 0.2 * fluencyScore + 0.2 * prosodyScore);
 
