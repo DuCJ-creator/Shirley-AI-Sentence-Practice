@@ -130,7 +130,7 @@
   </div>
   <script>
     // Global state
-    let sentences=[], currentIndex=0, mediaRecorder, audioChunks=[], isRecording=false,
+    let sentences=[], currentSentenceIndex=0, mediaRecorder, audioChunks=[], isRecording=false,
         practicedSentences=[], sentenceSource='manual', selectedLevel=null, currentStream=null;
     const feedbackResults = [];
     const stripBracketTail = (s)=> s.replace(/\s*\[[^\]]*\]\s*$/, '');
@@ -140,8 +140,8 @@
     const reportModal=document.getElementById('report-modal');
     const startPracticeBtn=document.getElementById('start-practice');
     const finishPracticeBtn=document.getElementById('finish-practice');
-    const prevBtn=document.getElementById('prev-sentence');
-    const nextBtn=document.getElementById('next-sentence');
+    const prevSentenceBtn=document.getElementById('prev-sentence');
+    const nextSentenceBtn=document.getElementById('next-sentence');
     const generateReportBtn=document.getElementById('generate-report');
     const practiceContainer=document.getElementById('practice-container');
     const progressBar=document.getElementById('progress');
@@ -155,8 +155,8 @@
     async function fetchLevelSentences(level){ const resp = await fetch(`level${level}.csv`); if(!resp.ok) throw new Error(`Failed to load Level ${level}`); const text = await resp.text(); const lines = text.trim().split('\n'); return lines.map(l=>l.trim()).filter(Boolean).map((line,idx)=>{ const firstComma=line.indexOf(','); if(firstComma===-1) return { number:`${idx+1}`, sentence:line }; return { number: line.substring(0,firstComma).trim(), sentence: line.substring(firstComma+1).trim() }; }); }
     async function loadLevelSentences(){ if(!selectedLevel){ showStatusMessage('Please select a difficulty level first','error',levelInput); return; } try{ showStatusMessage(`Loading sentences from Level ${selectedLevel}...`,'info',levelInput); const rows = await fetchLevelSentences(selectedLevel); if(rows.length===0){ showStatusMessage('No sentences found for this level','error',levelInput); return; } const shuffled=[...rows].sort(()=>0.5-Math.random()); const chosen=shuffled.slice(0,10); const formatted = chosen.map((item,idx)=> `${item.sentence} [${idx+1}/10 - Level ${selectedLevel}, Sentence ${item.number}]`); document.getElementById('sentences').value = formatted.join('\n'); showStatusMessage(`✅ Loaded 10 sentences from Level ${selectedLevel}`,'info',levelInput); }catch(e){ console.error(e); document.getElementById('sentences').value=''; showStatusMessage(`❌ ${e.message}`,'error',levelInput); } }
     loadLevelSentencesBtn.addEventListener('click',loadLevelSentences);
-    startPracticeBtn.addEventListener('click', ()=>{ let arr = document.getElementById('sentences').value.split('\n').map(s=>s.trim()).filter(Boolean); if(sentenceSource==='level' && arr.length===0){ showStatusMessage('❌ Please load sentences from Sentence Bank first','error'); return; } if(arr.length===0){ showStatusMessage('❌ Please enter at least one sentence','error'); return; } if(arr.length>10) arr = arr.slice(0,10); sentences=arr; practicedSentences=[...arr]; currentIndex=0; feedbackResults.length = sentences.length; sentenceSourcePage.classList.add('hidden'); practicePage.classList.remove('hidden'); showCurrent(); updateProgress(); });
-    function showCurrent(){ practiceContainer.innerHTML=''; const raw = sentences[currentIndex]; const m = raw.match(/^[\s\S]+?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*-\s*Level\s*(\d+)\s*,\s*Sentence\s*([^\]]+)\s*\]\s*$/i); const displaySentence = m ? raw.replace(/\s*\[[^\]]*\]\s*$/,'').trim() : stripBracketTail(raw).trim(); const practiceNumber  = m ? `${m[1]}/${m[2]}` : `${currentIndex+1}/${sentences.length}`; const levelNo = m ? m[3] : null; const sentNo = m ? m[4].trim() : null; const sourceLabel = (levelNo && sentNo) ? `Level ${levelNo}；${sentNo}` : '';
+    startPracticeBtn.addEventListener('click', ()=>{ let arr = document.getElementById('sentences').value.split('\n').map(s=>s.trim()).filter(Boolean); if(sentenceSource==='level' && arr.length===0){ showStatusMessage('❌ Please load sentences from Sentence Bank first','error'); return; } if(arr.length===0){ showStatusMessage('❌ Please enter at least one sentence','error'); return; } if(arr.length>10) arr = arr.slice(0,10); sentences=arr; practicedSentences=[...arr]; currentSentenceIndex=0; feedbackResults.length = sentences.length; sentenceSourcePage.classList.add('hidden'); practicePage.classList.remove('hidden'); showCurrentSentence(); updateProgress(); });
+    function showCurrentSentence(){ practiceContainer.innerHTML=''; const raw = sentences[currentSentenceIndex]; const m = raw.match(/^[\s\S]+?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*-\s*Level\s*(\d+)\s*,\s*Sentence\s*([^\]]+)\s*\]\s*$/i); const displaySentence = m ? raw.replace(/\s*\[[^\]]*\]\s*$/,'').trim() : stripBracketTail(raw).trim(); const practiceNumber  = m ? `${m[1]}/${m[2]}` : `${currentSentenceIndex+1}/${sentences.length}`; const levelNo = m ? m[3] : null; const sentNo = m ? m[4].trim() : null; const sourceLabel = (levelNo && sentNo) ? `Level ${levelNo}；${sentNo}` : '';
       practiceContainer.innerHTML = `
         <div class="practice-item">
           <div class="sentence-header">
@@ -196,11 +196,11 @@
       document.getElementById('record-btn').addEventListener('click', toggleRecording);
       const fbPanel = document.getElementById('feedback-panel'); fbPanel.classList.remove('hidden');
       window.renderFeedbackStatus = function(msg){ const s = document.getElementById('feedback-status'); const r = document.getElementById('feedback-result'); s.textContent = msg; s.style.display = 'block'; r.style.display = 'none'; }
-      window.renderFeedbackResult = function(res){ const s = document.getElementById('feedback-status'); const r = document.getElementById('feedback-result'); document.getElementById('fb-total').textContent = res.scores.total; document.getElementById('fb-acc').textContent   = res.scores.accuracy; document.getElementById('fb-flu').textContent   = res.scores.fluency; document.getElementById('fb-pro').textContent   = res.scores.prosody; document.getElementById('fb-wpm').textContent   = res.metrics.wpm; document.getElementById('fb-pause').textContent = res.metrics.pauseRatio; document.getElementById('fb-pitch').textContent = res.metrics.pitchVar; const tipsUl = document.getElementById('fb-tips'); tipsUl.innerHTML = ''; (res.tips||[]).forEach(t=>{ const li=document.createElement('li'); li.textContent=t; tipsUl.appendChild(li); }); document.getElementById('fb-hyp').textContent = res.transcripts?.hypText || ''; document.getElementById('fb-ref').textContent = res.transcripts?.targetText || ''; s.style.display = 'none'; r.style.display = 'block'; feedbackResults[currentIndex]=res; }
+      window.renderFeedbackResult = function(res){ const s = document.getElementById('feedback-status'); const r = document.getElementById('feedback-result'); document.getElementById('fb-total').textContent = res.scores.total; document.getElementById('fb-acc').textContent   = res.scores.accuracy; document.getElementById('fb-flu').textContent   = res.scores.fluency; document.getElementById('fb-pro').textContent   = res.scores.prosody; document.getElementById('fb-wpm').textContent   = res.metrics.wpm; document.getElementById('fb-pause').textContent = res.metrics.pauseRatio; document.getElementById('fb-pitch').textContent = res.metrics.pitchVar; const tipsUl = document.getElementById('fb-tips'); tipsUl.innerHTML = ''; (res.tips||[]).forEach(t=>{ const li=document.createElement('li'); li.textContent=t; tipsUl.appendChild(li); }); document.getElementById('fb-hyp').textContent = res.transcripts?.hypText || ''; document.getElementById('fb-ref').textContent = res.transcripts?.targetText || ''; s.style.display = 'none'; r.style.display = 'block'; feedbackResults[currentSentenceIndex]=res; }
     }
-    prevBtn.addEventListener('click', ()=>{ if(currentIndex>0){ currentIndex--; showCurrent(); updateProgress(); } });
-    nextBtn.addEventListener('click', ()=>{ if(currentIndex<sentences.length-1){ currentIndex++; showCurrent(); updateProgress(); } });
-    function updateProgress(){ const p=((currentIndex+1)/sentences.length)*100; progressBar.style.width=p+'%'; }
+    document.getElementById('prev-sentence').addEventListener('click', ()=>{ if(currentSentenceIndex>0){ currentSentenceIndex--; showCurrentSentence(); updateProgress(); } });
+    document.getElementById('next-sentence').addEventListener('click', ()=>{ if(currentSentenceIndex<sentences.length-1){ currentSentenceIndex++; showCurrentSentence(); updateProgress(); } });
+    function updateProgress(){ const p=((currentSentenceIndex+1)/sentences.length)*100; progressBar.style.width=p+'%'; }
     async function toggleRecording(){ if(!isRecording) await startRecording(); else stopRecording(); }
     async function startRecording(){ try{ const stream = await navigator.mediaDevices.getUserMedia({audio:true}); mediaRecorder = new MediaRecorder(stream); currentStream=stream; audioChunks=[]; mediaRecorder.ondataavailable=e=>audioChunks.push(e.data); mediaRecorder.onstop=async ()=>{ const rawBlob = new Blob(audioChunks,{type:'audio/webm'}); const cleanBlob = await (window.PronunciationFeedback?.trimSilence(rawBlob).catch(()=>rawBlob) || rawBlob); const url = URL.createObjectURL(cleanBlob); document.getElementById('playback-audio').src=url; document.getElementById('playback-section').classList.remove('hidden'); const displaySentence = document.querySelector('.audio-btn')?.getAttribute('data-sentence') || ''; if(window.renderFeedbackStatus){ window.renderFeedbackStatus('Analyzing pronunciation…'); } if(window.PronunciationFeedback){ window.PronunciationFeedback.analyzePronunciation({ blob: cleanBlob, targetText: displaySentence }) .then(res => { window.renderFeedbackResult ? window.renderFeedbackResult(res) : console.log(res); }) .catch(err => window.renderFeedbackStatus && window.renderFeedbackStatus('❌ Analysis failed: '+(err?.message||err))); } }; mediaRecorder.start(); isRecording=true; const btn=document.getElementById('record-btn'); btn.textContent='🛑 Stop Recording'; btn.classList.remove('btn-success'); btn.classList.add('btn-error'); document.getElementById('recording-indicator').classList.remove('hidden'); }catch(err){ alert('Microphone access denied'); } }
     function stopRecording(){ if(mediaRecorder && isRecording){ mediaRecorder.stop(); isRecording=false; if(currentStream){ currentStream.getTracks().forEach(t=>t.stop()); currentStream=null; } const btn=document.getElementById('record-btn'); btn.textContent='🎤 Record Again'; btn.classList.remove('btn-error'); btn.classList.add('btn-success'); document.getElementById('recording-indicator').classList.add('hidden'); } }
@@ -282,7 +282,7 @@
       document.body.removeChild(reportDiv);
     }
   </script>
-  <!-- === Simplified pronunciation analysis (no gating) === -->
+  <!-- === Simplified Pronunciation Analysis (No Gating) === -->
   <script>
   (function (global) {
     const supportsSR = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -472,7 +472,6 @@
         }
       });
     }
-    // ✅ 核心：無 gating 的 analyzePronunciation
     async function analyzePronunciation({ blob, targetText, hypTextWhenSRUnavailable='' }){
       const sr = await speechToText();
       const srOk = !!sr.ok;
@@ -506,9 +505,7 @@
       })();
 
       let accuracyScore = Math.max(0, Math.min(100, Math.round(sim * 100)));
-      if (!srOk && hypTextWhenSRUnavailable === '') {
-        accuracyScore = 0;
-      }
+      // 即使 SR 失敗，也不強制 accuracy=0
 
       const total = Math.round(0.6 * accuracyScore + 0.2 * fluencyScore + 0.2 * prosodyScore);
 
