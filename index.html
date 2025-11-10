@@ -492,7 +492,7 @@
         accuracyScore = Math.max(0, Math.min(100, Math.round(sim * 100)));
       } else {
         // 無辨識結果：給合理基礎分（非0、非隨機）
-        accuracyScore = 60;
+        accuracyScore = 50;
         sim = 0.5;
         wer = 0.5;
       }
