@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Shirley's AI Assistant in Speaking — Fixed Noise Calibration</title>
+  <title>Shirley's AI Assistant in Speaking — Final Fix</title>
   <style>
     :root{ --primary-color:#4a6fa5;--secondary-color:#6b8cbc;--accent-color:#ff7e5f; --light-color:#f5f7fa;--dark-color:#2c3e50;--success-color:#2ecc71; --warning-color:#f39c12;--error-color:#e74c3c; }
     *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}
@@ -132,24 +132,18 @@
     // Global state
     let sentences=[], currentSentenceIndex=0, mediaRecorder, audioChunks=[], isRecording=false,
         practicedSentences=[], sentenceSource='manual', selectedLevel=null, currentStream=null;
-    // Per-sentence feedback storage
     const feedbackResults = [];
-    // Fixed noise baseline — calibrated once at start
-    let noiseRMS = 0.01;
-    let noiseCalibrated = false;
-
-    // Adjusted thresholds
+    let noiseRMS = 0;
+    // Relaxed thresholds
     const STRICT = {
       minVoicedSec: 1.2,
-      minSRConfidence: 0.5,
+      minSRConfidence: 0,  // ← confidence check removed
       minWords: 3,
       minPitchSamples: 8,
       maxPauseRatio: 0.6,
       minSNRFactor: 4
     };
-
     const stripBracketTail = (s)=> s.replace(/\s*\[[^\]]*\]\s*$/, '');
-
     // DOM refs
     const sentenceSourcePage=document.getElementById('sentence-source-page');
     const practicePage=document.getElementById('practice-page');
@@ -164,53 +158,14 @@
     const manualInput=document.getElementById('manual-input');
     const levelInput=document.getElementById('level-input');
     const loadLevelSentencesBtn=document.getElementById('load-level-sentences');
-
-    // Noise calibration (once per session)
-    async function calibrateNoiseOnce() {
-      if (noiseCalibrated) return;
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-        const ac = new (window.AudioContext || window.webkitAudioContext)();
-        const src = ac.createMediaStreamSource(stream);
-        const analyser = ac.createAnalyser();
-        analyser.fftSize = 2048;
-        src.connect(analyser);
-        const buf = new Float32Array(analyser.fftSize);
-        let sum = 0, count = 0;
-        const start = performance.now();
-        while (performance.now() - start < 500) {
-          analyser.getFloatTimeDomainData(buf);
-          for (let i = 0; i < buf.length; i++) {
-            sum += buf[i] * buf[i];
-          }
-          count += buf.length;
-          await new Promise(r => setTimeout(r, 16));
-        }
-        ac.close?.();
-        stream.getTracks().forEach(t => t.stop());
-        noiseRMS = count ? Math.sqrt(sum / count) : 0.01;
-        noiseCalibrated = true;
-        console.log("✅ Noise baseline calibrated:", noiseRMS);
-      } catch (e) {
-        console.warn("⚠️ Noise calibration failed, using default", e);
-        noiseRMS = 0.01;
-        noiseCalibrated = true;
-      }
-    }
-
     // UI helpers
     function showStatusMessage(message,type,container=document.body){ const existing=container.querySelector('.status-message'); if(existing) existing.remove(); const el=document.createElement('div'); el.className=`status-message status-${type}`; el.textContent=message; container.insertBefore(el,container.firstChild); setTimeout(()=>el.remove(), type==='error'?8000:5000); }
-    // Source buttons
     document.querySelectorAll('.sentence-source-btn').forEach(btn=>{ btn.addEventListener('click',function(){ document.querySelectorAll('.sentence-source-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active'); sentenceSource = this.getAttribute('data-source'); if(sentenceSource==='manual'){ manualInput.classList.remove('hidden'); levelInput.classList.add('hidden'); } else { manualInput.classList.add('hidden'); levelInput.classList.remove('hidden'); } }); });
-    // Level buttons
     document.querySelectorAll('.level-btn').forEach(btn=>{ btn.addEventListener('click',function(){ document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active'); selectedLevel=this.getAttribute('data-level'); }); });
-    // Load from CSVs
     async function fetchLevelSentences(level){ const resp = await fetch(`level${level}.csv`); if(!resp.ok) throw new Error(`Failed to load Level ${level}`); const text = await resp.text(); const lines = text.trim().split('\n'); return lines.map(l=>l.trim()).filter(Boolean).map((line,idx)=>{ const firstComma=line.indexOf(','); if(firstComma===-1) return { number:`${idx+1}`, sentence:line }; return { number: line.substring(0,firstComma).trim(), sentence: line.substring(firstComma+1).trim() }; }); }
     async function loadLevelSentences(){ if(!selectedLevel){ showStatusMessage('Please select a difficulty level first','error',levelInput); return; } try{ showStatusMessage(`Loading sentences from Level ${selectedLevel}...`,'info',levelInput); const rows = await fetchLevelSentences(selectedLevel); if(rows.length===0){ showStatusMessage('No sentences found for this level','error',levelInput); return; } const shuffled=[...rows].sort(()=>0.5-Math.random()); const chosen=shuffled.slice(0,10); const formatted = chosen.map((item,idx)=> `${item.sentence} [${idx+1}/10 - Level ${selectedLevel}, Sentence ${item.number}]`); document.getElementById('sentences').value = formatted.join('\n'); showStatusMessage(`✅ Loaded 10 sentences from Level ${selectedLevel}`,'info',levelInput); }catch(e){ console.error(e); document.getElementById('sentences').value=''; showStatusMessage(`❌ ${e.message}`,'error',levelInput); } }
     loadLevelSentencesBtn.addEventListener('click',loadLevelSentences);
-    // Start practice
     startPracticeBtn.addEventListener('click', ()=>{ 
-      calibrateNoiseOnce(); // 👈 關鍵：只校準一次
       let arr = document.getElementById('sentences').value.split('\n').map(s=>s.trim()).filter(Boolean); 
       if(sentenceSource==='level' && arr.length===0){ showStatusMessage('❌ Please load sentences from Sentence Bank first','error'); return; } 
       if(arr.length===0){ showStatusMessage('❌ Please enter at least one sentence','error'); return; } 
@@ -267,7 +222,6 @@
       window.renderFeedbackStatus = function(msg){ const s = document.getElementById('feedback-status'); const r = document.getElementById('feedback-result'); s.textContent = msg; s.style.display = 'block'; r.style.display = 'none'; }
       window.renderFeedbackResult = function(res){ const s = document.getElementById('feedback-status'); const r = document.getElementById('feedback-result'); if(res?.flags?.noSpeech){ s.textContent = res.notes?.[0] || 'No valid speech detected. Please try again.'; s.style.display = 'block'; r.style.display = 'none'; feedbackResults[currentSentenceIndex]=res; return; } document.getElementById('fb-total').textContent = res.scores.total; document.getElementById('fb-acc').textContent   = res.scores.accuracy; document.getElementById('fb-flu').textContent   = res.scores.fluency; document.getElementById('fb-pro').textContent   = res.scores.prosody; document.getElementById('fb-wpm').textContent   = res.metrics.wpm; document.getElementById('fb-pause').textContent = res.metrics.pauseRatio; document.getElementById('fb-pitch').textContent = res.metrics.pitchVar; if(typeof res.metrics.snr !== 'undefined'){ document.getElementById('fb-snr').textContent = res.metrics.snr; } const tipsUl = document.getElementById('fb-tips'); tipsUl.innerHTML = ''; (res.tips||[]).forEach(t=>{ const li=document.createElement('li'); li.textContent=t; tipsUl.appendChild(li); }); document.getElementById('fb-hyp').textContent = res.transcripts?.hypText || ''; document.getElementById('fb-ref').textContent = res.transcripts?.targetText || ''; const note = document.getElementById('fb-note'); note.textContent = res.notes?.[0] || ''; s.style.display = 'none'; r.style.display = 'block'; feedbackResults[currentSentenceIndex]=res; }
     }
-    // Nav & progress
     document.getElementById('prev-sentence').addEventListener('click', ()=>{ if(currentSentenceIndex>0){ currentSentenceIndex--; showCurrentSentence(); updateProgress(); } });
     document.getElementById('next-sentence').addEventListener('click', ()=>{ if(currentSentenceIndex<sentences.length-1){ currentSentenceIndex++; showCurrentSentence(); updateProgress(); } });
     function updateProgress(){ const p=((currentSentenceIndex+1)/sentences.length)*100; progressBar.style.width=p+'%'; }
@@ -276,7 +230,24 @@
     async function startRecording(){ 
       try{ 
         const stream = await navigator.mediaDevices.getUserMedia({audio:true}); 
-        // 🔴 移除原有的 noiseRMS 動態採集！
+        noiseRMS = await (async ()=>{ 
+          const ac = new (window.AudioContext || window.webkitAudioContext)(); 
+          const src = ac.createMediaStreamSource(stream); 
+          const analyser = ac.createAnalyser(); 
+          analyser.fftSize = 2048; 
+          src.connect(analyser); 
+          const buf = new Float32Array(analyser.fftSize); 
+          let sum = 0, count = 0; 
+          const start = performance.now(); 
+          while(performance.now() - start < 300){ 
+            analyser.getFloatTimeDomainData(buf); 
+            for(let i=0;i<buf.length;i++){ sum += buf[i]*buf[i]; } 
+            count += buf.length; 
+            await new Promise(r=>setTimeout(r, 16)); 
+          } 
+          ac.close?.(); 
+          return count ? Math.sqrt(sum / count) : 0; 
+        })(); 
         mediaRecorder = new MediaRecorder(stream); 
         currentStream=stream; 
         audioChunks=[]; 
@@ -293,7 +264,7 @@
             window.PronunciationFeedback.analyzePronunciation({ 
               blob: cleanBlob, 
               targetText: displaySentence, 
-              baselineNoiseRMS: noiseRMS // 👈 使用一次性校準的值
+              baselineNoiseRMS: noiseRMS 
             }).then(res => { 
               if(res && (res.lowConfidence || res.flags?.noSpeech)){ 
                 window.renderFeedbackStatus && window.renderFeedbackStatus(res.notes?.[0] || '辨識信心偏低或未偵測到有效語音，請在安靜環境重錄或靠近麥克風。'); 
@@ -328,9 +299,13 @@
         btn.classList.remove('btn-error'); 
         btn.classList.add('btn-success'); 
         document.getElementById('recording-indicator').classList.add('hidden'); 
+
+        // 👇 關鍵：強制延遲 300ms 釋放麥克風
+        setTimeout(() => {
+          // nothing to do, just ensure mic is released
+        }, 300);
       } 
     }
-    // Report
     finishPracticeBtn.addEventListener('click', ()=>{ reportModal.classList.remove('hidden'); });
     generateReportBtn.addEventListener('click', generateReport);
     function safeNum(x, digits=2){ if(x==null || isNaN(x)) return '-'; const f=parseFloat(x); return isFinite(f)? f.toFixed(digits) : '-'; }
@@ -341,7 +316,6 @@
       const seatNo=document.getElementById('report-seat-input').value.trim();
       const name=document.getElementById('report-name-input').value.trim();
       if(!className||!seatNo||!name){ alert('Please fill in all fields'); return; }
-      // Aggregate feedback
       const valid = feedbackResults.filter(r=>r && !r.flags?.noSpeech);
       const totals = {
         total: avg(valid.map(r=>r.scores?.total)),
@@ -354,7 +328,6 @@
         snr:   avg(valid.map(r=>r.metrics?.snr)),
       };
       const encouragement = pickEncouragement(totals.total);
-      // Build printable report
       const reportDiv=document.createElement('div');
       reportDiv.className='container print-only'; reportDiv.style.display='block';
       const date=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
@@ -386,7 +359,7 @@
             <div class="report-info-item"><span class="report-info-label">Date:</span> ${date}</div>
           </div>
           <div class="report-section" style="margin-top:10px;">
-            <h3>Session Summary (Fixed Noise Calibration)</h3>
+            <h3>Session Summary (Final Fix)</h3>
             <ul style="margin-left:20px;">
               <li>Sentences practiced: <strong>${sentences.length}</strong>; Valid analyses: <strong>${valid.length}</strong></li>
               <li>Average Score: <strong>${totals.total==null?'-':Math.round(totals.total)}</strong>/100 (Acc ${safeNum(totals.acc)}, Flu ${safeNum(totals.flu)}, Pro ${safeNum(totals.pro)})</li>
@@ -412,7 +385,7 @@
       document.body.removeChild(reportDiv);
     }
   </script>
-  <!-- === Embedded pronunciation-feedback.js (no change) === -->
+  <!-- === Embedded pronunciation-feedback.js with absMax check === -->
   <script>
   (function (global) {
     const supportsSR = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -603,25 +576,46 @@
       });
     }
     async function analyzePronunciation({ blob, targetText, hypTextWhenSRUnavailable='', baselineNoiseRMS=0 }){
+      // 🔑 新增：absMax 語音強度檢查
+      const { pcm: testPcm } = await decodeToPCM(blob);
+      const absMax = testPcm.reduce((max, x) => Math.max(max, Math.abs(x)), 0);
+      if (absMax < 0.01) {
+        return {
+          ok: true,
+          flags: { noSpeech: true, fails: ['absMaxTooLow'] },
+          srSupported: false,
+          transcripts: { hypText: '', targetText },
+          metrics: { similarity:0, wer:1, wpm:0, pauseRatio:0, pitchVar:0, snr:0 },
+          scores: { accuracy:0, fluency:0, prosody:0, total:0 },
+          notes: ['偵測不到足夠語音強度：請確認麥克風正常運作並大聲朗讀。'],
+          tips: ['請試著對著麥克風清晰朗讀，聲音需超過環境噪音。']
+        };
+      }
+
       const feats = await analyzeAudioFeatures(blob);
       const speechRMS = Math.sqrt(Math.max(feats.energyMean, 0));
       const noise = Math.max(baselineNoiseRMS || 1e-9, 1e-9);
       const snrFactor = (speechRMS / noise);
       const sr = await speechToText();
-      const srOk = !!sr.ok; const srConf = sr?.confidence ?? 0;
+      const srOk = !!sr.ok;
+      const srConf = sr?.confidence ?? 0;
+
       const refTokens0 = tokenize(targetText);
       const hypText = srOk ? sr.text : hypTextWhenSRUnavailable;
       const hypTokens0 = tokenize(hypText);
       const refTokens = dropFillers(expandEquivalents(refTokens0));
       const hypTokens = dropFillers(expandEquivalents(hypTokens0));
+
       const voicedSec = feats.duration * (1 - feats.pauseRatio);
+      // 🔑 移除 confidence 檢查，只看 srOk
       const gates = {
         voicedSecPass: voicedSec >= STRICT.minVoicedSec,
-        srPass: (srOk && srConf >= STRICT.minSRConfidence),
+        srPass: srOk, // ← 關鍵修改
         wordsPass: (hypTokens.length >= STRICT.minWords),
         snrPass: (snrFactor >= STRICT.minSNRFactor),
         pausePass: (feats.pauseRatio <= STRICT.maxPauseRatio),
       };
+
       const pitchSamples = (async ()=>{
         const { pcm, sampleRate } = await decodeToPCM(blob);
         const frameSize = Math.floor(sampleRate * 0.03), hop = Math.floor(frameSize * 0.5);
@@ -631,6 +625,7 @@
         let cnt=0; for(let i=0;i+frameSize<pcm.length;i+=hop){ const frame = pcm.slice(i, i+frameSize); const e = energies[Math.floor(i/hop)] || 0; if(e<=voicedThr) continue; const p = estPitch(frame); if(p>60 && p<400) cnt++; } return cnt; })();
       const pitchCnt = await pitchSamples;
       const pitchPass = (pitchCnt >= STRICT.minPitchSamples);
+
       if(!(gates.voicedSecPass && gates.srPass && gates.wordsPass && gates.snrPass && gates.pausePass && pitchPass)){
         const fails = Object.entries({...gates, pitchPass}).filter(([,v])=>!v).map(([k])=>k);
         return {
@@ -647,6 +642,7 @@
           ]
         };
       }
+
       const sim = (refTokens.length && hypTokens.length) ? similarity(refTokens, hypTokens) : 0;
       const wer = (refTokens.length && hypTokens.length) ? WER(refTokens, hypTokens) : 1;
       let accuracyScore = Math.max(0, Math.min(100, Math.round(sim*100)));
