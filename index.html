@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Shirley's AI Assistant in Speaking — Whisper + 60 Baseline</title>
+  <title>Shirley's AI Assistant in Speaking — Whisper + 60 Baseline (Fixed)</title>
   <style>
     :root{ --primary-color:#4a6fa5;--secondary-color:#6b8cbc;--accent-color:#ff7e5f; --light-color:#f5f7fa;--dark-color:#2c3e50;--success-color:#2ecc71; --warning-color:#f39c12;--error-color:#e74c3c; }
     *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}
@@ -26,14 +26,18 @@
     .btn-error{background:linear-gradient(135deg,var(--error-color),#c0392b);}          
     .hidden{display:none!important;}
     .welcome-message{text-align:center;margin-bottom:30px;color:#666;font-size:1.1em;}
-    .sentence-source{display:flex;gap:15px;margin-bottom:20px;}
-    .sentence-source-btn{flex:1;padding:15px;text-align:center;border:2px solid #e1e5e9;border-radius:10px;background:#f8f9fa;cursor:pointer;transition:all .3s ease;}
-    .sentence-source-btn:hover{background:#e9ecef;}
-    .sentence-source-btn.active{background:var(--primary-color);color:#fff;border-color:var(--primary-color);}        
+
+    /* NOTE: use distinct classes to avoid conflicts later in practice cards */
+    .source-selector{display:flex;gap:15px;margin-bottom:20px;}
+    .source-selector-btn{flex:1;padding:15px;text-align:center;border:2px solid #e1e5e9;border-radius:10px;background:#f8f9fa;cursor:pointer;transition:all .3s ease;}
+    .source-selector-btn:hover{background:#e9ecef;}
+    .source-selector-btn.active{background:var(--primary-color);color:#fff;border-color:var(--primary-color);}        
+
     .level-selection{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:15px;}
     .level-btn{padding:12px;text-align:center;border:2px solid #e1e5e9;border-radius:8px;background:#f8f9fa;cursor:pointer;transition:all .3s ease;}
     .level-btn:hover{background:#e9ecef;}
     .level-btn.active{background:var(--primary-color);color:#fff;border-color:var(--primary-color);}        
+
     .practice-item{background:#fff;border-radius:15px;padding:25px;margin-bottom:25px;border-left:5px solid var(--primary-color);box-shadow:0 5px 15px rgba(0,0,0,.08);}        
     .sentence-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
     .sentence-number{font-size:18px;font-weight:700;color:var(--primary-color);}        
@@ -41,12 +45,15 @@
     .sentence-text{flex-grow:1;font-size:18px;font-weight:500;color:var(--dark-color);}        
     .audio-btn{background:linear-gradient(135deg,var(--primary-color),var(--secondary-color));border:none;font-size:20px;cursor:pointer;color:#fff;margin-left:15px;padding:12px;border-radius:50%;min-width:50px;height:50px;display:flex;align-items:center;justify-content:center;transition:all .3s ease;}
     .audio-btn:hover{transform:scale(1.1);box-shadow:0 5px 15px rgba(0,0,0,.2);}        
+
     .recording-controls{display:flex;flex-direction:column;align-items:center;margin-bottom:20px;}
     .recording-btn{padding:18px 35px;border-radius:50px;font-weight:600;margin-bottom:20px;width:100%;max-width:250px;font-size:18px;}
     .recording-indicator{display:inline-block;width:15px;height:15px;background-color:var(--error-color);border-radius:50%;margin-right:10px;animation:pulse 1.5s infinite;}
     @keyframes pulse{0%{transform:scale(1);opacity:1;}50%{transform:scale(1.2);opacity:.7;}100%{transform:scale(1);opacity:1;}}
+
     .progress-bar{height:12px;background:#e9ecef;border-radius:10px;margin:25px 0;overflow:hidden;box-shadow:inset 0 2px 4px rgba(0,0,0,.1);}        
     .progress{height:100%;background:linear-gradient(90deg,var(--primary-color),var(--accent-color));width:0%;transition:width .5s ease;border-radius:10px;}
+
     .report-section{background:#fff;border-radius:15px;padding:30px;margin-top:30px;box-shadow:0 10px 30px rgba(0,0,0,.1);border:2px solid #e9ecef;}
     .report-header{text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:3px solid var(--primary-color);}        
     .report-info-line{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;padding:15px;background:#f8f9fa;border-radius:8px;flex-wrap:wrap;gap:10px;}
@@ -58,11 +65,13 @@
     .status-message{padding:15px;border-radius:10px;margin:15px 0;text-align:center;font-weight:500;}
     .status-error{background:linear-gradient(135deg,rgba(231,76,60,.1),rgba(192,57,43,.1));color:var(--error-color);border:2px solid var(--error-color);}        
     .status-info{background:linear-gradient(135deg,rgba(52,152,219,.1),rgba(41,128,185,.1));color:var(--primary-color);border:2px solid var(--primary-color);}        
+
     .print-only{display:none;} .no-print{}
     @media print{ body{background:#fff!important;padding:0;} .no-print{display:none!important;} .print-only{display:block!important;} .practice-item,.report-section{break-inside:avoid;} }
     .report-title{ color:#2c3e50!important; background:none!important; -webkit-text-fill-color:#2c3e50!important; -webkit-background-clip:initial!important; background-clip:initial!important; }
     @media print{ .report-title{ color:#000!important; -webkit-text-fill-color:#000!important; background:none!important; } }
-    @media (max-width:768px){ body{padding:10px;} .container{padding:20px;border-radius:10px;} h1{font-size:1.8em;} .practice-item{padding:20px;} .sentence-container{flex-direction:column;align-items:flex-start;padding:15px;} .audio-btn{margin-left:0;margin-top:15px;align-self:center;} .report-info-line{flex-direction:column;align-items:flex-start;gap:8px;} .navigation{flex-direction:column;} .btn{padding:18px;} .sentence-source{flex-direction:column;} .level-selection{grid-template-columns:repeat(2,1fr);} }
+
+    @media (max-width:768px){ body{padding:10px;} .container{padding:20px;border-radius:10px;} h1{font-size:1.8em;} .practice-item{padding:20px;} .sentence-container{flex-direction:column;align-items:flex-start;padding:15px;} .audio-btn{margin-left:0;margin-top:15px;align-self:center;} .report-info-line{flex-direction:column;align-items:flex-start;gap:8px;} .navigation{flex-direction:column;} .btn{padding:18px;} .source-selector{flex-direction:column;} .level-selection{grid-template-columns:repeat(2,1fr);} }
     @media (max-width:480px){ body{padding:5px;} .container{padding:15px;} h1{font-size:1.5em;} .sentence-text{font-size:16px;} .recording-btn{padding:20px;font-size:16px;} .level-selection{grid-template-columns:1fr;} }
   </style>
 </head>
@@ -74,9 +83,9 @@
       <div class="welcome-message">Please select your sentence source to start practicing.</div>
       <div class="form-group">
         <label>Sentence Source</label>
-        <div class="sentence-source">
-          <div class="sentence-source-btn active" data-source="manual">Enter Manually</div>
-          <div class="sentence-source-btn" data-source="level">From Sentence Bank</div>
+        <div class="source-selector">
+          <div class="source-selector-btn active" data-source="manual">Enter Manually</div>
+          <div class="source-selector-btn" data-source="level">From Sentence Bank</div>
         </div>
         <div id="manual-input" class="sentence-input">
           <label for="sentences">Practice Sentences (one per line, maximum 10)</label>
@@ -92,11 +101,19 @@
             <div class="level-btn" data-level="5">Level 5</div>
             <div class="level-btn" data-level="6">Level 6</div>
           </div>
-          <button id="load-level-sentences" class="btn btn-accent" style="margin-top:15px;">Load 10 Random Sentences</button>
+          <div style="display:flex; gap:10px; margin-top:15px;">
+            <button id="load-level-sentences" class="btn btn-accent" style="flex:2;">Load 10 Random Sentences</button>
+            <label class="btn" style="flex:1; text-align:center; cursor:pointer;">
+              Import CSV
+              <input id="csv-file" type="file" accept=".csv,text/csv" style="display:none;" />
+            </label>
+          </div>
+          <small style="display:block;margin-top:8px;color:#666;">Tip: If loading from server fails (e.g., running via <code>file://</code>), use <strong>Import CSV</strong>.</small>
         </div>
       </div>
       <button id="start-practice" class="btn">Start Practice</button>
     </div>
+
     <!-- Practice Page -->
     <div id="practice-page" class="hidden">
       <h1>English Pronunciation Practice</h1>
@@ -108,6 +125,7 @@
       </div>
       <button id="finish-practice" class="btn btn-accent">Finish Practice</button>
     </div>
+
     <!-- Report Modal -->
     <div id="report-modal" class="hidden">
       <div style="background:#fff;padding:24px;border-radius:12px;max-width:640px;margin:0 auto;">
@@ -132,6 +150,18 @@
   <!-- Load Transformers.js from CDN -->
   <script type="module">
     import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
+    // ===== Fix 1: avoid class name collision by using .source-selector / .source-selector-btn above =====
+
+    // ===== Fix 2: robust Sentence Bank loading (CSV header tolerant + offline fallback + manual import) =====
+    const LEVEL_BANK = {
+      1:["Good morning.","How are you?","This is my book.","I like apples.","Open the window, please.","What is your name?","I am ten years old.","Thank you very much.","See you tomorrow.","This is a pen."],
+      2:["Could you help me?","I have a question.","The weather is nice today.","Please speak slowly.","Where is the library?","I don't understand.","What time is it?","Let's start the lesson.","I forgot my homework.","That's a good idea."],
+      3:["I am interested in science.","She studied very hard.","He plays the guitar well.","Practice makes perfect.","We arrived just in time.","It's important to listen.","Please follow the rules.","Don't be afraid to try.","This problem is tricky.","Let me think about it."],
+      4:["Communication skills are essential.","I strongly agree with you.","The experiment was successful.","Consistency leads to progress.","We need a better strategy.","It depends on the context.","Accuracy matters in writing.","Your opinion is valuable.","This task requires patience.","I appreciate your effort."],
+      5:["Her presentation was impressive.","They negotiated the contract fairly.","We underestimated the timeline.","Let's evaluate the outcomes objectively.","He articulated his ideas clearly.","Collaboration improves productivity.","We should prioritize the key issues.","Data supports our conclusion.","The policy needs revision.","Resource allocation is critical."],
+      6:["Innovation often arises from constraints.","Effective leadership demands empathy.","The hypothesis lacks sufficient evidence.","Let's calibrate our expectations accordingly.","Their approach was methodologically sound.","We must mitigate potential risks proactively.","Her insights were remarkably prescient.","Adversity cultivates resilience and clarity.","Our findings warrant further investigation.","Sustainable growth requires deliberate trade-offs."]
+    };
 
     // Global state
     let sentences=[], currentSentenceIndex=0, mediaRecorder, audioChunks=[], isRecording=false,
@@ -163,6 +193,7 @@
     const manualInput=document.getElementById('manual-input');
     const levelInput=document.getElementById('level-input');
     const loadLevelSentencesBtn=document.getElementById('load-level-sentences');
+    const csvFileInput=document.getElementById('csv-file');
 
     // UI helpers
     function showStatusMessage(message,type,container=document.body){
@@ -175,9 +206,9 @@
       setTimeout(()=>el.remove(), 5000);
     }
 
-    document.querySelectorAll('.sentence-source-btn').forEach(btn=>{
+    document.querySelectorAll('.source-selector-btn').forEach(btn=>{
       btn.addEventListener('click',function(){
-        document.querySelectorAll('.sentence-source-btn').forEach(b=>b.classList.remove('active'));
+        document.querySelectorAll('.source-selector-btn').forEach(b=>b.classList.remove('active'));
         this.classList.add('active');
         sentenceSource = this.getAttribute('data-source');
         if(sentenceSource==='manual'){
@@ -198,16 +229,49 @@
       });
     });
 
-    async function fetchLevelSentences(level){
-      const resp = await fetch(`level${level}.csv`);
-      if(!resp.ok) throw new Error(`Failed to load Level ${level}`);
-      const text = await resp.text();
-      const lines = text.trim().split('\n');
-      return lines.map(l=>l.trim()).filter(Boolean).map((line,idx)=>{
+    // CSV parser tolerant of headers and extra columns
+    function parseCsvLines(text){
+      const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+      const out=[];
+      for(const line of lines){
         const firstComma=line.indexOf(',');
-        if(firstComma===-1) return { number:`${idx+1}`, sentence:line };
-        return { number: line.substring(0,firstComma).trim(), sentence: line.substring(firstComma+1).trim() };
-      });
+        if(firstComma===-1){
+          // single column (sentence only)
+          if(/^(id|no|number|sentence)\b/i.test(line)) continue; // header-like single cell
+          out.push({ number: out.length+1+'' , sentence: line });
+          continue;
+        }
+        const first = line.substring(0, firstComma).trim();
+        const rest = line.substring(firstComma+1).trim();
+        // skip header rows
+        if(/^(id|no|number)\b/i.test(first) || /^(sentence|text|content)\b/i.test(rest)) continue;
+        // if first is not numeric, treat as sentence (2+ columns)
+        if(!/^\d+$/.test(first)){
+          out.push({ number: out.length+1+'', sentence: line.split(',').slice(0).slice(-1)[0].trim() || rest });
+        } else {
+          out.push({ number:first, sentence: rest });
+        }
+      }
+      return out;
+    }
+
+    async function fetchLevelSentences(level){
+      // Try server CSV first
+      try{
+        const resp = await fetch(`level${level}.csv`, { cache:'no-store' });
+        if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const text = await resp.text();
+        const rows = parseCsvLines(text);
+        if(rows.length>0) return rows;
+        throw new Error('Empty CSV');
+      }catch(err){
+        // Offline fallback to built-in bank
+        const bank = LEVEL_BANK[level];
+        if(bank && bank.length){
+          return bank.map((s,idx)=>({ number: String(idx+1), sentence: s }));
+        }
+        throw new Error(`Failed to load Level ${level} (${err.message})`);
+      }
     }
 
     async function loadLevelSentences(){
@@ -218,12 +282,7 @@
       try{
         showStatusMessage(`Loading sentences from Level ${selectedLevel}...`,'info',levelInput);
         const rows = await fetchLevelSentences(selectedLevel);
-        if(rows.length===0){
-          showStatusMessage('No sentences found for this level','error',levelInput);
-          return;
-        }
-        const shuffled=[...rows].sort(()=>0.5-Math.random());
-        const chosen=shuffled.slice(0,10);
+        const chosen = shufflePick(rows, 10);
         const formatted = chosen.map((item,idx)=> `${item.sentence} [${idx+1}/10 - Level ${selectedLevel}, Sentence ${item.number}]`);
         document.getElementById('sentences').value = formatted.join('\n');
         showStatusMessage(`✅ Loaded 10 sentences from Level ${selectedLevel}`,'info',levelInput);
@@ -235,10 +294,38 @@
     }
     loadLevelSentencesBtn.addEventListener('click',loadLevelSentences);
 
+    // Manual CSV import
+    csvFileInput.addEventListener('change', async (e)=>{
+      const file = e.target.files?.[0];
+      if(!file) return;
+      const text = await file.text();
+      const rows = parseCsvLines(text);
+      if(rows.length===0){
+        showStatusMessage('❌ No valid sentences found in CSV','error',levelInput);
+        return;
+      }
+      const chosen = shufflePick(rows, 10);
+      const formatted = chosen.map((item,idx)=> `${item.sentence} [${idx+1}/10 - Imported, Sentence ${item.number}]`);
+      document.getElementById('sentences').value = formatted.join('\n');
+      // Switch source to level for consistency
+      sentenceSource='level';
+      document.querySelectorAll('.source-selector-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelector('.source-selector-btn[data-source="level"]').classList.add('active');
+      manualInput.classList.add('hidden');
+      levelInput.classList.remove('hidden');
+      showStatusMessage('✅ Loaded 10 sentences from imported CSV','info',levelInput);
+    });
+
+    function shufflePick(arr, n){
+      const copy=[...arr];
+      for(let i=copy.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [copy[i],copy[j]]=[copy[j],copy[i]]; }
+      return copy.slice(0,Math.min(n, copy.length));
+    }
+
     startPracticeBtn.addEventListener('click', ()=>{
       let arr = document.getElementById('sentences').value.split('\n').map(s=>s.trim()).filter(Boolean);
       if(sentenceSource==='level' && arr.length===0){
-        showStatusMessage('❌ Please load sentences from Sentence Bank first','error');
+        showStatusMessage('❌ Please load sentences from Sentence Bank first (or import a CSV)','error');
         return;
       }
       if(arr.length===0){
@@ -260,7 +347,7 @@
       practiceContainer.innerHTML='';
       const raw = sentences[currentSentenceIndex];
       const m = raw.match(/^[\s\S]+?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*-\s*Level\s*(\d+)\s*,\s*Sentence\s*([^\]]+)\s*\]\s*$/i);
-      const displaySentence = m ? raw.replace(/\s*\[[^\]]*\]\s*$/,'').trim() : stripBracketTail(raw).trim();
+      const displaySentence = m ? raw.replace(/\s*\[[^\]]*\]\s*$/, '').trim() : stripBracketTail(raw).trim();
       const practiceNumber  = m ? `${m[1]}/${m[2]}` : `${currentSentenceIndex+1}/${sentences.length}`;
       const levelNo = m ? m[3] : null;
       const sentNo = m ? m[4].trim() : null;
@@ -270,7 +357,7 @@
         <div class="practice-item">
           <div class="sentence-header">
             <div class="sentence-number">Sentence ${practiceNumber}</div>
-            ${sourceLabel ? `<div class="sentence-source" style="color:#666;font-size:14px;">${sourceLabel}</div>` : ''}
+            ${sourceLabel ? `<div class="sentence-source-label" style="color:#666;font-size:14px;">${sourceLabel}</div>` : ''}
           </div>
           <div class="sentence-container">
             <div class="sentence-text">${displaySentence}</div>
@@ -488,7 +575,7 @@
         const m = s.match(/^[\s\S]+?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*-\s*Level\s*(\d+)\s*,\s*Sentence\s*([^\]]+)\s*\]\s*$/i);
         const main = m ? s.replace(/\s*\[[^\]]*\]\s*$/,'').trim() : stripBracketTail(s).trim();
         const source = m ? ` <span style="color:#666;font-size:0.95em;">（Level ${m[3]}；${(m[4]||'').trim()}）</span>` : '';
-        const r = feedbackResults[i];
+        const r = feedbackResults[i] || {scores:{total:'-',accuracy:'-',fluency:'-',prosody:'-'},metrics:{wpm:'-',pauseRatio:'-'}};
         const lineScore = ` — <strong>${r.scores.total}</strong>/100 (A:${r.scores.accuracy} F:${r.scores.fluency} P:${r.scores.prosody})`;
         const lineMeta  = ` | WPM ${r.metrics.wpm}, Pauses ${safeNum(r.metrics.pauseRatio,2)}`;
         return `
@@ -589,7 +676,7 @@
       let energies=[]; for(let i=0;i+frameSize<pcm.length;i+=hop){ let s=0; for(let j=0;j<frameSize;j++){ const v=pcm[i+j]; s+=v*v; } energies.push(s/frameSize); }
       if(energies.length===0) return { duration, pauseRatio:1, pitchVar:0 };
       const sorted=[...energies].sort((a,b)=>a-b);
-      const pauseThresh = sorted[Math.floor(sorted.length*0.15)];
+      const pauseThresh = sorted[Math.floor(sorted.length*0.15)] || 0;
       const pauses = energies.filter(e=>e<pauseThresh).length;
       const pauseRatio = energies.length? (pauses/energies.length):1;
       function estimatePitchHz(frame){ let maxLag=Math.floor(sr/80), minLag=Math.floor(sr/500); let bestLag=0,best=-Infinity; for(let lag=minLag; lag<=maxLag; lag++){ let sum=0; for(let i=0;i+lag<frame.length;i++){ sum+=frame[i]*frame[i+lag]; } if(sum>best){ best=sum; bestLag=lag; } } return bestLag? (sr/bestLag):0; }
@@ -609,16 +696,14 @@
       const refTokens = dropFillers(expandEquivalents(refTokens0));
       const hypTokens = dropFillers(expandEquivalents(hypTokens0));
 
-      let accuracyScore = 60; // ✅ 基準分 60
+      let accuracyScore = 60; // ✅ baseline 60
       let sim = 0.6, wer = 0.4;
 
       if (hypText.trim() !== '') {
-        // Whisper 成功辨識
         sim = (refTokens.length || hypTokens.length) ? similarity(refTokens, hypTokens) : 0;
         wer = refTokens.length ? WER(refTokens, hypTokens) : (hypTokens.length > 0 ? 1 : 0);
         accuracyScore = Math.max(0, Math.min(100, Math.round(sim * 100)));
       }
-      // 否則保留 accuracyScore = 60
 
       const feats = await analyzeAudioFeatures(blob);
       const wpm = wordsPerMinute(Math.max(hypTokens.length, 1), feats.duration);
