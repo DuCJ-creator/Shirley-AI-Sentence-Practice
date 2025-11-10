@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Shirley's AI Assistant in Speaking — Whisper + 60 Baseline</title>
+  <title>Shirley's AI Assistant in Speaking — Final Fixed</title>
   <style>
     :root{ --primary-color:#4a6fa5;--secondary-color:#6b8cbc;--accent-color:#ff7e5f; --light-color:#f5f7fa;--dark-color:#2c3e50;--success-color:#2ecc71; --warning-color:#f39c12;--error-color:#e74c3c; }
     *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}
@@ -98,16 +98,21 @@
       <button id="start-practice" class="btn">Start Practice</button>
     </div>
     <!-- Practice Page -->
-<div id="practice-page" class="hidden">
-  <h1> Sentence Practice with Shirley's AI Assistant in Speaking </h1>
-  <div class="status-info" style="margin:10px 0;padding:12px;font-size:0.95em;line-height:1.5;">
-    <strong>ℹ️ A trial version for educational use in an entertaining way!</strong><br>
-    Due to limitations in speech recognition, recording environments, and device variability, the AI-generated analysis may not fully reflect your true speaking ability, and is for your reference only.<br>
-    Please focus on imitating the model pronunciation — consistent practice leads to progress!
-  </div>
-  <div class="progress-bar"><div id="progress" class="progress"></div></div>
-  ...
-</div>
+    <div id="practice-page" class="hidden">
+      <h1>Sentence Practice with Shirley's AI Assistant in Speaking</h1>
+      <div class="status-info" style="margin:10px 0;padding:12px;font-size:0.95em;line-height:1.5;">
+        <strong>ℹ️ A trial version for educational use in an entertaining way!</strong><br>
+        Due to limitations in speech recognition, recording environments, and device variability, the AI-generated analysis may not fully reflect your true speaking ability, and is for your reference only.<br>
+        Please focus on imitating the model pronunciation — consistent practice leads to progress!
+      </div>
+      <div class="progress-bar"><div id="progress" class="progress"></div></div>
+      <div id="practice-container"></div> <!-- ✅ 關鍵：補回此容器 -->
+      <div class="navigation">
+        <button id="prev-sentence" class="btn">Previous</button>
+        <button id="next-sentence" class="btn">Next</button>
+      </div>
+      <button id="finish-practice" class="btn btn-accent">Finish Practice</button>
+    </div>
     <!-- Report Modal -->
     <div id="report-modal" class="hidden">
       <div style="background:#fff;padding:24px;border-radius:12px;max-width:640px;margin:0 auto;">
@@ -129,546 +134,552 @@
     </div>
   </div>
 
-  <!-- Load Transformers.js from CDN -->
   <script type="module">
-    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+    // ✅ 用 DOMContentLoaded 確保 DOM 已就緒
+    document.addEventListener('DOMContentLoaded', async () => {
+      import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
 
-    // Global state
-    let sentences=[], currentSentenceIndex=0, mediaRecorder, audioChunks=[], isRecording=false,
-        practicedSentences=[], sentenceSource='manual', selectedLevel=null, currentStream=null;
-    const feedbackResults = [];
-    const stripBracketTail = (s)=> s.replace(/\s*\[[^\]]*\]\s*$/, '');
+      // Global state
+      let sentences=[], currentSentenceIndex=0, mediaRecorder, audioChunks=[], isRecording=false,
+          practicedSentences=[], sentenceSource='manual', selectedLevel=null, currentStream=null;
+      const feedbackResults = [];
+      const stripBracketTail = (s)=> s.replace(/\s*\[[^\]]*\]\s*$/, '');
 
-    // Whisper pipeline (lazy init)
-    let whisper = null;
-    async function getWhisper() {
-      if (!whisper) {
-        document.getElementById('feedback-status')?.textContent = 'Loading Whisper model (30MB)...';
-        whisper = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en');
-      }
-      return whisper;
-    }
-
-    // DOM refs
-    const sentenceSourcePage=document.getElementById('sentence-source-page');
-    const practicePage=document.getElementById('practice-page');
-    const reportModal=document.getElementById('report-modal');
-    const startPracticeBtn=document.getElementById('start-practice');
-    const finishPracticeBtn=document.getElementById('finish-practice');
-    const prevSentenceBtn=document.getElementById('prev-sentence');
-    const nextSentenceBtn=document.getElementById('next-sentence');
-    const generateReportBtn=document.getElementById('generate-report');
-    const practiceContainer=document.getElementById('practice-container');
-    const progressBar=document.getElementById('progress');
-    const manualInput=document.getElementById('manual-input');
-    const levelInput=document.getElementById('level-input');
-    const loadLevelSentencesBtn=document.getElementById('load-level-sentences');
-
-    // UI helpers
-    function showStatusMessage(message,type,container=document.body){
-      const existing=container.querySelector('.status-message');
-      if(existing) existing.remove();
-      const el=document.createElement('div');
-      el.className=`status-message status-${type}`;
-      el.textContent=message;
-      container.insertBefore(el,container.firstChild);
-      setTimeout(()=>el.remove(), 5000);
-    }
-
-    document.querySelectorAll('.sentence-source-btn').forEach(btn=>{
-      btn.addEventListener('click',function(){
-        document.querySelectorAll('.sentence-source-btn').forEach(b=>b.classList.remove('active'));
-        this.classList.add('active');
-        sentenceSource = this.getAttribute('data-source');
-        if(sentenceSource==='manual'){
-          manualInput.classList.remove('hidden');
-          levelInput.classList.add('hidden');
-        } else {
-          manualInput.classList.add('hidden');
-          levelInput.classList.remove('hidden');
+      // Whisper pipeline
+      let whisper = null;
+      async function getWhisper() {
+        if (!whisper) {
+          document.getElementById('feedback-status')?.textContent = 'Loading Whisper model (30MB)...';
+          whisper = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en');
         }
-      });
-    });
-
-    document.querySelectorAll('.level-btn').forEach(btn=>{
-      btn.addEventListener('click',function(){
-        document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active'));
-        this.classList.add('active');
-        selectedLevel=this.getAttribute('data-level');
-      });
-    });
-
-    async function fetchLevelSentences(level){
-      const resp = await fetch(`level${level}.csv`);
-      if(!resp.ok) throw new Error(`Failed to load Level ${level}`);
-      const text = await resp.text();
-      const lines = text.trim().split('\n');
-      return lines.map(l=>l.trim()).filter(Boolean).map((line,idx)=>{
-        const firstComma=line.indexOf(',');
-        if(firstComma===-1) return { number:`${idx+1}`, sentence:line };
-        return { number: line.substring(0,firstComma).trim(), sentence: line.substring(firstComma+1).trim() };
-      });
-    }
-
-    async function loadLevelSentences(){
-      if(!selectedLevel){
-        showStatusMessage('Please select a difficulty level first','error',levelInput);
-        return;
+        return whisper;
       }
-      try{
-        showStatusMessage(`Loading sentences from Level ${selectedLevel}...`,'info',levelInput);
-        const rows = await fetchLevelSentences(selectedLevel);
-        if(rows.length===0){
-          showStatusMessage('No sentences found for this level','error',levelInput);
+
+      // DOM refs
+      const sentenceSourcePage=document.getElementById('sentence-source-page');
+      const practicePage=document.getElementById('practice-page');
+      const reportModal=document.getElementById('report-modal');
+      const startPracticeBtn=document.getElementById('start-practice');
+      const finishPracticeBtn=document.getElementById('finish-practice');
+      const prevSentenceBtn=document.getElementById('prev-sentence');
+      const nextSentenceBtn=document.getElementById('next-sentence');
+      const generateReportBtn=document.getElementById('generate-report');
+      const practiceContainer=document.getElementById('practice-container');
+      const progressBar=document.getElementById('progress');
+      const manualInput=document.getElementById('manual-input');
+      const levelInput=document.getElementById('level-input');
+      const loadLevelSentencesBtn=document.getElementById('load-level-sentences');
+
+      // UI helpers
+      function showStatusMessage(message,type,container=document.body){
+        const existing=container.querySelector('.status-message');
+        if(existing) existing.remove();
+        const el=document.createElement('div');
+        el.className=`status-message status-${type}`;
+        el.textContent=message;
+        container.insertBefore(el,container.firstChild);
+        setTimeout(()=>el.remove(), 5000);
+      }
+
+      // Source buttons
+      document.querySelectorAll('.sentence-source-btn').forEach(btn=>{
+        btn.addEventListener('click',function(){
+          document.querySelectorAll('.sentence-source-btn').forEach(b=>b.classList.remove('active'));
+          this.classList.add('active');
+          sentenceSource = this.getAttribute('data-source');
+          if(sentenceSource==='manual'){
+            manualInput.classList.remove('hidden');
+            levelInput.classList.add('hidden');
+          } else {
+            manualInput.classList.add('hidden');
+            levelInput.classList.remove('hidden');
+          }
+        });
+      });
+
+      // Level buttons
+      document.querySelectorAll('.level-btn').forEach(btn=>{
+        btn.addEventListener('click',function(){
+          document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active'));
+          this.classList.add('active');
+          selectedLevel=this.getAttribute('data-level');
+        });
+      });
+
+      // Load from CSVs
+      async function fetchLevelSentences(level){
+        const resp = await fetch(`level${level}.csv`);
+        if(!resp.ok) throw new Error(`Failed to load Level ${level}`);
+        const text = await resp.text();
+        const lines = text.trim().split('\n');
+        return lines.map(l=>l.trim()).filter(Boolean).map((line,idx)=>{
+          const firstComma=line.indexOf(',');
+          if(firstComma===-1) return { number:`${idx+1}`, sentence:line };
+          return { number: line.substring(0,firstComma).trim(), sentence: line.substring(firstComma+1).trim() };
+        });
+      }
+
+      async function loadLevelSentences(){
+        if(!selectedLevel){
+          showStatusMessage('Please select a difficulty level first','error',levelInput);
           return;
         }
-        const shuffled=[...rows].sort(()=>0.5-Math.random());
-        const chosen=shuffled.slice(0,10);
-        const formatted = chosen.map((item,idx)=> `${item.sentence} [${idx+1}/10 - Level ${selectedLevel}, Sentence ${item.number}]`);
-        document.getElementById('sentences').value = formatted.join('\n');
-        showStatusMessage(`✅ Loaded 10 sentences from Level ${selectedLevel}`,'info',levelInput);
-      }catch(e){
-        console.error(e);
-        document.getElementById('sentences').value='';
-        showStatusMessage(`❌ ${e.message}`,'error',levelInput);
+        try{
+          showStatusMessage(`Loading sentences from Level ${selectedLevel}...`,'info',levelInput);
+          const rows = await fetchLevelSentences(selectedLevel);
+          if(rows.length===0){
+            showStatusMessage('No sentences found for this level','error',levelInput);
+            return;
+          }
+          const shuffled=[...rows].sort(()=>0.5-Math.random());
+          const chosen=shuffled.slice(0,10);
+          const formatted = chosen.map((item,idx)=> `${item.sentence} [${idx+1}/10 - Level ${selectedLevel}, Sentence ${item.number}]`);
+          document.getElementById('sentences').value = formatted.join('\n');
+          showStatusMessage(`✅ Loaded 10 sentences from Level ${selectedLevel}`,'info',levelInput);
+        }catch(e){
+          console.error(e);
+          document.getElementById('sentences').value='';
+          showStatusMessage(`❌ ${e.message}`,'error',levelInput);
+        }
       }
-    }
-    loadLevelSentencesBtn.addEventListener('click',loadLevelSentences);
+      loadLevelSentencesBtn.addEventListener('click',loadLevelSentences);
 
-    startPracticeBtn.addEventListener('click', ()=>{
-      let arr = document.getElementById('sentences').value.split('\n').map(s=>s.trim()).filter(Boolean);
-      if(sentenceSource==='level' && arr.length===0){
-        showStatusMessage('❌ Please load sentences from Sentence Bank first','error');
-        return;
-      }
-      if(arr.length===0){
-        showStatusMessage('❌ Please enter at least one sentence','error');
-        return;
-      }
-      if(arr.length>10) arr = arr.slice(0,10);
-      sentences=arr;
-      practicedSentences=[...arr];
-      currentSentenceIndex=0;
-      feedbackResults.length = sentences.length;
-      sentenceSourcePage.classList.add('hidden');
-      practicePage.classList.remove('hidden');
-      showCurrentSentence();
-      updateProgress();
-    });
+      // Start practice
+      startPracticeBtn.addEventListener('click', ()=>{
+        let arr = document.getElementById('sentences').value.split('\n').map(s=>s.trim()).filter(Boolean);
+        if(sentenceSource==='level' && arr.length===0){
+          showStatusMessage('❌ Please load sentences from Sentence Bank first','error');
+          return;
+        }
+        if(arr.length===0){
+          showStatusMessage('❌ Please enter at least one sentence','error');
+          return;
+        }
+        if(arr.length>10) arr = arr.slice(0,10);
+        sentences=arr;
+        practicedSentences=[...arr];
+        currentSentenceIndex=0;
+        feedbackResults.length = sentences.length;
+        sentenceSourcePage.classList.add('hidden');
+        practicePage.classList.remove('hidden');
+        showCurrentSentence();
+        updateProgress();
+      });
 
-    function showCurrentSentence(){
-      practiceContainer.innerHTML='';
-      const raw = sentences[currentSentenceIndex];
-      const m = raw.match(/^[\s\S]+?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*-\s*Level\s*(\d+)\s*,\s*Sentence\s*([^\]]+)\s*\]\s*$/i);
-      const displaySentence = m ? raw.replace(/\s*\[[^\]]*\]\s*$/,'').trim() : stripBracketTail(raw).trim();
-      const practiceNumber  = m ? `${m[1]}/${m[2]}` : `${currentSentenceIndex+1}/${sentences.length}`;
-      const levelNo = m ? m[3] : null;
-      const sentNo = m ? m[4].trim() : null;
-      const sourceLabel = (levelNo && sentNo) ? `Level ${levelNo}；${sentNo}` : '';
+      function showCurrentSentence(){
+        practiceContainer.innerHTML='';
+        const raw = sentences[currentSentenceIndex];
+        const m = raw.match(/^[\s\S]+?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*-\s*Level\s*(\d+)\s*,\s*Sentence\s*([^\]]+)\s*\]\s*$/i);
+        const displaySentence = m ? raw.replace(/\s*\[[^\]]*\]\s*$/,'').trim() : stripBracketTail(raw).trim();
+        const practiceNumber  = m ? `${m[1]}/${m[2]}` : `${currentSentenceIndex+1}/${sentences.length}`;
+        const levelNo = m ? m[3] : null;
+        const sentNo = m ? m[4].trim() : null;
+        const sourceLabel = (levelNo && sentNo) ? `Level ${levelNo}；${sentNo}` : '';
 
-      practiceContainer.innerHTML = `
-        <div class="practice-item">
-          <div class="sentence-header">
-            <div class="sentence-number">Sentence ${practiceNumber}</div>
-            ${sourceLabel ? `<div class="sentence-source" style="color:#666;font-size:14px;">${sourceLabel}</div>` : ''}
-          </div>
-          <div class="sentence-container">
-            <div class="sentence-text">${displaySentence}</div>
-            <button class="audio-btn" data-sentence="${displaySentence.replace(/"/g,'&quot;')}" title="Listen to original">🔊</button>
-          </div>
-          <div class="recording-controls">
-            <button id="record-btn" class="btn recording-btn btn-success">🎤 Start Recording</button>
-            <div id="recording-indicator" class="hidden"><span class="recording-indicator"></span> 🔴 Recording...</div>
-            <div id="recording-error" class="hidden status-error" style="margin-top:10px;">❌ Recording failed. Please check microphone permissions.</div>
-          </div>
-          <div id="playback-section" class="hidden">
-            <p>🎧 Your recording:</p>
-            <audio id="playback-audio" controls style="width:100%;margin:15px 0;"></audio>
-          </div>
-          <div id="feedback-panel" class="hidden" style="margin-top:10px;">
-            <div id="feedback-status" class="status-message status-info">Ready.</div>
-            <div id="feedback-result" style="display:none;">
-              <div style="padding:12px;border-radius:8px;background:#f8f9fa;margin-top:8px;">
-                <div><strong>Total Score:</strong> <span id="fb-total">-</span>/100</div>
-                <div>Accuracy: <span id="fb-acc">-</span> | Fluency: <span id="fb-flu">-</span> | Prosody: <span id="fb-pro">-</span></div>
-                <div style="margin-top:6px;">WPM: <span id="fb-wpm">-</span> · Pauses: <span id="fb-pause">-</span> · PitchVar: <span id="fb-pitch">-</span></div>
-                <div style="margin-top:6px;">Transcript: <span id="fb-hyp">-</span></div>
-                <div style="margin-top:2px;">Target: <span id="fb-ref">-</span></div>
-                <div style="margin-top:10px;"><strong>Tips:</strong>
-                  <ul id="fb-tips" style="margin-left:20px;"></ul>
+        practiceContainer.innerHTML = `
+          <div class="practice-item">
+            <div class="sentence-header">
+              <div class="sentence-number">Sentence ${practiceNumber}</div>
+              ${sourceLabel ? `<div class="sentence-source" style="color:#666;font-size:14px;">${sourceLabel}</div>` : ''}
+            </div>
+            <div class="sentence-container">
+              <div class="sentence-text">${displaySentence}</div>
+              <button class="audio-btn" data-sentence="${displaySentence.replace(/"/g,'&quot;')}" title="Listen to original">🔊</button>
+            </div>
+            <div class="recording-controls">
+              <button id="record-btn" class="btn recording-btn btn-success">🎤 Start Recording</button>
+              <div id="recording-indicator" class="hidden"><span class="recording-indicator"></span> 🔴 Recording...</div>
+              <div id="recording-error" class="hidden status-error" style="margin-top:10px;">❌ Recording failed. Please check microphone permissions.</div>
+            </div>
+            <div id="playback-section" class="hidden">
+              <p>🎧 Your recording:</p>
+              <audio id="playback-audio" controls style="width:100%;margin:15px 0;"></audio>
+            </div>
+            <div id="feedback-panel" class="hidden" style="margin-top:10px;">
+              <div id="feedback-status" class="status-message status-info">Ready.</div>
+              <div id="feedback-result" style="display:none;">
+                <div style="padding:12px;border-radius:8px;background:#f8f9fa;margin-top:8px;">
+                  <div><strong>Total Score:</strong> <span id="fb-total">-</span>/100</div>
+                  <div>Accuracy: <span id="fb-acc">-</span> | Fluency: <span id="fb-flu">-</span> | Prosody: <span id="fb-pro">-</span></div>
+                  <div style="margin-top:6px;">WPM: <span id="fb-wpm">-</span> · Pauses: <span id="fb-pause">-</span> · PitchVar: <span id="fb-pitch">-</span></div>
+                  <div style="margin-top:6px;">Transcript: <span id="fb-hyp">-</span></div>
+                  <div style="margin-top:2px;">Target: <span id="fb-ref">-</span></div>
+                  <div style="margin-top:10px;"><strong>Tips:</strong>
+                    <ul id="fb-tips" style="margin-left:20px;"></ul>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>`;
+          </div>`;
 
-      document.querySelector('.audio-btn').addEventListener('click', function(){
-        const utter = new SpeechSynthesisUtterance(this.getAttribute('data-sentence'));
-        utter.lang='en-US';
-        utter.rate=0.9;
-        speechSynthesis.speak(utter);
+        document.querySelector('.audio-btn').addEventListener('click', function(){
+          const utter = new SpeechSynthesisUtterance(this.getAttribute('data-sentence'));
+          utter.lang='en-US';
+          utter.rate=0.9;
+          speechSynthesis.speak(utter);
+        });
+
+        document.getElementById('record-btn').addEventListener('click', toggleRecording);
+
+        const fbPanel = document.getElementById('feedback-panel');
+        fbPanel.classList.remove('hidden');
+
+        window.renderFeedbackStatus = function(msg){
+          const s = document.getElementById('feedback-status');
+          const r = document.getElementById('feedback-result');
+          s.textContent = msg;
+          s.style.display = 'block';
+          r.style.display = 'none';
+        };
+
+        window.renderFeedbackResult = function(res){
+          const s = document.getElementById('feedback-status');
+          const r = document.getElementById('feedback-result');
+          document.getElementById('fb-total').textContent = res.scores.total;
+          document.getElementById('fb-acc').textContent   = res.scores.accuracy;
+          document.getElementById('fb-flu').textContent   = res.scores.fluency;
+          document.getElementById('fb-pro').textContent   = res.scores.prosody;
+          document.getElementById('fb-wpm').textContent   = res.metrics.wpm;
+          document.getElementById('fb-pause').textContent = res.metrics.pauseRatio;
+          document.getElementById('fb-pitch').textContent = res.metrics.pitchVar;
+          const tipsUl = document.getElementById('fb-tips');
+          tipsUl.innerHTML = '';
+          (res.tips||[]).forEach(t=>{
+            const li=document.createElement('li');
+            li.textContent=t;
+            tipsUl.appendChild(li);
+          });
+          document.getElementById('fb-hyp').textContent = res.transcripts?.hypText || '';
+          document.getElementById('fb-ref').textContent = res.transcripts?.targetText || '';
+          s.style.display = 'none';
+          r.style.display = 'block';
+          feedbackResults[currentSentenceIndex]=res;
+        };
+      }
+
+      // Nav & progress
+      document.getElementById('prev-sentence').addEventListener('click', ()=>{
+        if(currentSentenceIndex>0){
+          currentSentenceIndex--;
+          showCurrentSentence();
+          updateProgress();
+        }
       });
 
-      document.getElementById('record-btn').addEventListener('click', toggleRecording);
+      document.getElementById('next-sentence').addEventListener('click', ()=>{
+        if(currentSentenceIndex<sentences.length-1){
+          currentSentenceIndex++;
+          showCurrentSentence();
+          updateProgress();
+        }
+      });
 
-      const fbPanel = document.getElementById('feedback-panel');
-      fbPanel.classList.remove('hidden');
-
-      window.renderFeedbackStatus = function(msg){
-        const s = document.getElementById('feedback-status');
-        const r = document.getElementById('feedback-result');
-        s.textContent = msg;
-        s.style.display = 'block';
-        r.style.display = 'none';
-      };
-
-      window.renderFeedbackResult = function(res){
-        const s = document.getElementById('feedback-status');
-        const r = document.getElementById('feedback-result');
-        document.getElementById('fb-total').textContent = res.scores.total;
-        document.getElementById('fb-acc').textContent   = res.scores.accuracy;
-        document.getElementById('fb-flu').textContent   = res.scores.fluency;
-        document.getElementById('fb-pro').textContent   = res.scores.prosody;
-        document.getElementById('fb-wpm').textContent   = res.metrics.wpm;
-        document.getElementById('fb-pause').textContent = res.metrics.pauseRatio;
-        document.getElementById('fb-pitch').textContent = res.metrics.pitchVar;
-        const tipsUl = document.getElementById('fb-tips');
-        tipsUl.innerHTML = '';
-        (res.tips||[]).forEach(t=>{
-          const li=document.createElement('li');
-          li.textContent=t;
-          tipsUl.appendChild(li);
-        });
-        document.getElementById('fb-hyp').textContent = res.transcripts?.hypText || '';
-        document.getElementById('fb-ref').textContent = res.transcripts?.targetText || '';
-        s.style.display = 'none';
-        r.style.display = 'block';
-        feedbackResults[currentSentenceIndex]=res;
-      };
-    }
-
-    document.getElementById('prev-sentence').addEventListener('click', ()=>{
-      if(currentSentenceIndex>0){
-        currentSentenceIndex--;
-        showCurrentSentence();
-        updateProgress();
+      function updateProgress(){
+        const p=((currentSentenceIndex+1)/sentences.length)*100;
+        progressBar.style.width=p+'%';
       }
-    });
 
-    document.getElementById('next-sentence').addEventListener('click', ()=>{
-      if(currentSentenceIndex<sentences.length-1){
-        currentSentenceIndex++;
-        showCurrentSentence();
-        updateProgress();
+      // Recording
+      async function toggleRecording(){
+        if(!isRecording) await startRecording();
+        else stopRecording();
       }
-    });
 
-    function updateProgress(){
-      const p=((currentSentenceIndex+1)/sentences.length)*100;
-      progressBar.style.width=p+'%';
-    }
+      async function startRecording(){
+        try{
+          const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+          mediaRecorder = new MediaRecorder(stream);
+          currentStream=stream;
+          audioChunks=[];
+          mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);
+          mediaRecorder.onstop=async ()=>{
+            const rawBlob = new Blob(audioChunks,{type:'audio/webm'});
+            const cleanBlob = await (window.PronunciationFeedback?.trimSilence(rawBlob).catch(()=>rawBlob) || rawBlob);
+            const url = URL.createObjectURL(cleanBlob);
+            document.getElementById('playback-audio').src=url;
+            document.getElementById('playback-section').classList.remove('hidden');
+            const displaySentence = document.querySelector('.audio-btn')?.getAttribute('data-sentence') || '';
 
-    async function toggleRecording(){
-      if(!isRecording) await startRecording();
-      else stopRecording();
-    }
+            if(window.renderFeedbackStatus){
+              window.renderFeedbackStatus('Transcribing with Whisper...');
+            }
 
-    async function startRecording(){
-      try{
-        const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-        mediaRecorder = new MediaRecorder(stream);
-        currentStream=stream;
-        audioChunks=[];
-        mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);
-        mediaRecorder.onstop=async ()=>{
-          const rawBlob = new Blob(audioChunks,{type:'audio/webm'});
-          const cleanBlob = await (window.PronunciationFeedback?.trimSilence(rawBlob).catch(()=>rawBlob) || rawBlob);
-          const url = URL.createObjectURL(cleanBlob);
-          document.getElementById('playback-audio').src=url;
-          document.getElementById('playback-section').classList.remove('hidden');
-          const displaySentence = document.querySelector('.audio-btn')?.getAttribute('data-sentence') || '';
+            try {
+              const processor = await getWhisper();
+              const result = await processor(cleanBlob, { return_timestamps: false });
+              const hypText = result?.text || '';
 
-          if(window.renderFeedbackStatus){
-            window.renderFeedbackStatus('Transcribing with Whisper...');
+              const assessment = await analyzePronunciationWithText(cleanBlob, displaySentence, hypText);
+              window.renderFeedbackResult ? window.renderFeedbackResult(assessment) : console.log(assessment);
+            } catch (err) {
+              console.error('Whisper error:', err);
+              const assessment = await analyzePronunciationWithText(cleanBlob, displaySentence, '');
+              window.renderFeedbackResult ? window.renderFeedbackResult(assessment) : console.log(assessment);
+            }
+          };
+          mediaRecorder.start();
+          isRecording=true;
+          const btn=document.getElementById('record-btn');
+          btn.textContent='🛑 Stop Recording';
+          btn.classList.remove('btn-success');
+          btn.classList.add('btn-error');
+          document.getElementById('recording-indicator').classList.remove('hidden');
+        }catch(err){
+          alert('Microphone access denied');
+        }
+      }
+
+      function stopRecording(){
+        if(mediaRecorder && isRecording){
+          mediaRecorder.stop();
+          isRecording=false;
+          if(currentStream){
+            currentStream.getTracks().forEach(t=>t.stop());
+            currentStream=null;
           }
+          const btn=document.getElementById('record-btn');
+          btn.textContent='🎤 Record Again';
+          btn.classList.remove('btn-error');
+          btn.classList.add('btn-success');
+          document.getElementById('recording-indicator').classList.add('hidden');
+        }
+      }
 
-          try {
-            const processor = await getWhisper();
-            const result = await processor(cleanBlob, { return_timestamps: false });
-            const hypText = result?.text || '';
+      // Report
+      finishPracticeBtn.addEventListener('click', ()=>{
+        reportModal.classList.remove('hidden');
+      });
 
-            const assessment = await analyzePronunciationWithText(cleanBlob, displaySentence, hypText);
-            window.renderFeedbackResult ? window.renderFeedbackResult(assessment) : console.log(assessment);
-          } catch (err) {
-            console.error('Whisper error:', err);
-            // Fallback: give baseline 60 accuracy
-            const assessment = await analyzePronunciationWithText(cleanBlob, displaySentence, '');
-            window.renderFeedbackResult ? window.renderFeedbackResult(assessment) : console.log(assessment);
-          }
+      generateReportBtn.addEventListener('click', generateReport);
+
+      function safeNum(x, digits=2){
+        if(x==null || isNaN(x)) return '-';
+        const f=parseFloat(x);
+        return isFinite(f)? f.toFixed(digits) : '-';
+      }
+
+      function avg(arr){
+        const v=arr.filter(n=>typeof n==='number' && isFinite(n));
+        if(!v.length) return null;
+        return v.reduce((a,b)=>a+b,0)/v.length;
+      }
+
+      function pickEncouragement(score){
+        if(score==null) return 'Keep going—your persistence will pay off!';
+        if(score>=90) return 'Outstanding! Your pronunciation is clear and expressive—keep shining!';
+        if(score>=80) return 'Great job! Your speaking is fluent and confident—stay consistent!';
+        if(score>=70) return 'Nice work! A bit more practice on stress and rhythm will bring you to the next level.';
+        if(score>=60) return 'Good effort! Focus on accuracy and pacing—you are on the right track.';
+        return 'Every try counts! Read along with the model audio and practice shorter chunks—you’ll get there!';
+      }
+
+      function generateReport(){
+        const className=document.getElementById('report-class-input').value.trim();
+        const seatNo=document.getElementById('report-seat-input').value.trim();
+        const name=document.getElementById('report-name-input').value.trim();
+        if(!className||!seatNo||!name){
+          alert('Please fill in all fields');
+          return;
+        }
+        const valid = feedbackResults.filter(r=>r);
+        const totals = {
+          total: avg(valid.map(r=>r.scores?.total)),
+          acc:   avg(valid.map(r=>r.scores?.accuracy)),
+          flu:   avg(valid.map(r=>r.scores?.fluency)),
+          pro:   avg(valid.map(r=>r.scores?.prosody)),
+          wpm:   avg(valid.map(r=>r.metrics?.wpm)),
+          pause: avg(valid.map(r=>r.metrics?.pauseRatio)),
+          pitch: avg(valid.map(r=>r.metrics?.pitchVar)),
         };
-        mediaRecorder.start();
-        isRecording=true;
-        const btn=document.getElementById('record-btn');
-        btn.textContent='🛑 Stop Recording';
-        btn.classList.remove('btn-success');
-        btn.classList.add('btn-error');
-        document.getElementById('recording-indicator').classList.remove('hidden');
-      }catch(err){
-        alert('Microphone access denied');
-      }
-    }
+        const encouragement = pickEncouragement(totals.total);
+        const reportDiv=document.createElement('div');
+        reportDiv.className='container print-only';
+        reportDiv.style.display='block';
+        const date=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+        const listHtml = practicedSentences.map((s,i)=>{
+          const m = s.match(/^[\s\S]+?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*-\s*Level\s*(\d+)\s*,\s*Sentence\s*([^\]]+)\s*\]\s*$/i);
+          const main = m ? s.replace(/\s*\[[^\]]*\]\s*$/,'').trim() : stripBracketTail(s).trim();
+          const source = m ? ` <span style="color:#666;font-size:0.95em;">（Level ${m[3]}；${(m[4]||'').trim()}）</span>` : '';
+          const r = feedbackResults[i];
+          const lineScore = ` — <strong>${r.scores.total}</strong>/100 (A:${r.scores.accuracy} F:${r.scores.fluency} P:${r.scores.prosody})`;
+          const lineMeta  = ` | WPM ${r.metrics.wpm}, Pauses ${safeNum(r.metrics.pauseRatio,2)}`;
+          return `
+            <div class="sentence-score-item">
+              <div><strong>Sentence ${i+1}:</strong> ${main}${source}${lineScore}${lineMeta}</div>
+            </div>`;
+        }).join('');
 
-    function stopRecording(){
-      if(mediaRecorder && isRecording){
-        mediaRecorder.stop();
-        isRecording=false;
-        if(currentStream){
-          currentStream.getTracks().forEach(t=>t.stop());
-          currentStream=null;
-        }
-        const btn=document.getElementById('record-btn');
-        btn.textContent='🎤 Record Again';
-        btn.classList.remove('btn-error');
-        btn.classList.add('btn-success');
-        document.getElementById('recording-indicator').classList.add('hidden');
-      }
-    }
+        const tipsAll = [];
+        valid.forEach(r=> (r.tips||[]).forEach(t=> tipsAll.push(t)) );
+        const topTips = Array.from(new Set(tipsAll)).slice(0,3).map(t=>`<li>${t}</li>`).join('');
 
-    finishPracticeBtn.addEventListener('click', ()=>{
-      reportModal.classList.remove('hidden');
-    });
-
-    generateReportBtn.addEventListener('click', generateReport);
-
-    function safeNum(x, digits=2){
-      if(x==null || isNaN(x)) return '-';
-      const f=parseFloat(x);
-      return isFinite(f)? f.toFixed(digits) : '-';
-    }
-
-    function avg(arr){
-      const v=arr.filter(n=>typeof n==='number' && isFinite(n));
-      if(!v.length) return null;
-      return v.reduce((a,b)=>a+b,0)/v.length;
-    }
-
-    function pickEncouragement(score){
-      if(score==null) return 'Keep going—your persistence will pay off!';
-      if(score>=90) return 'Outstanding! Your pronunciation is clear and expressive—keep shining!';
-      if(score>=80) return 'Great job! Your speaking is fluent and confident—stay consistent!';
-      if(score>=70) return 'Nice work! A bit more practice on stress and rhythm will bring you to the next level.';
-      if(score>=60) return 'Good effort! Focus on accuracy and pacing—you are on the right track.';
-      return 'Every try counts! Read along with the model audio and practice shorter chunks—you’ll get there!';
-    }
-
-    function generateReport(){
-      const className=document.getElementById('report-class-input').value.trim();
-      const seatNo=document.getElementById('report-seat-input').value.trim();
-      const name=document.getElementById('report-name-input').value.trim();
-      if(!className||!seatNo||!name){
-        alert('Please fill in all fields');
-        return;
-      }
-      const valid = feedbackResults.filter(r=>r);
-      const totals = {
-        total: avg(valid.map(r=>r.scores?.total)),
-        acc:   avg(valid.map(r=>r.scores?.accuracy)),
-        flu:   avg(valid.map(r=>r.scores?.fluency)),
-        pro:   avg(valid.map(r=>r.scores?.prosody)),
-        wpm:   avg(valid.map(r=>r.metrics?.wpm)),
-        pause: avg(valid.map(r=>r.metrics?.pauseRatio)),
-        pitch: avg(valid.map(r=>r.metrics?.pitchVar)),
-      };
-      const encouragement = pickEncouragement(totals.total);
-      const reportDiv=document.createElement('div');
-      reportDiv.className='container print-only';
-      reportDiv.style.display='block';
-      const date=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
-      const listHtml = practicedSentences.map((s,i)=>{
-        const m = s.match(/^[\s\S]+?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*-\s*Level\s*(\d+)\s*,\s*Sentence\s*([^\]]+)\s*\]\s*$/i);
-        const main = m ? s.replace(/\s*\[[^\]]*\]\s*$/,'').trim() : stripBracketTail(s).trim();
-        const source = m ? ` <span style="color:#666;font-size:0.95em;">（Level ${m[3]}；${(m[4]||'').trim()}）</span>` : '';
-        const r = feedbackResults[i];
-        const lineScore = ` — <strong>${r.scores.total}</strong>/100 (A:${r.scores.accuracy} F:${r.scores.fluency} P:${r.scores.prosody})`;
-        const lineMeta  = ` | WPM ${r.metrics.wpm}, Pauses ${safeNum(r.metrics.pauseRatio,2)}`;
-        return `
-          <div class="sentence-score-item">
-            <div><strong>Sentence ${i+1}:</strong> ${main}${source}${lineScore}${lineMeta}</div>
-          </div>`;
-      }).join('');
-
-      const tipsAll = [];
-      valid.forEach(r=> (r.tips||[]).forEach(t=> tipsAll.push(t)) );
-      const topTips = Array.from(new Set(tipsAll)).slice(0,3).map(t=>`<li>${t}</li>`).join('');
-
-      reportDiv.innerHTML=`
-        <div class="report-section">
-          <div class="report-header" style="text-align:center;margin-bottom:25px;">
-            <h1 class="report-title" style="font-size:1.9em;margin-bottom:8px;font-weight:800;">Speaking Practice Report</h1>
-            <hr style="border:none;height:3px;background:linear-gradient(90deg,#4a6fa5,#ff7e5f);border-radius:2px;margin:15px auto;width:80%;">
-          </div>
-          <div class="report-info-line">
-            <div class="report-info-item"><span class="report-info-label">Class:</span> ${className}</div>
-            <div class="report-info-item"><span class="report-info-label">Seat No.:</span> ${seatNo}</div>
-            <div class="report-info-item"><span class="report-info-label">Name:</span> ${name}</div>
-            <div class="report-info-item"><span class="report-info-label">Date:</span> ${date}</div>
-          </div>
-          <div class="report-section" style="margin-top:10px;">
-            <h3>Session Summary (Whisper + 60 Baseline)</h3>
-            <ul style="margin-left:20px;">
-              <li>Sentences practiced: <strong>${sentences.length}</strong></li>
-              <li>Average Score: <strong>${totals.total==null?'-':Math.round(totals.total)}</strong>/100 (Acc ${safeNum(totals.acc)}, Flu ${safeNum(totals.flu)}, Pro ${safeNum(totals.pro)})</li>
-              <li>Avg WPM: <strong>${totals.wpm==null?'-':Math.round(totals.wpm)}</strong> · Avg Pauses: <strong>${safeNum(totals.pause,2)}</strong> · Avg PitchVar: <strong>${totals.pitch==null?'-':Math.round(totals.pitch)}</strong></li>
-            </ul>
-            ${topTips?`<div style="margin-top:8px;"><strong>Focus Tips:</strong><ul style="margin-left:20px;">${topTips}</ul></div>`:''}
-            <div style="margin-top:10px;padding:12px;background:#f8fff5;border:1px solid #cdeccd;border-radius:8px;">
-              <strong>Encouragement:</strong>
-              <div>${encouragement}</div>
+        reportDiv.innerHTML=`
+          <div class="report-section">
+            <div class="report-header" style="text-align:center;margin-bottom:25px;">
+              <h1 class="report-title" style="font-size:1.9em;margin-bottom:8px;font-weight:800;">Speaking Practice Report</h1>
+              <hr style="border:none;height:3px;background:linear-gradient(90deg,#4a6fa5,#ff7e5f);border-radius:2px;margin:15px auto;width:80%;">
             </div>
-          </div>
-          <div class="sentence-list" style="margin-top:18px;">
-            <h3>Per-Sentence Scores</h3>
-            ${listHtml}
-          </div>
-        </div>`;
+            <div class="report-info-line">
+              <div class="report-info-item"><span class="report-info-label">Class:</span> ${className}</div>
+              <div class="report-info-item"><span class="report-info-label">Seat No.:</span> ${seatNo}</div>
+              <div class="report-info-item"><span class="report-info-label">Name:</span> ${name}</div>
+              <div class="report-info-item"><span class="report-info-label">Date:</span> ${date}</div>
+            </div>
+            <div class="report-section" style="margin-top:10px;">
+              <h3>Session Summary (Whisper + 60 Baseline)</h3>
+              <ul style="margin-left:20px;">
+                <li>Sentences practiced: <strong>${sentences.length}</strong></li>
+                <li>Average Score: <strong>${totals.total==null?'-':Math.round(totals.total)}</strong>/100 (Acc ${safeNum(totals.acc)}, Flu ${safeNum(totals.flu)}, Pro ${safeNum(totals.pro)})</li>
+                <li>Avg WPM: <strong>${totals.wpm==null?'-':Math.round(totals.wpm)}</strong> · Avg Pauses: <strong>${safeNum(totals.pause,2)}</strong> · Avg PitchVar: <strong>${totals.pitch==null?'-':Math.round(totals.pitch)}</strong></li>
+              </ul>
+              ${topTips?`<div style="margin-top:8px;"><strong>Focus Tips:</strong><ul style="margin-left:20px;">${topTips}</ul></div>`:''}
+              <div style="margin-top:10px;padding:12px;background:#f8fff5;border:1px solid #cdeccd;border-radius:8px;">
+                <strong>Encouragement:</strong>
+                <div>${encouragement}</div>
+              </div>
+            </div>
+            <div class="sentence-list" style="margin-top:18px;">
+              <h3>Per-Sentence Scores</h3>
+              ${listHtml}
+            </div>
+          </div>`;
 
-      const appContainer=document.querySelector('body > .container');
-      if(appContainer) appContainer.classList.add('no-print');
-      document.body.appendChild(reportDiv);
-      reportModal.classList.add('hidden');
-      window.print();
-      if(appContainer) appContainer.classList.remove('no-print');
-      document.body.removeChild(reportDiv);
-    }
-
-    // === Analysis with Whisper + 60 baseline ===
-    const norm = s => s.toLowerCase().replace(/[^\w\s']/g, ' ').replace(/\s+/g, ' ').trim();
-    function tokenize(s){ return norm(s).split(' ').filter(Boolean); }
-    const FILLERS = new Set(['um','uh','erm','hmm','like','you','know','i','mean','ah','uhh']);
-    const EQUIV = new Map([
-      ["i'm","i am"],["you're","you are"],["we're","we are"],["they're","they are"],["he's","he is"],["she's","she is"],["it's","it is"],["that's","that is"],["what's","what is"],["there's","there is"],["won't","will not"],["can't","can not"],["don't","do not"],["doesn't","does not"],["didn't","did not"],["isn't","is not"],["aren't","are not"],["wasn't","was not"],["weren't","were not"],["gonna","going to"],["wanna","want to"],["gotta","got to"],["kinda","kind of"],["sorta","sort of"],["lemme","let me"]
-    ]);
-    function expandEquivalents(tokens){
-      const out=[];
-      for(const t of tokens){
-        const m=EQUIV.get(t);
-        if(m){ out.push(...m.split(' ')); } else out.push(t);
+        const appContainer=document.querySelector('body > .container');
+        if(appContainer) appContainer.classList.add('no-print');
+        document.body.appendChild(reportDiv);
+        reportModal.classList.add('hidden');
+        window.print();
+        if(appContainer) appContainer.classList.remove('no-print');
+        document.body.removeChild(reportDiv);
       }
-      return out;
-    }
-    function dropFillers(tokens){ return tokens.filter(w=>!FILLERS.has(w)); }
-    function lev(a,b){
-      const m=a.length,n=b.length;
-      const dp=Array.from({length:m+1},()=>Array(n+1).fill(0));
-      for(let i=0;i<=m;i++) dp[i][0]=i;
-      for(let j=0;j<=n;j++) dp[0][j]=j;
-      for(let i=1;i<=m;i++){
-        for(let j=1;j<=n;j++){
-          const cost=a[i-1]===b[j-1]?0:1;
-          dp[i][j]=Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+cost);
+
+      // === Analysis with Whisper + 60 baseline ===
+      const norm = s => s.toLowerCase().replace(/[^\w\s']/g, ' ').replace(/\s+/g, ' ').trim();
+      function tokenize(s){ return norm(s).split(' ').filter(Boolean); }
+      const FILLERS = new Set(['um','uh','erm','hmm','like','you','know','i','mean','ah','uhh']);
+      const EQUIV = new Map([
+        ["i'm","i am"],["you're","you are"],["we're","we are"],["they're","they are"],["he's","he is"],["she's","she is"],["it's","it is"],["that's","that is"],["what's","what is"],["there's","there is"],["won't","will not"],["can't","can not"],["don't","do not"],["doesn't","does not"],["didn't","did not"],["isn't","is not"],["aren't","are not"],["wasn't","was not"],["weren't","were not"],["gonna","going to"],["wanna","want to"],["gotta","got to"],["kinda","kind of"],["sorta","sort of"],["lemme","let me"]
+      ]);
+      function expandEquivalents(tokens){
+        const out=[];
+        for(const t of tokens){
+          const m=EQUIV.get(t);
+          if(m){ out.push(...m.split(' ')); } else out.push(t);
         }
+        return out;
       }
-      return dp[m][n];
-    }
-    function WER(refTokens,hypTokens){
-      if(refTokens.length===0) return hypTokens.length===0?0:1;
-      return lev(refTokens,hypTokens)/refTokens.length;
-    }
-    function similarity(refTokens,hypTokens){
-      const maxLen=Math.max(refTokens.length,hypTokens.length,1);
-      return 1-(lev(refTokens,hypTokens)/maxLen);
-    }
-    async function analyzeAudioFeatures(blob){
-      const ac=new (window.AudioContext||window.webkitAudioContext)();
-      const buf=await ac.decodeAudioData(await blob.arrayBuffer());
-      const pcm=buf.getChannelData(0);
-      const sr=buf.sampleRate;
-      ac.close?.();
-      const duration = Math.max(0.001, pcm.length / sr);
-      const frameSize = Math.floor(sr * 0.03), hop = Math.floor(frameSize * 0.5);
-      let energies=[]; for(let i=0;i+frameSize<pcm.length;i+=hop){ let s=0; for(let j=0;j<frameSize;j++){ const v=pcm[i+j]; s+=v*v; } energies.push(s/frameSize); }
-      if(energies.length===0) return { duration, pauseRatio:1, pitchVar:0 };
-      const sorted=[...energies].sort((a,b)=>a-b);
-      const pauseThresh = sorted[Math.floor(sorted.length*0.15)];
-      const pauses = energies.filter(e=>e<pauseThresh).length;
-      const pauseRatio = energies.length? (pauses/energies.length):1;
-      function estimatePitchHz(frame){ let maxLag=Math.floor(sr/80), minLag=Math.floor(sr/500); let bestLag=0,best=-Infinity; for(let lag=minLag; lag<=maxLag; lag++){ let sum=0; for(let i=0;i+lag<frame.length;i++){ sum+=frame[i]*frame[i+lag]; } if(sum>best){ best=sum; bestLag=lag; } } return bestLag? (sr/bestLag):0; }
-      let pitches=[]; for(let i=0;i+frameSize<pcm.length;i+=hop){ const frame = pcm.slice(i, i+frameSize); let e=0; for(let j=0;j<frame.length;j++){ const v=frame[j]; e+=v*v; } const pitch = estimatePitchHz(frame); if(pitch>60 && pitch<400 && e/frame.length>pauseThresh) pitches.push(pitch); }
-      const mean = pitches.length? pitches.reduce((a,b)=>a+b,0)/pitches.length : 0;
-      let pitchVar = pitches.length? (pitches.reduce((a,b)=>a+(b-mean)*(b-mean),0)/pitches.length) : 0;
-      pitchVar = Math.min(pitchVar, 2000);
-      return { duration, pauseRatio, pitchVar };
-    }
-    function wordsPerMinute(spokenWordsCount, durationSec){
-      const minutes=Math.max(durationSec/60,1e-3);
-      return spokenWordsCount/minutes;
-    }
-    async function analyzePronunciationWithText(blob, targetText, hypText){
-      const refTokens0 = tokenize(targetText);
-      const hypTokens0 = tokenize(hypText);
-      const refTokens = dropFillers(expandEquivalents(refTokens0));
-      const hypTokens = dropFillers(expandEquivalents(hypTokens0));
-
-      let accuracyScore = 60; // ✅ 基準分 60
-      let sim = 0.6, wer = 0.4;
-
-      if (hypText.trim() !== '') {
-        // Whisper 成功辨識
-        sim = (refTokens.length || hypTokens.length) ? similarity(refTokens, hypTokens) : 0;
-        wer = refTokens.length ? WER(refTokens, hypTokens) : (hypTokens.length > 0 ? 1 : 0);
-        accuracyScore = Math.max(0, Math.min(100, Math.round(sim * 100)));
+      function dropFillers(tokens){ return tokens.filter(w=>!FILLERS.has(w)); }
+      function lev(a,b){
+        const m=a.length,n=b.length;
+        const dp=Array.from({length:m+1},()=>Array(n+1).fill(0));
+        for(let i=0;i<=m;i++) dp[i][0]=i;
+        for(let j=0;j<=n;j++) dp[0][j]=j;
+        for(let i=1;i<=m;i++){
+          for(let j=1;j<=n;j++){
+            const cost=a[i-1]===b[j-1]?0:1;
+            dp[i][j]=Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+cost);
+          }
+        }
+        return dp[m][n];
       }
-      // 否則保留 accuracyScore = 60
+      function WER(refTokens,hypTokens){
+        if(refTokens.length===0) return hypTokens.length===0?0:1;
+        return lev(refTokens,hypTokens)/refTokens.length;
+      }
+      function similarity(refTokens,hypTokens){
+        const maxLen=Math.max(refTokens.length,hypTokens.length,1);
+        return 1-(lev(refTokens,hypTokens)/maxLen);
+      }
+      async function analyzeAudioFeatures(blob){
+        const ac=new (window.AudioContext||window.webkitAudioContext)();
+        const buf=await ac.decodeAudioData(await blob.arrayBuffer());
+        const pcm=buf.getChannelData(0);
+        const sr=buf.sampleRate;
+        ac.close?.();
+        const duration = Math.max(0.001, pcm.length / sr);
+        const frameSize = Math.floor(sr * 0.03), hop = Math.floor(frameSize * 0.5);
+        let energies=[]; for(let i=0;i+frameSize<pcm.length;i+=hop){ let s=0; for(let j=0;j<frameSize;j++){ const v=pcm[i+j]; s+=v*v; } energies.push(s/frameSize); }
+        if(energies.length===0) return { duration, pauseRatio:1, pitchVar:0 };
+        const sorted=[...energies].sort((a,b)=>a-b);
+        const pauseThresh = sorted[Math.floor(sorted.length*0.15)];
+        const pauses = energies.filter(e=>e<pauseThresh).length;
+        const pauseRatio = energies.length? (pauses/energies.length):1;
+        function estimatePitchHz(frame){ let maxLag=Math.floor(sr/80), minLag=Math.floor(sr/500); let bestLag=0,best=-Infinity; for(let lag=minLag; lag<=maxLag; lag++){ let sum=0; for(let i=0;i+lag<frame.length;i++){ sum+=frame[i]*frame[i+lag]; } if(sum>best){ best=sum; bestLag=lag; } } return bestLag? (sr/bestLag):0; }
+        let pitches=[]; for(let i=0;i+frameSize<pcm.length;i+=hop){ const frame = pcm.slice(i, i+frameSize); let e=0; for(let j=0;j<frame.length;j++){ const v=frame[j]; e+=v*v; } const pitch = estimatePitchHz(frame); if(pitch>60 && pitch<400 && e/frame.length>pauseThresh) pitches.push(pitch); }
+        const mean = pitches.length? pitches.reduce((a,b)=>a+b,0)/pitches.length : 0;
+        let pitchVar = pitches.length? (pitches.reduce((a,b)=>a+(b-mean)*(b-mean),0)/pitches.length) : 0;
+        pitchVar = Math.min(pitchVar, 2000);
+        return { duration, pauseRatio, pitchVar };
+      }
+      function wordsPerMinute(spokenWordsCount, durationSec){
+        const minutes=Math.max(durationSec/60,1e-3);
+        return spokenWordsCount/minutes;
+      }
+      async function analyzePronunciationWithText(blob, targetText, hypText){
+        const refTokens0 = tokenize(targetText);
+        const hypTokens0 = tokenize(hypText);
+        const refTokens = dropFillers(expandEquivalents(refTokens0));
+        const hypTokens = dropFillers(expandEquivalents(hypTokens0));
 
-      const feats = await analyzeAudioFeatures(blob);
-      const wpm = wordsPerMinute(Math.max(hypTokens.length, 1), feats.duration);
-      const wpmScore = (() => {
-        if (wpm >= 110 && wpm <= 180) return 100;
-        if (wpm < 60) return 40 * (wpm / 60);
-        if (wpm > 220) return Math.max(20, 100 - (wpm - 180));
-        if (wpm < 110) return 60 + (wpm - 60) * (40 / 50);
-        return 100 - (wpm - 180) * (100 / 40);
-      })();
-      const pauseScore = Math.max(0, 100 - (feats.pauseRatio * 200));
-      const fluencyScore = Math.round(0.7 * wpmScore + 0.3 * pauseScore);
-      const pv = feats.pitchVar;
-      const prosodyScore = (() => {
-        if (pv === 0) return 50;
-        if (pv < 150) return 60 + (pv / 150) * 20;
-        if (pv < 1200) return 80 + (Math.min(pv, 1200) - 150) * (20 / 1050);
-        return Math.max(65, 100 - (pv - 1200) / 8);
-      })();
-      const total = Math.round(0.6 * accuracyScore + 0.2 * fluencyScore + 0.2 * prosodyScore);
+        let accuracyScore = 60; // ✅ 基準分 60
+        let sim = 0.6, wer = 0.4;
 
-      const tips = [];
-      if (wer > 0.25 || accuracyScore < 75) tips.push('多練習單字連讀與重音位置；逐句比對關鍵字避免漏字。');
-      if (wpm < 100) tips.push('語速略慢，可嘗試跟讀原音，提升節奏與連貫度。');
-      if (wpm > 190) tips.push('語速偏快，注意斷句與清晰度。');
-      if (feats.pauseRatio > 0.25) tips.push('停頓較多，建議先分段練習，再逐步合併整句。');
-      if (prosodyScore < 80) tips.push('語調較單調，嘗試在重讀詞提高音高或時長。');
-      if (tips.length === 0) tips.push('發音整體表現良好，保持練習！');
+        if (hypText.trim() !== '') {
+          sim = (refTokens.length || hypTokens.length) ? similarity(refTokens, hypTokens) : 0;
+          wer = refTokens.length ? WER(refTokens, hypTokens) : (hypTokens.length > 0 ? 1 : 0);
+          accuracyScore = Math.max(0, Math.min(100, Math.round(sim * 100)));
+        }
 
-      return {
-        ok: true,
-        srSupported: true,
-        transcripts: { hypText, targetText },
-        metrics: {
-          similarity: +sim.toFixed(3),
-          wer: +wer.toFixed(3),
-          wpm: Math.round(wpm),
-          pauseRatio: +feats.pauseRatio.toFixed(3),
-          pitchVar: Math.round(pv)
-        },
-        scores: {
-          accuracy: accuracyScore,
-          fluency: fluencyScore,
-          prosody: prosodyScore,
-          total: total
-        },
-        notes: [],
-        tips
-      };
-    }
+        const feats = await analyzeAudioFeatures(blob);
+        const wpm = wordsPerMinute(Math.max(hypTokens.length, 1), feats.duration);
+        const wpmScore = (() => {
+          if (wpm >= 110 && wpm <= 180) return 100;
+          if (wpm < 60) return 40 * (wpm / 60);
+          if (wpm > 220) return Math.max(20, 100 - (wpm - 180));
+          if (wpm < 110) return 60 + (wpm - 60) * (40 / 50);
+          return 100 - (wpm - 180) * (100 / 40);
+        })();
+        const pauseScore = Math.max(0, 100 - (feats.pauseRatio * 200));
+        const fluencyScore = Math.round(0.7 * wpmScore + 0.3 * pauseScore);
+        const pv = feats.pitchVar;
+        const prosodyScore = (() => {
+          if (pv === 0) return 50;
+          if (pv < 150) return 60 + (pv / 150) * 20;
+          if (pv < 1200) return 80 + (Math.min(pv, 1200) - 150) * (20 / 1050);
+          return Math.max(65, 100 - (pv - 1200) / 8);
+        })();
+        const total = Math.round(0.6 * accuracyScore + 0.2 * fluencyScore + 0.2 * prosodyScore);
+
+        const tips = [];
+        if (wer > 0.25 || accuracyScore < 75) tips.push('多練習單字連讀與重音位置；逐句比對關鍵字避免漏字。');
+        if (wpm < 100) tips.push('語速略慢，可嘗試跟讀原音，提升節奏與連貫度。');
+        if (wpm > 190) tips.push('語速偏快，注意斷句與清晰度。');
+        if (feats.pauseRatio > 0.25) tips.push('停頓較多，建議先分段練習，再逐步合併整句。');
+        if (prosodyScore < 80) tips.push('語調較單調，嘗試在重讀詞提高音高或時長。');
+        if (tips.length === 0) tips.push('發音整體表現良好，保持練習！');
+
+        return {
+          ok: true,
+          srSupported: true,
+          transcripts: { hypText, targetText },
+          metrics: {
+            similarity: +sim.toFixed(3),
+            wer: +wer.toFixed(3),
+            wpm: Math.round(wpm),
+            pauseRatio: +feats.pauseRatio.toFixed(3),
+            pitchVar: Math.round(pv)
+          },
+          scores: {
+            accuracy: accuracyScore,
+            fluency: fluencyScore,
+            prosody: prosodyScore,
+            total: total
+          },
+          notes: [],
+          tips
+        };
+      }
+    });
   </script>
 </body>
 </html>
