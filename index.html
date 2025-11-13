@@ -65,6 +65,10 @@
     @media (max-width:768px){ body{padding:10px;} .container{padding:20px;border-radius:10px;} h1{font-size:1.8em;} .practice-item{padding:20px;} .sentence-container{flex-direction:column;align-items:flex-start;padding:15px;} .audio-btn{margin-left:0;margin-top:15px;align-self:center;} .report-info-line{flex-direction:column;align-items:flex-start;gap:8px;} .navigation{flex-direction:column;} .btn{padding:18px;} .sentence-source{flex-direction:column;} .level-selection{grid-template-columns:repeat(2,1fr);} }
     @media (max-width:480px){ body{padding:5px;} .container{padding:15px;} h1{font-size:1.5em;} .sentence-text{font-size:16px;} .recording-btn{padding:20px;font-size:16px;} .level-selection{grid-template-columns:1fr;} }
     .disclaimer { background:#fff8e1; border-left:4px solid #ffb74d; padding:15px; margin:20px 0; border-radius:8px; font-size:0.95em; color:#795548; }
+
+    /* 行動裝置點擊優化 */
+    button, .sentence-source-btn, .level-btn { -webkit-tap-highlight-color: transparent; }
+    .sentence-source-btn, .level-btn { cursor: pointer; }
   </style>
 </head>
 <body>
@@ -80,8 +84,9 @@
       <div class="form-group">
         <label>Sentence Source</label>
         <div class="sentence-source">
-          <div class="sentence-source-btn active" data-source="manual">Enter Manually</div>
-          <div class="sentence-source-btn" data-source="level">From Sentence Bank</div>
+          <!-- 改用 button，提升可點性 -->
+          <button type="button" class="sentence-source-btn active" data-source="manual">Enter Manually</button>
+          <button type="button" class="sentence-source-btn" data-source="level">From Sentence Bank</button>
         </div>
         <div id="manual-input" class="sentence-input">
           <label for="sentences">Practice Sentences (one per line, maximum 10)</label>
@@ -90,18 +95,20 @@
         <div id="level-input" class="sentence-input hidden">
           <label>Select Difficulty Level</label>
           <div class="level-selection">
-            <div class="level-btn" data-level="1">Level 1</div>
-            <div class="level-btn" data-level="2">Level 2</div>
-            <div class="level-btn" data-level="3">Level 3</div>
-            <div class="level-btn" data-level="4">Level 4</div>
-            <div class="level-btn" data-level="5">Level 5</div>
-            <div class="level-btn" data-level="6">Level 6</div>
+            <!-- 改用 button，提升可點性 -->
+            <button type="button" class="level-btn" data-level="1">Level 1</button>
+            <button type="button" class="level-btn" data-level="2">Level 2</button>
+            <button type="button" class="level-btn" data-level="3">Level 3</button>
+            <button type="button" class="level-btn" data-level="4">Level 4</button>
+            <button type="button" class="level-btn" data-level="5">Level 5</button>
+            <button type="button" class="level-btn" data-level="6">Level 6</button>
           </div>
           <button id="load-level-sentences" class="btn btn-accent" style="margin-top:15px;">Load 10 Random Sentences</button>
         </div>
       </div>
       <button id="start-practice" class="btn">Start Practice</button>
     </div>
+
     <!-- Practice Page -->
     <div id="practice-page" class="hidden">
       <h1>English Pronunciation Practice</h1>
@@ -113,6 +120,7 @@
       </div>
       <button id="finish-practice" class="btn btn-accent">Finish Practice</button>
     </div>
+
     <!-- Report Modal -->
     <div id="report-modal" class="hidden">
       <div style="background:#fff;padding:24px;border-radius:12px;max-width:640px;margin:0 auto;">
@@ -152,6 +160,29 @@
     };
     initASR();
 
+    // === Platform / MIME helpers ===
+    const isIOS = () =>
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    function pickAudioMime() {
+      // iOS Safari: mp4/aac 最穩；其他平台可用 webm/opus
+      const candidates = [
+        'audio/mp4; codecs=mp4a.40.2',
+        'audio/aac',
+        'audio/webm; codecs=opus',
+        'audio/webm'
+      ];
+      for (const m of candidates) {
+        if (window.MediaRecorder && MediaRecorder.isTypeSupported?.(m)) return m;
+      }
+      return '';
+    }
+
+    async function ensureAudioContextReady(ac) {
+      try { if (ac.state === 'suspended') await ac.resume(); } catch(e) {}
+    }
+
     // Global state
     let sentences=[], currentSentenceIndex=0, mediaRecorder, audioChunks=[], isRecording=false,
         practicedSentences=[], sentenceSource='manual', selectedLevel=null, currentStream=null;
@@ -184,27 +215,33 @@
       setTimeout(()=>el.remove(), 5000); 
     }
 
-    document.querySelectorAll('.sentence-source-btn').forEach(btn=>{ 
-      btn.addEventListener('click',function(){ 
-        document.querySelectorAll('.sentence-source-btn').forEach(b=>b.classList.remove('active')); 
-        this.classList.add('active'); 
-        sentenceSource = this.getAttribute('data-source'); 
-        if(sentenceSource==='manual'){ 
-          manualInput.classList.remove('hidden'); 
-          levelInput.classList.add('hidden'); 
-        } else { 
-          manualInput.classList.add('hidden'); 
-          levelInput.classList.remove('hidden'); 
-        } 
-      }); 
+    // Pointer/touch 友善點擊
+    function addPressListener(el, handler){
+      el.addEventListener('pointerdown', (e)=>{ e.preventDefault(); handler(e); }, { passive: false });
+      el.addEventListener('click', handler);
+    }
+
+    document.querySelectorAll('.sentence-source-btn').forEach(btn=>{
+      addPressListener(btn, function(){
+        document.querySelectorAll('.sentence-source-btn').forEach(b=>b.classList.remove('active'));
+        this.classList.add('active');
+        sentenceSource = this.getAttribute('data-source');
+        if(sentenceSource==='manual'){
+          manualInput.classList.remove('hidden');
+          levelInput.classList.add('hidden');
+        } else {
+          manualInput.classList.add('hidden');
+          levelInput.classList.remove('hidden');
+        }
+      });
     });
 
-    document.querySelectorAll('.level-btn').forEach(btn=>{ 
-      btn.addEventListener('click',function(){ 
-        document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active')); 
-        this.classList.add('active'); 
-        selectedLevel=this.getAttribute('data-level'); 
-      }); 
+    document.querySelectorAll('.level-btn').forEach(btn=>{
+      addPressListener(btn, function(){
+        document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active'));
+        this.classList.add('active');
+        selectedLevel=this.getAttribute('data-level');
+      });
     });
 
     async function fetchLevelSentences(level){ 
@@ -242,9 +279,9 @@
         showStatusMessage(`Failed: ${e.message}`,'error',levelInput); 
       } 
     }
-    loadLevelSentencesBtn.addEventListener('click',loadLevelSentences);
+    addPressListener(loadLevelSentencesBtn, loadLevelSentences);
 
-    startPracticeBtn.addEventListener('click', ()=>{ 
+    addPressListener(startPracticeBtn, ()=>{ 
       let arr = document.getElementById('sentences').value.split('\n').map(s=>s.trim()).filter(Boolean); 
       if(sentenceSource==='level' && arr.length===0){ 
         showStatusMessage('Please load sentences from Sentence Bank first','error'); 
@@ -292,7 +329,7 @@
           </div>
           <div id="playback-section" class="hidden">
             <p>Your recording:</p>
-            <audio id="playback-audio" controls style="width:100%;margin:15px 0;"></audio>
+            <audio id="playback-audio" controls playsinline style="width:100%;margin:15px 0;"></audio>
           </div>
           <div id="feedback-panel" class="hidden" style="margin-top:10px;">
             <div id="feedback-status" class="status-message status-info">Ready.</div>
@@ -378,39 +415,59 @@
     }
 
     async function startRecording(){ 
-      try{ 
+      try{
+        if (!navigator.mediaDevices?.getUserMedia) {
+          alert('This browser does not support audio recording. Please use Safari/Chrome with HTTPS.');
+          return;
+        }
+        if (!window.MediaRecorder) {
+          alert('MediaRecorder is not supported on this device/browser.');
+          return;
+        }
+
         const stream = await navigator.mediaDevices.getUserMedia({audio:true}); 
-        mediaRecorder = new MediaRecorder(stream); 
+        const mimeType = pickAudioMime();
+        mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
         currentStream=stream; 
         audioChunks=[]; 
+
         mediaRecorder.ondataavailable=e=>audioChunks.push(e.data); 
+
         mediaRecorder.onstop=async ()=>{ 
-          const rawBlob = new Blob(audioChunks,{type:'audio/webm'}); 
+          const rawBlob = new Blob(audioChunks,{type: mediaRecorder.mimeType || mimeType || 'audio/mp4'}); 
           const url = URL.createObjectURL(rawBlob); 
-          document.getElementById('playback-audio').src=url; 
+          const audioEl = document.getElementById('playback-audio');
+          audioEl.setAttribute('playsinline','');
+          audioEl.src=url; 
           document.getElementById('playback-section').classList.remove('hidden'); 
+
           const displaySentence = document.querySelector('.audio-btn')?.getAttribute('data-sentence') || ''; 
-          if(window.renderFeedbackStatus){ 
-            window.renderFeedbackStatus('Analyzing pronunciation…'); 
-          } 
+          window.renderFeedbackStatus && window.renderFeedbackStatus('Analyzing pronunciation…'); 
+
+          let hypText = '';
           if(asr){ 
             try {
-              const arrayBuffer = await rawBlob.arrayBuffer();
-              const audioCtx = new AudioContext({ sampleRate: 16000 });
-              const buffer = await audioCtx.decodeAudioData(arrayBuffer);
+              const ac = new (window.AudioContext||window.webkitAudioContext)();
+              await ensureAudioContextReady(ac);
+              const buffer = await ac.decodeAudioData(await rawBlob.arrayBuffer()); // mp4/aac 可解
               const audioData = buffer.getChannelData(0);
               const result = await asr(audioData);
-              const hypText = result.text || '';
-              const res = await analyzePronunciation({ blob: rawBlob, targetText: displaySentence, hypText });
-              window.renderFeedbackResult(res);
+              hypText = result.text || '';
+              ac.close?.();
             } catch (err) {
-              console.error(err);
-              window.renderFeedbackStatus && window.renderFeedbackStatus('Analysis failed. Using fallback.');
-              const res = await analyzePronunciation({ blob: rawBlob, targetText: displaySentence, hypText: '' });
-              window.renderFeedbackResult(res);
+              console.warn('ASR decode failed; continue without hypText', err);
             }
-          } 
+          }
+
+          try {
+            const res = await analyzePronunciation({ blob: rawBlob, targetText: displaySentence, hypText });
+            window.renderFeedbackResult(res);
+          } catch (err) {
+            console.error(err);
+            window.renderFeedbackStatus && window.renderFeedbackStatus('Analysis failed. Please try again on a different device or browser.');
+          }
         }; 
+
         mediaRecorder.start(); 
         isRecording=true; 
         const btn=document.getElementById('record-btn'); 
@@ -419,7 +476,7 @@
         btn.classList.add('btn-error'); 
         document.getElementById('recording-indicator').classList.remove('hidden'); 
       }catch(err){ 
-        alert('Microphone access denied'); 
+        alert('Microphone access denied or unsupported on this device/browser.');
       } 
     }
 
@@ -439,11 +496,11 @@
       } 
     }
 
-    finishPracticeBtn.addEventListener('click', ()=>{ 
+    addPressListener(finishPracticeBtn, ()=>{ 
       reportModal.classList.remove('hidden'); 
     });
 
-    generateReportBtn.addEventListener('click', generateReport);
+    addPressListener(generateReportBtn, generateReport);
 
     // === Enhanced Pronunciation Analysis with Stable ASR ===
     const FILLERS = new Set(['um','uh','erm','hmm','like','you','know','i','mean','ah','uhh']);
@@ -482,63 +539,76 @@
       return lev(refTokens,hypTokens)/refTokens.length;
     }
 
-    async function decodeToPCM(blob){
-      const ac=new (window.AudioContext||window.webkitAudioContext)();
-      const buf=await ac.decodeAudioData(await blob.arrayBuffer());
-      const pcm=buf.getChannelData(0);
-      const sr=buf.sampleRate;
-      ac.close?.();
-      return { pcm, sampleRate: sr };
-    }
-
+    // 安全的特徵分析：解不開音也不會炸掉
     async function analyzeAudioFeatures(blob){
-      const { pcm, sampleRate } = await decodeToPCM(blob);
-      const duration = Math.max(0.001, pcm.length / sampleRate);
-      const frameSize = Math.floor(sampleRate * 0.03), hop = Math.floor(frameSize * 0.5);
-      let energies=[];
-      for(let i=0;i+frameSize<pcm.length;i+=hop){
-        let s=0;
-        for(let j=0;j<frameSize;j++){
-          const v=pcm[i+j];
-          s+=v*v;
-        }
-        energies.push(s/frameSize);
-      }
-      if(energies.length===0) return { duration, pauseRatio:1, energyMean:0, pitchVar:0, sampleRate };
-      const sorted=[...energies].sort((a,b)=>a-b);
-      const pauseThresh = sorted[Math.floor(sorted.length*0.15)];
-      const pauses = energies.filter(e=>e<pauseThresh).length;
-      const pauseRatio = energies.length? (pauses/energies.length):1;
-      function estimatePitchHz(frame){
-        let maxLag=Math.floor(sampleRate/80), minLag=Math.floor(sampleRate/500);
-        let bestLag=0,best=-Infinity;
-        for(let lag=minLag; lag<=maxLag; lag++){
-          let sum=0;
-          for(let i=0;i+lag<frame.length;i++){
-            sum+=frame[i]*frame[i+lag];
+      try {
+        const ac=new (window.AudioContext||window.webkitAudioContext)();
+        await ensureAudioContextReady(ac);
+        const buf=await ac.decodeAudioData(await blob.arrayBuffer());
+        const pcm=buf.getChannelData(0);
+        const sampleRate=buf.sampleRate;
+        ac.close?.();
+
+        const duration = Math.max(0.001, pcm.length / sampleRate);
+        const frameSize = Math.floor(sampleRate * 0.03), hop = Math.floor(frameSize * 0.5);
+        let energies=[];
+        for(let i=0;i+frameSize<pcm.length;i+=hop){
+          let s=0;
+          for(let j=0;j<frameSize;j++){
+            const v=pcm[i+j];
+            s+=v*v;
           }
-          if(sum>best){
-            best=sum;
-            bestLag=lag;
+          energies.push(s/frameSize);
+        }
+        if(energies.length===0) return { duration, pauseRatio:1, energyMean:0, pitchVar:0, sampleRate };
+
+        const sorted=[...energies].sort((a,b)=>a-b);
+        const pauseThresh = sorted[Math.floor(sorted.length*0.15)];
+        const pauses = energies.filter(e=>e<pauseThresh).length;
+        const pauseRatio = energies.length? (pauses/energies.length):1;
+
+        function estimatePitchHz(frame){
+          let maxLag=Math.floor(sampleRate/80), minLag=Math.floor(sampleRate/500);
+          let bestLag=0,best=-Infinity;
+          for(let lag=minLag; lag<=maxLag; lag++){
+            let sum=0;
+            for(let i=0;i+lag<frame.length;i++){
+              sum+=frame[i]*frame[i+lag];
+            }
+            if(sum>best){
+              best=sum;
+              bestLag=lag;
+            }
           }
+          return bestLag? (sampleRate/bestLag):0;
         }
-        return bestLag? (sampleRate/bestLag):0;
-      }
-      let pitches=[];
-      for(let i=0;i+frameSize<pcm.length;i+=hop){
-        const frame = pcm.slice(i, i+frameSize);
-        let e=0;
-        for(let j=0;j<frame.length;j++){
-          const v=frame[j];
-          e+=v*v;
+        let pitches=[];
+        for(let i=0;i+frameSize<pcm.length;i+=hop){
+          const frame = pcm.slice(i, i+frameSize);
+          let e=0;
+          for(let j=0;j<frame.length;j++){
+            const v=frame[j];
+            e+=v*v;
+          }
+          const pitch = estimatePitchHz(frame);
+          if(pitch>60 && pitch<400 && e/frame.length>pauseThresh) pitches.push(pitch);
         }
-        const pitch = estimatePitchHz(frame);
-        if(pitch>60 && pitch<400 && e/frame.length>pauseThresh) pitches.push(pitch);
+        const mean = pitches.length? pitches.reduce((a,b)=>a+b,0)/pitches.length : 0;
+        let pitchVar = pitches.length? (pitches.reduce((a,b)=>a+(b-mean)*(b-mean),0)/pitches.length) : 0;
+        pitchVar = Math.min(pitchVar, 2000);
+        return { duration, pauseRatio, energyMean: sorted[Math.floor(sorted.length*0.5)]||0, pitchVar, sampleRate };
+      } catch (e) {
+        console.warn('Feature extraction failed; using safe defaults', e);
+        // 後備：用 <audio> metadata 估時長，其它代入保守值
+        const url = URL.createObjectURL(blob);
+        const temp = document.createElement('audio');
+        temp.preload = 'metadata';
+        temp.src = url;
+        await new Promise(res => temp.onloadedmetadata = res);
+        const duration = isFinite(temp.duration) ? temp.duration : 3.0;
+        URL.revokeObjectURL(url);
+        return { duration, pauseRatio: 0.3, energyMean: 0.01, pitchVar: 300, sampleRate: 48000 };
       }
-      const mean = pitches.length? pitches.reduce((a,b)=>a+b,0)/pitches.length : 0;
-      let pitchVar = pitches.length? (pitches.reduce((a,b)=>a+(b-mean)*(b-mean),0)/pitches.length) : 0;
-      pitchVar = Math.min(pitchVar, 2000);
-      return { duration, pauseRatio, energyMean: sorted[Math.floor(sorted.length*0.5)]||0, pitchVar, sampleRate };
     }
 
     function wordsPerMinute(spokenWordsCount, durationSec){
@@ -560,7 +630,7 @@
         accuracyScore = Math.round(sim * 100);
       }
 
-      // Enforce minimum 60 points
+      // 最低 60 分，避免 ASR 失敗過低
       accuracyScore = Math.max(60, accuracyScore);
 
       const feats = await analyzeAudioFeatures(blob);
@@ -635,7 +705,7 @@
         const m = s.match(/^[\s\S]+?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*-\s*Level\s*(\d+)\s*,\s*Sentence\s*([^\]]+)\s*\]\s*$/i);
         const main = m ? s.replace(/\s*\[[^\]]*\]\s*$/,'').trim() : stripBracketTail(s).trim();
         const source = m ? ` <span style="color:#666;font-size:0.95em;">（Level ${m[3]}；${(m[4]||'').trim()}）</span>` : '';
-        const r = feedbackResults[i];
+        const r = feedbackResults[i] || { scores:{ total:'-', accuracy:'-', fluency:'-', prosody:'-' }, metrics:{ wpm:'-', pauseRatio:'-' } };
         const lineScore = ` — <strong>${r.scores.total}</strong>/100 (A:${r.scores.accuracy} F:${r.scores.fluency} P:${r.scores.prosody})`;
         const lineMeta = ` | WPM ${r.metrics.wpm}, Pauses ${safeNum(r.metrics.pauseRatio,2)}`;
         return `
