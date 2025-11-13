@@ -60,7 +60,7 @@
     .status-info{background:linear-gradient(135deg,rgba(52,152,219,.1),rgba(41,128,185,.1));color:var(--primary-color);border:2px solid var(--primary-color);}
     .print-only{display:none;} .no-print{}
     @media print{ body{background:#fff!important;padding:0;} .no-print{display:none!important;} .print-only{display:block!important;} .practice-item,.report-section{break-inside:avoid;} }
-    .report-title{ color:#2c3e50!important; background:none!important; -webkit-text-fill-color:#2c3e50!important; -webkit-background-clip:initial!important; background-clip:initial!important; }
+    .report-title{ color:#2c3e50!important; background:none!important; -webkit-text-fill-color:#2c3e50!important; background-clip:initial!important; }
     @media print{ .report-title{ color:#000!important; -webkit-text-fill-color:#000!important; background:none!important; } }
     @media (max-width:768px){ body{padding:10px;} .container{padding:20px;border-radius:10px;} h1{font-size:1.8em;} .practice-item{padding:20px;} .sentence-container{flex-direction:column;align-items:flex-start;padding:15px;} .audio-btn{margin-left:0;margin-top:15px;align-self:center;} .report-info-line{flex-direction:column;align-items:flex-start;gap:8px;} .navigation{flex-direction:column;} .btn{padding:18px;} .sentence-source{flex-direction:column;} .level-selection{grid-template-columns:repeat(2,1fr);} }
     @media (max-width:480px){ body{padding:5px;} .container{padding:15px;} h1{font-size:1.5em;} .sentence-text{font-size:16px;} .recording-btn{padding:20px;font-size:16px;} .level-selection{grid-template-columns:1fr;} }
@@ -157,7 +157,7 @@
     };
     initASR();
 
-    // iOS/音訊相容小工具（不影響原本成功路徑）
+    // iOS/音訊相容工具（不影響原本成功路徑）
     const isIOS = () =>
       /iPad|iPhone|iPod/.test(navigator.userAgent) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -442,7 +442,7 @@
           let hypText = '';
           if(asr){ 
             try {
-              // ====== 你的原本流程（保持不變）======
+              // ====== 原本 ASR 流程（不動）======
               const arrayBuffer = await rawBlob.arrayBuffer();
               const audioCtx = new (window.AudioContext||window.webkitAudioContext)({ sampleRate: 16000 });
               await ensureAudioContextReady(audioCtx);
@@ -450,11 +450,11 @@
               try {
                 buffer = await audioCtx.decodeAudioData(arrayBuffer);
               } catch (primaryErr) {
-                // ====== 備援（只有原流程失敗時才啟用；不影響正常情況）======
+                // ====== 備援（僅當 decodeAudioData 失敗時啟用）======
                 const ctx2 = new (window.AudioContext||window.webkitAudioContext)();
                 await ensureAudioContextReady(ctx2);
                 const buf2 = await ctx2.decodeAudioData(arrayBuffer);
-                // 混成 mono
+                // 混成 mono 並以 OfflineAudioContext 轉 16k
                 const mono = (() => {
                   if (buf2.numberOfChannels === 1) return buf2.getChannelData(0);
                   const len = buf2.length;
@@ -530,7 +530,7 @@
 
     addPressListener(generateReportBtn, generateReport);
 
-    // === 下方評分模組：不動你的規則 ===
+    // === Scoring ===
     const FILLERS = new Set(['um','uh','erm','hmm','like','you','know','i','mean','ah','uhh']);
     const EQUIV = new Map([
       ["i'm","i am"],["you're","you are"],["we're","we are"],["they're","they are"],["he's","he is"],["she's","she is"],["it's","it is"],["that's","that is"],["what's","what is"],["there's","there is"],["won't","will not"],["can't","can not"],["don't","do not"],["doesn't","does not"],["didn't","did not"],["isn't","is not"],["aren't","are not"],["wasn't","was not"],["weren't","were not"],["gonna","going to"],["wanna","want to"],["gotta","got to"],["kinda","kind of"],["sorta","sort of"],["lemme","let me"]
@@ -567,19 +567,22 @@
       return lev(refTokens,hypTokens)/refTokens.length;
     }
 
+    // ====== 新：加入 VAD，回傳 speechDuration / pauseRatioSpeech ======
     async function analyzeAudioFeatures(blob){
       try {
         const ac=new (window.AudioContext||window.webkitAudioContext)();
         await ensureAudioContextReady(ac);
         const buf=await ac.decodeAudioData(await blob.arrayBuffer());
         const pcm=buf.getChannelData(0);
-        const sampleRate=buf.sampleRate;
+        const sr=buf.sampleRate;
         ac.close?.();
 
-        const duration = Math.max(0.001, pcm.length / sampleRate);
-        const frameSize = Math.floor(sampleRate * 0.03), hop = Math.floor(frameSize * 0.5);
-        let energies=[];
-        for(let i=0;i+frameSize<pcm.length;i+=hop){
+        const duration = Math.max(0.001, pcm.length / sr);
+        const frameSize = Math.floor(sr * 0.03), hop = Math.floor(frameSize * 0.5);
+
+        // 能量序列
+        const energies=[];
+        for(let i=0;i+frameSize<=pcm.length;i+=hop){
           let s=0;
           for(let j=0;j<frameSize;j++){
             const v=pcm[i+j];
@@ -587,15 +590,55 @@
           }
           energies.push(s/frameSize);
         }
-        if(energies.length===0) return { duration, pauseRatio:1, energyMean:0, pitchVar:0, sampleRate };
+        if(energies.length===0){
+          return { duration, speechDuration: duration, pauseRatio:1, pauseRatioSpeech:1, energyMean:0, pitchVar:0, sampleRate: sr };
+        }
 
+        // 自適應門檻
         const sorted=[...energies].sort((a,b)=>a-b);
-        const pauseThresh = sorted[Math.floor(sorted.length*0.15)];
-        const pauses = energies.filter(e=>e<pauseThresh).length;
-        const pauseRatio = energies.length? (pauses/energies.length):1;
+        const p15 = sorted[Math.floor(sorted.length*0.15)];
+        const p50 = sorted[Math.floor(sorted.length*0.50)];
+        const energyFloor = 1e-6;
+        const thr = Math.max(p15*1.2, p50*0.5, energyFloor);
 
+        // VAD + 去毛刺
+        let voiced = energies.map(e => e > thr);
+        const deSpur = (arr, span=3) => {
+          const out = arr.slice();
+          for (let i=1;i<out.length-1;i++){
+            if(out[i]!==out[i-1] && out[i]!==out[i+1]){
+              let j=i, k=i;
+              while (j>0 && out[j-1]!==out[i]) j--;
+              while (k<out.length-1 && out[k+1]!==out[i]) k++;
+              if (k-j+1 <= span) for(let t=j;t<=k;t++) out[t]=out[i-1];
+            }
+          }
+          return out;
+        };
+        voiced = deSpur(voiced, 3);
+
+        // 去頭去尾靜音
+        const firstVoiced = voiced.findIndex(v=>v);
+        const lastVoiced  = voiced.length - 1 - [...voiced].reverse().findIndex(v=>v);
+        const hasSpeech = firstVoiced !== -1;
+        const trimStart = hasSpeech ? firstVoiced : 0;
+        const trimEnd   = hasSpeech ? lastVoiced  : voiced.length-1;
+
+        // 語音/停頓統計（限裁切範圍）
+        const frameSec = hop / sr;
+        let speechFrames = 0, pauseFramesInSpeech = 0;
+        for(let fi=trimStart; fi<=trimEnd; fi++){
+          if (voiced[fi]) speechFrames++;
+          else pauseFramesInSpeech++;
+        }
+        const speechDuration = Math.max(0.001, speechFrames * frameSec);
+        const pauseRatioSpeech = (speechFrames + pauseFramesInSpeech) > 0
+          ? pauseFramesInSpeech / (speechFrames + pauseFramesInSpeech)
+          : 1;
+
+        // Pitch（只在有聲幀做）
         function estimatePitchHz(frame){
-          let maxLag=Math.floor(sampleRate/80), minLag=Math.floor(sampleRate/500);
+          let maxLag=Math.floor(sr/80), minLag=Math.floor(sr/500);
           let bestLag=0,best=-Infinity;
           for(let lag=minLag; lag<=maxLag; lag++){
             let sum=0;
@@ -607,23 +650,34 @@
               bestLag=lag;
             }
           }
-          return bestLag? (sampleRate/bestLag):0;
+          return bestLag? (sr/bestLag):0;
         }
         let pitches=[];
-        for(let i=0;i+frameSize<pcm.length;i+=hop){
-          const frame = pcm.slice(i, i+frameSize);
-          let e=0;
-          for(let j=0;j<frame.length;j++){
-            const v=frame[j];
-            e+=v*v;
-          }
+        for(let fi=trimStart; fi+1<voiced.length && (fi*hop + frameSize)<=pcm.length; fi++){
+          if (!voiced[fi]) continue;
+          const start = fi*hop;
+          const frame = pcm.slice(start, start + frameSize);
+          let e=0; for(let j=0;j<frame.length;j++){ const v=frame[j]; e+=v*v; }
           const pitch = estimatePitchHz(frame);
-          if(pitch>60 && pitch<400 && e/frame.length>pauseThresh) pitches.push(pitch);
+          if(pitch>60 && pitch<400) pitches.push(pitch);
         }
         const mean = pitches.length? pitches.reduce((a,b)=>a+b,0)/pitches.length : 0;
         let pitchVar = pitches.length? (pitches.reduce((a,b)=>a+(b-mean)*(b-mean),0)/pitches.length) : 0;
         pitchVar = Math.min(pitchVar, 2000);
-        return { duration, pauseRatio, energyMean: sorted[Math.floor(sorted.length*0.5)]||0, pitchVar, sampleRate };
+
+        // 全段停頓比例（保留舊值）
+        const pauses = energies.filter(e=>e<thr).length;
+        const pauseRatio = (energies.length? (pauses/energies.length) : 1);
+
+        return {
+          duration,
+          speechDuration,
+          pauseRatio,
+          pauseRatioSpeech,
+          energyMean: sorted[Math.floor(sorted.length*0.5)]||0,
+          pitchVar,
+          sampleRate: sr
+        };
       } catch (e) {
         console.warn('Feature extraction failed; using safe defaults', e);
         const url = URL.createObjectURL(blob);
@@ -633,7 +687,7 @@
         await new Promise(res => temp.onloadedmetadata = res);
         const duration = isFinite(temp.duration) ? temp.duration : 3.0;
         URL.revokeObjectURL(url);
-        return { duration, pauseRatio: 0.3, energyMean: 0.01, pitchVar: 300, sampleRate: 48000 };
+        return { duration, speechDuration: duration*0.7, pauseRatio: 0.3, pauseRatioSpeech: 0.3, energyMean: 0.01, pitchVar: 300, sampleRate: 48000 };
       }
     }
 
@@ -648,18 +702,27 @@
       const refTokens = dropFillers(expandEquivalents(refTokens0));
       const hypTokens = dropFillers(expandEquivalents(hypTokens0));
 
-      let accuracyScore = 50;
+      let accuracyScore = 50;      // ★ 門檻分 50
       let wer = 0.5;
       if (hypTokens.length > 0 && refTokens.length > 0) {
         wer = WER(refTokens, hypTokens);
         const sim = 1 - wer;
         accuracyScore = Math.round(sim * 100);
       }
-
-      accuracyScore = Math.max(60, accuracyScore);
+      // 不低於門檻 50
+      accuracyScore = Math.max(50, accuracyScore);
 
       const feats = await analyzeAudioFeatures(blob);
-      const wpm = wordsPerMinute(Math.max(hypTokens.length, 1), feats.duration);
+
+      // ★ 使用語音時長避免前後靜音影響 WPM
+      const effDuration = Math.max(feats.speechDuration || feats.duration, 0.001);
+      const wpm = wordsPerMinute(Math.max(hypTokens.length, 1), effDuration);
+
+      // ★ 使用語音區間暫停比例
+      const pauseRatioForScore = (typeof feats.pauseRatioSpeech === 'number')
+        ? feats.pauseRatioSpeech
+        : feats.pauseRatio;
+
       const wpmScore = (() => {
         if (wpm >= 110 && wpm <= 180) return 100;
         if (wpm < 60) return 40 * (wpm / 60);
@@ -667,8 +730,9 @@
         if (wpm < 110) return 60 + (wpm - 60) * (40 / 50);
         return 100 - (wpm - 180) * (100 / 40);
       })();
-      const pauseScore = Math.max(0, 100 - (feats.pauseRatio * 200));
+      const pauseScore = Math.max(0, 100 - (pauseRatioForScore * 200));
       const fluencyScore = Math.round(0.7 * wpmScore + 0.3 * pauseScore);
+
       const pv = feats.pitchVar;
       const prosodyScore = (() => {
         if (pv === 0) return 50;
@@ -676,21 +740,25 @@
         if (pv < 1200) return 80 + (Math.min(pv, 1200) - 150) * (20 / 1050);
         return Math.max(65, 100 - (pv - 1200) / 8);
       })();
-      const total = Math.round(0.6 * accuracyScore + 0.2 * fluencyScore + 0.2 * prosodyScore);
+
+      // ★ 新權重：Accuracy 80% + Fluency 15% + Prosody 5%
+      const total = Math.round(0.80 * accuracyScore + 0.15 * fluencyScore + 0.05 * prosodyScore);
+
       const tips = [];
       if (wer > 0.25 || accuracyScore < 75) tips.push('Practice word linking and stress; compare keywords carefully.');
       if (wpm < 100) tips.push('Speak a bit faster; try following the model audio.');
       if (wpm > 190) tips.push('Slow down slightly for clarity.');
-      if (feats.pauseRatio > 0.25) tips.push('Too many pauses; practice in chunks then combine.');
+      if (pauseRatioForScore > 0.25) tips.push('Too many pauses; practice in chunks then combine.');
       if (prosodyScore < 80) tips.push('Add more pitch variation on stressed words.');
       if (tips.length === 0) tips.push('Great job! Keep practicing!');
+
       return {
         ok: true,
         transcripts: { hypText, targetText },
         metrics: {
           wer: +wer.toFixed(3),
           wpm: Math.round(wpm),
-          pauseRatio: +feats.pauseRatio.toFixed(3),
+          pauseRatio: +pauseRatioForScore.toFixed(3),
           pitchVar: Math.round(pv)
         },
         scores: {
@@ -754,7 +822,7 @@
             <div class="report-info-item"><span class="report-info-label">Date:</span> ${date}</div>
           </div>
           <div class="report-section" style="margin-top:10px;">
-            <h3>Session Summary (Simple Matching v2)</h3>
+            <h3>Session Summary (Accuracy 80%, Fluency 15%, Prosody 5%)</h3>
             <ul style="margin-left:20px;">
               <li>Sentences practiced: <strong>${sentences.length}</strong></li>
               <li>Average Score: <strong>${totals.total==null?'-':Math.round(totals.total)}</strong>/100 (Acc ${safeNum(totals.acc)}, Flu ${safeNum(totals.flu)}, Pro ${safeNum(totals.pro)})</li>
