@@ -142,7 +142,7 @@
   <script type="module">
     import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.6';
 
-    // Initialize Whisper Tiny model (unchanged)
+    // Initialize Whisper Tiny model (same as your original)
     let asr;
     const initASR = async () => {
       try {
@@ -157,7 +157,7 @@
     };
     initASR();
 
-    // === Platform / MIME helpers (unchanged) ===
+    // iOS/音訊相容小工具（不影響原本成功路徑）
     const isIOS = () =>
       /iPad|iPhone|iPod/.test(navigator.userAgent) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -179,64 +179,7 @@
       try { if (ac.state === 'suspended') await ac.resume(); } catch(e) {}
     }
 
-    // === NEW: resample to 16k mono for Whisper ===
-    async function blobToAudioBuffer(blob){
-      const ac = new (window.AudioContext || window.webkitAudioContext)();
-      await ensureAudioContextReady(ac);
-      const buf = await ac.decodeAudioData(await blob.arrayBuffer());
-      ac.close?.();
-      return buf; // native sample rate / channels
-    }
-
-    async function toMono16kFloat32(buffer){
-      const srcSR = buffer.sampleRate;
-      const lengthTarget = Math.ceil(buffer.duration * 16000);
-      // Mixdown to mono
-      let mono = buffer.numberOfChannels === 1
-        ? buffer.getChannelData(0)
-        : (() => {
-            const tmp = new Float32Array(buffer.length);
-            const ch0 = buffer.getChannelData(0);
-            for (let c = 0; c < buffer.numberOfChannels; c++){
-              const ch = buffer.getChannelData(c);
-              for (let i = 0; i < buffer.length; i++) tmp[i] += ch[i];
-            }
-            for (let i = 0; i < tmp.length; i++) tmp[i] /= buffer.numberOfChannels;
-            return tmp;
-          })();
-
-      // Prefer WebAudio OfflineAudioContext (high-quality resample)
-      try {
-        const offline = new OfflineAudioContext(1, lengthTarget, 16000);
-        const src = offline.createBufferSource();
-        const monoBuf = offline.createBuffer(1, mono.length, srcSR);
-        monoBuf.copyToChannel(mono, 0);
-        src.buffer = monoBuf;
-        src.connect(offline.destination);
-        src.start(0);
-        const rendered = await offline.startRendering();
-        return rendered.getChannelData(0);
-      } catch (e) {
-        // Fallback: linear interpolation
-        const out = new Float32Array(lengthTarget);
-        const ratio = srcSR / 16000;
-        for (let i = 0; i < lengthTarget; i++){
-          const pos = i * ratio;
-          const i0 = Math.floor(pos);
-          const i1 = Math.min(i0 + 1, mono.length - 1);
-          const t = pos - i0;
-          out[i] = (1 - t) * mono[i0] + t * mono[i1];
-        }
-        return out;
-      }
-    }
-
-    // 只移除少數非語音標籤；不改語句本身
-    function cleanNonSpeechTags(text){
-      return text.replace(/\s*\[(music|applause|laughter|sigh|noise|silence)\]\s*/gi, ' ').replace(/\s+/g,' ').trim();
-    }
-
-    // Global state
+    // ---- 全域狀態 ----
     let sentences=[], currentSentenceIndex=0, mediaRecorder, audioChunks=[], isRecording=false,
         practicedSentences=[], sentenceSource='manual', selectedLevel=null, currentStream=null;
     const feedbackResults = [];
@@ -257,6 +200,7 @@
     const levelInput=document.getElementById('level-input');
     const loadLevelSentencesBtn=document.getElementById('load-level-sentences');
 
+    // UI helper
     function showStatusMessage(message,type,container=document.body){ 
       const existing=container.querySelector('.status-message'); 
       if(existing) existing.remove(); 
@@ -496,19 +440,48 @@
           window.renderFeedbackStatus && window.renderFeedbackStatus('Analyzing pronunciation…'); 
 
           let hypText = '';
-          if (asr) {
+          if(asr){ 
             try {
-              // === 强制輸入為 16kHz mono Float32Array ===
-              const buf = await blobToAudioBuffer(rawBlob);
-              const pcm16k = await toMono16kFloat32(buf);
-              const result = await asr(pcm16k, {
-                // 只做英文轉寫；避免雜訊
-                task: 'transcribe',
-                language: 'en',
-                chunk_length_s: 15,
-                stride_length_s: 5
-              });
-              hypText = cleanNonSpeechTags(result?.text || '');
+              // ====== 你的原本流程（保持不變）======
+              const arrayBuffer = await rawBlob.arrayBuffer();
+              const audioCtx = new (window.AudioContext||window.webkitAudioContext)({ sampleRate: 16000 });
+              await ensureAudioContextReady(audioCtx);
+              let buffer;
+              try {
+                buffer = await audioCtx.decodeAudioData(arrayBuffer);
+              } catch (primaryErr) {
+                // ====== 備援（只有原流程失敗時才啟用；不影響正常情況）======
+                const ctx2 = new (window.AudioContext||window.webkitAudioContext)();
+                await ensureAudioContextReady(ctx2);
+                const buf2 = await ctx2.decodeAudioData(arrayBuffer);
+                // 混成 mono
+                const mono = (() => {
+                  if (buf2.numberOfChannels === 1) return buf2.getChannelData(0);
+                  const len = buf2.length;
+                  const tmp = new Float32Array(len);
+                  for (let ch = 0; ch < buf2.numberOfChannels; ch++) {
+                    const data = buf2.getChannelData(ch);
+                    for (let i = 0; i < len; i++) tmp[i] += data[i];
+                  }
+                  for (let i = 0; i < len; i++) tmp[i] /= buf2.numberOfChannels;
+                  return tmp;
+                })();
+                const offline = new OfflineAudioContext(1, Math.ceil(buf2.duration*16000), 16000);
+                const src = offline.createBufferSource();
+                const monoBuf = offline.createBuffer(1, mono.length, buf2.sampleRate);
+                monoBuf.copyToChannel(mono, 0);
+                src.buffer = monoBuf;
+                src.connect(offline.destination);
+                src.start(0);
+                const rendered = await offline.startRendering();
+                buffer = rendered;
+                ctx2.close?.();
+              }
+              const audioData = buffer.getChannelData(0);
+              const result = await asr(audioData);
+              hypText = result.text || '';
+              audioCtx.close?.();
+              // ====== 原流程結束 ======
             } catch (err) {
               console.warn('ASR failed; continue without hypText', err);
             }
@@ -557,7 +530,7 @@
 
     addPressListener(generateReportBtn, generateReport);
 
-    // === Scoring (unchanged) ===
+    // === 下方評分模組：不動你的規則 ===
     const FILLERS = new Set(['um','uh','erm','hmm','like','you','know','i','mean','ah','uhh']);
     const EQUIV = new Map([
       ["i'm","i am"],["you're","you are"],["we're","we are"],["they're","they are"],["he's","he is"],["she's","she is"],["it's","it is"],["that's","that is"],["what's","what is"],["there's","there is"],["won't","will not"],["can't","can not"],["don't","do not"],["doesn't","does not"],["didn't","did not"],["isn't","is not"],["aren't","are not"],["wasn't","was not"],["weren't","were not"],["gonna","going to"],["wanna","want to"],["gotta","got to"],["kinda","kind of"],["sorta","sort of"],["lemme","let me"]
