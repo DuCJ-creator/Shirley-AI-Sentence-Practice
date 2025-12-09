@@ -158,7 +158,6 @@
       white-space:nowrap;
     }
 
-    /* Disclaimer bilingual */
     .disclaimer{
       margin: 10px 14px 0;
       padding: 12px 14px;
@@ -184,12 +183,8 @@
       box-shadow:0 0 14px rgba(255,140,122,.45);
       flex:0 0 auto;
     }
-    .disclaimer .grid{
-      display:grid; grid-template-columns: 1fr 1fr; gap:10px 14px;
-    }
-    @media (max-width: 780px){
-      .disclaimer .grid{ grid-template-columns: 1fr; }
-    }
+    .disclaimer .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px 14px; }
+    @media (max-width: 780px){ .disclaimer .grid{ grid-template-columns: 1fr; } }
     .disclaimer .lang .label{
       font-size:var(--fs-tiny); color:var(--ink-2);
       letter-spacing:.6px; text-transform:uppercase;
@@ -204,12 +199,8 @@
       border:1px solid rgba(255,255,255,0.08);
       min-height:96px;
     }
-    .sentence{
-      font-size:var(--fs-sentence); font-weight:800; line-height:1.6;
-    }
-    .translation{
-      font-size:var(--fs-small); color:var(--ink-1); margin-top:8px; line-height:1.6;
-    }
+    .sentence{ font-size:var(--fs-sentence); font-weight:800; line-height:1.6; }
+    .translation{ font-size:var(--fs-small); color:var(--ink-1); margin-top:8px; line-height:1.6; }
 
     .mic{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
     .meter{
@@ -224,10 +215,7 @@
       transition:width .07s linear;
     }
 
-    .status{
-      font-size:var(--fs-small); color:var(--ink-1);
-      min-height:20px;
-    }
+    .status{ font-size:var(--fs-small); color:var(--ink-1); min-height:20px; }
     .status.ok{ color:#aef1d2; }
     .status.warn{ color:#ffe3a1; }
     .status.err{ color:#ffb3b3; }
@@ -462,9 +450,8 @@ const store = {
   unit: 'ALL',
   bankCache: new Map(),
 
-  // ASR engines
   whisperReady: false,
-  preferWhisper: true, // auto: whisper if ready, else webspeech
+  preferWhisper: true, // auto: whisper if ready else webspeech-live
 };
 
 const ui = {
@@ -545,7 +532,7 @@ function parseCSV(text){
     if(!sentence) continue;
 
     const dash = number.indexOf('-');
-    const unit = dash === -1 ? '0' : number.slice(0,dash).trim();
+    const unit = dash === -1 ? '0' : number.slice(0,dash).trim(); // unit= before dash
     items.push({ en: sentence, zh:'', number, unit });
   }
   return items;
@@ -567,7 +554,6 @@ function renderSentence(){
   ui.sentenceTrans.textContent = item.zh || '';
   ui.totalCount.textContent = String(store.sentences.length);
 
-  // Shadowing mode: show Listen
   ui.listenBtn.hidden = (store.mode !== 'shadowing');
   clearResult();
 }
@@ -602,7 +588,6 @@ $('#app').addEventListener('click', (e)=>{
 ui.modeSelect.addEventListener('change', ()=>{
   store.mode = ui.modeSelect.value;
   renderSentence();
-  // auto play once when switch to shadowing
   if(store.mode==='shadowing' && store.sentences[store.idx]) playSentence();
 });
 ui.diffSelect.addEventListener('change', ()=> store.difficulty = ui.diffSelect.value );
@@ -627,7 +612,7 @@ function playSentence(){
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(item.en);
   u.lang = 'en-US';
-  u.rate = 0.95;  // a bit slower for students
+  u.rate = 0.95;
   u.pitch = 1.0;
   window.speechSynthesis.speak(u);
 }
@@ -787,6 +772,42 @@ function resetProgress(){
 }
 
 /* ===========================
+   Live WebSpeech ASR (fix No speech detected)
+=========================== */
+let liveRec = null;
+let liveTranscript = '';
+let liveFinished = false;
+
+function startLiveWebSpeech(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  liveTranscript = '';
+  liveFinished = false;
+  if(!SR) return;
+
+  liveRec = new SR();
+  liveRec.lang = 'en-US';
+  liveRec.interimResults = true;
+  liveRec.maxAlternatives = 1;
+
+  liveRec.onresult = (e)=>{
+    let txt = '';
+    for (let i = e.resultIndex; i < e.results.length; i++){
+      txt += e.results[i][0].transcript + ' ';
+      if(e.results[i].isFinal) liveFinished = true;
+    }
+    liveTranscript = txt.trim();
+  };
+  liveRec.onerror = ()=>{};
+  liveRec.onend = ()=>{};
+
+  try{ liveRec.start(); } catch(e){}
+}
+function stopLiveWebSpeech(){
+  try{ liveRec && liveRec.stop(); }catch(e){}
+  liveRec = null;
+}
+
+/* ===========================
    Audio recording + VAD trim
 =========================== */
 let mediaRecorder, audioChunks=[];
@@ -849,6 +870,9 @@ async function recordOnce(){
   mediaRecorder.ondataavailable = e=> audioChunks.push(e.data);
   mediaRecorder.onstop = handleAudioStop;
 
+  // ✅ Start live ASR while recording
+  startLiveWebSpeech();
+
   mediaRecorder.start();
   startTimer();
   ui.recordBtn.disabled = true;
@@ -856,6 +880,9 @@ async function recordOnce(){
   setStatus('Recording… speak now.', 'ok');
 }
 function stopRecording(){
+  // ✅ Stop live ASR, keep transcript
+  stopLiveWebSpeech();
+
   if(mediaRecorder && mediaRecorder.state==='recording'){
     mediaRecorder.stop();
   }
@@ -872,23 +899,29 @@ async function handleAudioStop(){
   const ctx = new (window.AudioContext||window.webkitAudioContext)();
   const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
 
-  const trimmed = trimSilence(audioBuffer, 0.01, 0.12);
+  // ✅ more conservative trim + fallback to raw audio if too short
+  let trimmed = trimSilence(audioBuffer, 0.006, 0.12);
+  if(trimmed.length / trimmed.sampleRate < 0.35){
+    trimmed = audioBuffer;
+  }
   const audioData = trimmed.getChannelData(0);
 
   setStatus('Transcribing…');
 
   let hypText = '';
+
   try{
-    // AUTO engine:
-    // If whisper ready -> try whisper with timeout.
-    // Else -> WebSpeech fast engine.
-    if(store.whisperReady && store.preferWhisper){
-      hypText = await transcribeWithWhisper(audioData, 20000);
-      ui.engineBadge.textContent = 'Engine: whisper';
+    // 1) ✅ use live transcript first (always matches what student just said)
+    if(liveTranscript){
+      hypText = liveTranscript;
+      ui.engineBadge.textContent = 'Engine: webspeech-live';
     }
-    if(!hypText){
-      hypText = await transcribeWithWebSpeech(8000);
-      ui.engineBadge.textContent = 'Engine: webspeech';
+
+    // 2) if whisper ready, refine using recorded audio
+    if(store.whisperReady && store.preferWhisper){
+      const w = await transcribeWithWhisper(audioData, 20000);
+      if(w) hypText = w;
+      ui.engineBadge.textContent = store.whisperReady ? 'Engine: whisper' : ui.engineBadge.textContent;
     }
   }catch(e){
     console.warn(e);
@@ -918,7 +951,7 @@ async function handleAudioStop(){
   nav(1);
 }
 
-function trimSilence(audioBuffer, thr=0.01, padSec=0.12){
+function trimSilence(audioBuffer, thr=0.006, padSec=0.12){
   const ch = audioBuffer.getChannelData(0);
   const sr = audioBuffer.sampleRate;
   let s=0, e=ch.length-1;
@@ -935,10 +968,17 @@ function trimSilence(audioBuffer, thr=0.01, padSec=0.12){
 }
 
 /* ===========================
-   Whisper ASR (background load)
+   Whisper ASR (background load + timeout)
 =========================== */
 const { pipeline } = window.transformers;
 let asr=null;
+
+function withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise(resolve => setTimeout(()=>resolve(null), ms))
+  ]);
+}
 
 async function initWhisper(){
   const prefer = [
@@ -964,16 +1004,9 @@ async function initWhisper(){
     }
   }
   store.whisperReady = false;
-  ui.asrBadge.textContent = 'ASR: fallback (webspeech)';
+  ui.asrBadge.textContent = 'ASR: fallback (webspeech-live)';
 }
 initWhisper();
-
-function withTimeout(promise, ms){
-  return Promise.race([
-    promise,
-    new Promise(resolve => setTimeout(()=>resolve(null), ms))
-  ]);
-}
 
 async function transcribeWithWhisper(audioData, ms=20000){
   if(!asr) return '';
@@ -993,51 +1026,6 @@ async function transcribeWithWhisper(audioData, ms=20000){
   }catch(e){
     return '';
   }
-}
-
-/* ===========================
-   Web Speech API ASR (fast fallback)
-=========================== */
-function transcribeWithWebSpeech(ms=8000){
-  return new Promise((resolve)=>{
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if(!SR) return resolve('');
-    const rec = new SR();
-    rec.lang = 'en-US';
-    rec.interimResults = false;
-    rec.maxAlternatives = 1;
-
-    let done=false;
-    const timer=setTimeout(()=>{
-      if(done) return;
-      done=true;
-      try{rec.stop();}catch(e){}
-      resolve('');
-    }, ms);
-
-    rec.onresult = (e)=>{
-      if(done) return;
-      done=true;
-      clearTimeout(timer);
-      const txt = e.results?.[0]?.[0]?.transcript || '';
-      resolve(txt.trim());
-    };
-    rec.onerror = ()=>{
-      if(done) return;
-      done=true;
-      clearTimeout(timer);
-      resolve('');
-    };
-    rec.onend = ()=>{
-      if(done) return;
-      done=true;
-      clearTimeout(timer);
-      resolve('');
-    };
-
-    try{ rec.start(); }
-    catch(e){ clearTimeout(timer); resolve(''); }
-  });
 }
 
 /* ===========================
@@ -1275,22 +1263,6 @@ function exportReport(){
 setSource('manual');
 renderSentence();
 setStatus('Choose Enter Manually or Sentence Bank.', 'ok');
-
-/* expose buttons */
-function startSession(){
-  if(!store.sentences.length){
-    setStatus('Please apply manual sentences or a level/unit first.', 'warn');
-    return;
-  }
-  setStatus('Session started. Press Record and speak.', 'ok');
-  ui.recordBtn.disabled = false;
-  if(store.mode==='shadowing') playSentence();
-}
-function nav(step){
-  if(!store.sentences.length) return;
-  store.idx = (store.idx + step + store.sentences.length) % store.sentences.length;
-  renderSentence();
-}
 </script>
 </body>
 </html>
