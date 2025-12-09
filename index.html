@@ -23,7 +23,6 @@
       --shadow-soft: 0 20px 60px rgba(0,0,0,.55);
       --radius:18px;
 
-      /* bigger base for classroom */
       --fs-base:16px;
       --fs-small:14px;
       --fs-tiny:12.5px;
@@ -86,7 +85,6 @@
       background: linear-gradient(135deg, var(--neon-cyan), var(--neon-violet));
       -webkit-background-clip:text; -webkit-text-fill-color:transparent;
       text-shadow: 0 0 30px rgba(92,225,230,.12);
-      cursor:default;
       user-select:none;
     }
 
@@ -137,6 +135,7 @@
       box-shadow: 0 10px 30px rgba(92,225,230,.18);
       transition: transform .15s ease, filter .2s ease, opacity .2s ease;
       font-size:var(--fs-base);
+      white-space:nowrap;
     }
     .btn:hover{ transform: translateY(-1px); filter:saturate(1.1); }
     .btn:disabled{ opacity:.5; cursor:not-allowed; transform:none; }
@@ -159,7 +158,7 @@
       white-space:nowrap;
     }
 
-    /* Disclaimer bilingual, thin but readable */
+    /* Disclaimer bilingual */
     .disclaimer{
       margin: 10px 14px 0;
       padding: 12px 14px;
@@ -186,9 +185,7 @@
       flex:0 0 auto;
     }
     .disclaimer .grid{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px 14px;
+      display:grid; grid-template-columns: 1fr 1fr; gap:10px 14px;
     }
     @media (max-width: 780px){
       .disclaimer .grid{ grid-template-columns: 1fr; }
@@ -198,9 +195,7 @@
       letter-spacing:.6px; text-transform:uppercase;
       margin-bottom:2px; display:block;
     }
-    .disclaimer .lang p{
-      margin:0; color:var(--ink-1);
-    }
+    .disclaimer .lang p{ margin:0; color:var(--ink-1); }
 
     .practice{ display:flex; flex-direction:column; gap:12px; }
     .sentence-box{
@@ -264,7 +259,7 @@
       border:1px solid rgba(255,255,255,0.08);
     }
 
-    .report{ display:grid; gap:10px; font-size:var(--fs-small); }
+    .report{ display:grid; gap:10px; font-size:var(--fs-small); opacity:.95; }
     .history{
       max-height:260px; overflow:auto; padding-right:2px;
       display:grid; gap:8px;
@@ -278,12 +273,7 @@
     .hitem .small{ color:var(--ink-1); font-size:var(--fs-small); }
     .hitem .line{ display:flex; justify-content:space-between; gap:8px; }
 
-    footer{
-      padding:6px 14px 12px; color:var(--ink-2); font-size:var(--fs-tiny);
-      border-top:1px solid rgba(255,255,255,.06);
-      position:relative; z-index:1;
-      min-height:6px; /* basically invisible */
-    }
+    footer{ padding:6px 14px 12px; border-top:1px solid rgba(255,255,255,.06); min-height:6px; }
   </style>
 </head>
 
@@ -298,7 +288,6 @@
       <span class="icon">i</span>
       <span>Disclaimer / 使用提醒</span>
     </div>
-
     <div class="grid">
       <div class="lang">
         <span class="label">English</span>
@@ -308,7 +297,6 @@
           Focus on imitating the model—practice drives progress!
         </p>
       </div>
-
       <div class="lang">
         <span class="label">中文</span>
         <p>
@@ -334,6 +322,7 @@
         <button class="btn" data-action="prev">◀ Prev</button>
         <button class="btn btn-accent" data-action="start">Start Practice</button>
         <button class="btn btn-ghost" data-action="next">Next ▶</button>
+        <button class="btn btn-ghost" id="listenBtn" data-action="listen" hidden>🔊 Listen</button>
       </div>
 
       <div class="mic">
@@ -368,7 +357,6 @@
           Practice Sentences (one per line, max 10; optional “|| Chinese”)
         </label>
         <textarea id="manualInput" rows="7" placeholder="e.g. I like apples. || 我喜歡蘋果。"></textarea>
-
         <div style="height:8px"></div>
         <div class="row">
           <button class="btn btn-ghost" data-action="applyManual">Apply Manual Sentences</button>
@@ -378,7 +366,14 @@
 
       <div id="bankPane" hidden>
         <label style="font-size:var(--fs-small);color:var(--ink-1)">Choose Level</label>
-        <div class="row" id="levelButtons"></div>
+        <select id="levelSelect">
+          <option value="1">Level 1</option>
+          <option value="2">Level 2</option>
+          <option value="3">Level 3</option>
+          <option value="4">Level 4</option>
+          <option value="5">Level 5</option>
+          <option value="6">Level 6</option>
+        </select>
 
         <div style="height:10px"></div>
         <label style="font-size:var(--fs-small);color:var(--ink-1)">Choose Unit</label>
@@ -434,10 +429,11 @@
         <div class="history" id="historyList"></div>
       </div>
 
-      <!-- Hidden debug status: title double-click toggles -->
+      <!-- Fully hidden debug statuses (double click title to show) -->
       <div id="sysStatus" hidden style="margin-top:10px">
         <div class="pill" id="asrBadge" style="font-size:var(--fs-tiny); opacity:.6;">ASR: loading…</div>
         <div class="pill" id="bankBadge" style="font-size:var(--fs-tiny); opacity:.6; margin-top:6px;">Bank: idle</div>
+        <div class="pill" id="engineBadge" style="font-size:var(--fs-tiny); opacity:.6; margin-top:6px;">Engine: auto</div>
       </div>
     </section>
   </main>
@@ -465,6 +461,10 @@ const store = {
   level: 1,
   unit: 'ALL',
   bankCache: new Map(),
+
+  // ASR engines
+  whisperReady: false,
+  preferWhisper: true, // auto: whisper if ready, else webspeech
 };
 
 const ui = {
@@ -474,6 +474,7 @@ const ui = {
   sentenceTrans: $('#sentenceTrans'),
   recordBtn: $('#recordBtn'),
   stopBtn: $('#stopBtn'),
+  listenBtn: $('#listenBtn'),
   statusLine: $('#statusLine'),
   resultPanel: $('#resultPanel'),
   scoreLine: $('#scoreLine'),
@@ -488,6 +489,7 @@ const ui = {
   timerPill: $('#timerPill'),
   asrBadge: $('#asrBadge'),
   bankBadge: $('#bankBadge'),
+  engineBadge: $('#engineBadge'),
 
   srcManualBtn: $('#srcManualBtn'),
   srcBankBtn: $('#srcBankBtn'),
@@ -495,7 +497,7 @@ const ui = {
   bankPane: $('#bankPane'),
   manualInput: $('#manualInput'),
   manualCount: $('#manualCount'),
-  levelButtons: $('#levelButtons'),
+  levelSelect: $('#levelSelect'),
   unitSelect: $('#unitSelect'),
   bankList: $('#bankList'),
   bankCount: $('#bankCount'),
@@ -509,53 +511,6 @@ ui.title.addEventListener('dblclick', ()=>{
   ui.sysStatus.hidden = !ui.sysStatus.hidden;
 });
 
-/* ===========================
-   Sentence parsing
-=========================== */
-function parseManual(text){
-  return text.split('\n')
-    .map(x=>x.trim()).filter(Boolean)
-    .map(line=>{
-      line = line.replace(/^\s*[\(\[]?\d+[\)\]]?\s*[\.\:\、\)]\s*/,'');
-      const [en, zh] = line.split('||').map(s=>s.trim());
-      return { en, zh: zh || '' };
-    });
-}
-
-function parseCSV(text){
-  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
-  const items = [];
-  for(const line of lines){
-    const i = line.indexOf(',');
-    if(i === -1) continue;
-    const number = line.slice(0,i).trim();       
-    const sentence = line.slice(i+1).trim();
-    if(!sentence) continue;
-
-    const dash = number.indexOf('-');
-    const unit = dash === -1 ? '0' : number.slice(0,dash).trim();
-
-    items.push({ en: sentence, zh:'', number, unit });
-  }
-  return items;
-}
-
-/* ===========================
-   Render
-=========================== */
-function renderSentence(){
-  const item = store.sentences[store.idx];
-  if(!item){
-    ui.sentenceText.textContent = 'Select a sentence source to start practicing.';
-    ui.sentenceTrans.textContent = '';
-    ui.totalCount.textContent = '0';
-    return;
-  }
-  ui.sentenceText.textContent = item.en;
-  ui.sentenceTrans.textContent = item.zh || '';
-  ui.totalCount.textContent = String(store.sentences.length);
-  clearResult();
-}
 function clearResult(){
   ui.resultPanel.hidden = true;
   ui.scoreLine.innerHTML = '';
@@ -568,7 +523,57 @@ function setStatus(msg, kind=''){
 }
 
 /* ===========================
-   Event Delegation (kept)
+   Sentence parsing
+=========================== */
+function parseManual(text){
+  return text.split('\n')
+    .map(x=>x.trim()).filter(Boolean)
+    .map(line=>{
+      line = line.replace(/^\s*[\(\[]?\d+[\)\]]?\s*[\.\:\、\)]\s*/,'');
+      const [en, zh] = line.split('||').map(s=>s.trim());
+      return { en, zh: zh || '' };
+    });
+}
+function parseCSV(text){
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const items = [];
+  for(const line of lines){
+    const i = line.indexOf(',');
+    if(i === -1) continue;
+    const number = line.slice(0,i).trim();
+    const sentence = line.slice(i+1).trim();
+    if(!sentence) continue;
+
+    const dash = number.indexOf('-');
+    const unit = dash === -1 ? '0' : number.slice(0,dash).trim();
+    items.push({ en: sentence, zh:'', number, unit });
+  }
+  return items;
+}
+
+/* ===========================
+   Render sentences
+=========================== */
+function renderSentence(){
+  const item = store.sentences[store.idx];
+  if(!item){
+    ui.sentenceText.textContent = 'Select a sentence source to start practicing.';
+    ui.sentenceTrans.textContent = '';
+    ui.totalCount.textContent = '0';
+    ui.listenBtn.hidden = true;
+    return;
+  }
+  ui.sentenceText.textContent = item.en;
+  ui.sentenceTrans.textContent = item.zh || '';
+  ui.totalCount.textContent = String(store.sentences.length);
+
+  // Shadowing mode: show Listen
+  ui.listenBtn.hidden = (store.mode !== 'shadowing');
+  clearResult();
+}
+
+/* ===========================
+   Event Delegation
 =========================== */
 $('#app').addEventListener('click', (e)=>{
   const actBtn = e.target.closest('[data-action]');
@@ -584,6 +589,7 @@ $('#app').addEventListener('click', (e)=>{
     if(act==='stop') stopRecording();
     if(act==='reset') resetProgress();
     if(act==='export') exportReport();
+    if(act==='listen') playSentence();
   }
 
   const srcBtn = e.target.closest('[data-src]');
@@ -591,20 +597,40 @@ $('#app').addEventListener('click', (e)=>{
     setSource(srcBtn.dataset.src);
     return;
   }
-
-  const lvlBtn = e.target.closest('[data-level]');
-  if(lvlBtn){
-    setLevel(Number(lvlBtn.dataset.level));
-    return;
-  }
 });
 
-ui.modeSelect.addEventListener('change', ()=> store.mode = ui.modeSelect.value );
+ui.modeSelect.addEventListener('change', ()=>{
+  store.mode = ui.modeSelect.value;
+  renderSentence();
+  // auto play once when switch to shadowing
+  if(store.mode==='shadowing' && store.sentences[store.idx]) playSentence();
+});
 ui.diffSelect.addEventListener('change', ()=> store.difficulty = ui.diffSelect.value );
 ui.unitSelect.addEventListener('change', ()=>{
   store.unit = ui.unitSelect.value;
   refreshBankPreview();
 });
+ui.levelSelect.addEventListener('change', ()=>{
+  setLevel(Number(ui.levelSelect.value));
+});
+
+/* ===========================
+   TTS (Shadowing demo voice)
+=========================== */
+function playSentence(){
+  const item = store.sentences[store.idx];
+  if(!item) return;
+  if(!('speechSynthesis' in window)){
+    setStatus('This browser does not support TTS.', 'warn');
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(item.en);
+  u.lang = 'en-US';
+  u.rate = 0.95;  // a bit slower for students
+  u.pitch = 1.0;
+  window.speechSynthesis.speak(u);
+}
 
 /* ===========================
    Source toggle
@@ -619,10 +645,9 @@ function setSource(src){
   clearResult();
 
   if(!isManual){
-    // when entering bank pane, ensure level/unit are live
+    ui.levelSelect.value = String(store.level);
     setLevel(store.level);
   }
-
   setStatus(isManual ? 'Manual mode ready.' : 'Sentence bank ready.', 'ok');
 }
 
@@ -647,33 +672,6 @@ ui.manualInput.addEventListener('input', ()=>{
 /* ===========================
    Sentence bank via CSV + Units
 =========================== */
-const LEVELS = [1,2,3,4,5,6];
-
-function initLevels(){
-  ui.levelButtons.innerHTML = LEVELS.map(l=>`
-    <button class="btn btn-ghost" data-level="${l}">Level ${l}</button>
-  `).join('');
-  bindLevelClicks();     // <-- direct bind for reliability
-  highlightLevel();
-  setLevel(store.level);
-}
-
-function bindLevelClicks(){
-  [...ui.levelButtons.children].forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      setLevel(Number(btn.dataset.level));
-    });
-  });
-}
-
-function highlightLevel(){
-  [...ui.levelButtons.children].forEach(b=>{
-    b.className = (Number(b.dataset.level)===store.level)
-      ? 'btn'
-      : 'btn btn-ghost';
-  });
-}
-
 async function loadLevel(level){
   if(store.bankCache.has(level)) return store.bankCache.get(level);
 
@@ -707,8 +705,6 @@ async function loadLevel(level){
 async function setLevel(level){
   store.level = level;
   store.unit = 'ALL';
-  highlightLevel();
-
   const pack = await loadLevel(level);
   initUnits(pack.unitsMap);
   refreshBankPreview();
@@ -735,7 +731,6 @@ function getFilteredBankItems(){
 function refreshBankPreview(){
   const items = getFilteredBankItems();
   ui.bankCount.textContent = `${items.length} sentences`;
-
   ui.bankList.innerHTML =
     items.slice(0,140).map((it,i)=>`
       <div class="hitem">
@@ -750,12 +745,7 @@ function applyBank(){
   store.idx = 0;
   renderSentence();
   updateReport();
-
-  const label = store.unit==='ALL'
-    ? `Level ${store.level}`
-    : `Level ${store.level} Unit ${store.unit}`;
-
-  setStatus(items.length ? `${label} applied.` : 'This unit is empty.', items.length?'ok':'warn');
+  setStatus(items.length ? `Level ${store.level} Unit ${store.unit} applied.` : 'This unit is empty.', items.length?'ok':'warn');
 }
 
 function load10Random(){
@@ -769,12 +759,7 @@ function load10Random(){
   store.idx = 0;
   renderSentence();
   updateReport();
-
-  const label = store.unit==='ALL'
-    ? `Level ${store.level}`
-    : `Level ${store.level} Unit ${store.unit}`;
-
-  setStatus(`Loaded 10 random sentences from ${label}.`, 'ok');
+  setStatus(`Loaded 10 random sentences.`, 'ok');
 }
 
 /* ===========================
@@ -792,6 +777,8 @@ function startSession(){
   }
   setStatus('Session started. Press Record and speak.', 'ok');
   ui.recordBtn.disabled = false;
+
+  if(store.mode==='shadowing') playSentence();
 }
 function resetProgress(){
   store.history = [];
@@ -889,7 +876,24 @@ async function handleAudioStop(){
   const audioData = trimmed.getChannelData(0);
 
   setStatus('Transcribing…');
-  const hypText = await transcribeWithASR(audioData);
+
+  let hypText = '';
+  try{
+    // AUTO engine:
+    // If whisper ready -> try whisper with timeout.
+    // Else -> WebSpeech fast engine.
+    if(store.whisperReady && store.preferWhisper){
+      hypText = await transcribeWithWhisper(audioData, 20000);
+      ui.engineBadge.textContent = 'Engine: whisper';
+    }
+    if(!hypText){
+      hypText = await transcribeWithWebSpeech(8000);
+      ui.engineBadge.textContent = 'Engine: webspeech';
+    }
+  }catch(e){
+    console.warn(e);
+  }
+
   if(!hypText){
     setStatus('No speech detected. Try again.', 'warn');
     return;
@@ -931,12 +935,12 @@ function trimSilence(audioBuffer, thr=0.01, padSec=0.12){
 }
 
 /* ===========================
-   Whisper ASR (auto fallback)
+   Whisper ASR (background load)
 =========================== */
 const { pipeline } = window.transformers;
 let asr=null;
 
-async function initASR(){
+async function initWhisper(){
   const prefer = [
     'Xenova/whisper-base.en',
     'Xenova/whisper-small.en',
@@ -947,36 +951,93 @@ async function initASR(){
       asr = await pipeline('automatic-speech-recognition', m, {
         dtype:'q4', device:'webgpu'
       });
+      store.whisperReady = true;
       ui.asrBadge.textContent = `ASR: ${m.split('/')[1]} (WebGPU)`;
       return;
     }catch(e){
       try{
         asr = await pipeline('automatic-speech-recognition', m, { dtype:'q4' });
+        store.whisperReady = true;
         ui.asrBadge.textContent = `ASR: ${m.split('/')[1]} (WASM)`;
         return;
       }catch(e2){}
     }
   }
-  ui.asrBadge.textContent = 'ASR: failed';
-  setStatus('ASR model failed to load. Try Chrome/Edge.', 'err');
+  store.whisperReady = false;
+  ui.asrBadge.textContent = 'ASR: fallback (webspeech)';
 }
-initASR();
+initWhisper();
 
-async function transcribeWithASR(audioData){
+function withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise(resolve => setTimeout(()=>resolve(null), ms))
+  ]);
+}
+
+async function transcribeWithWhisper(audioData, ms=20000){
   if(!asr) return '';
   try{
-    const r = await asr(audioData, {
-      language:'en',
-      task:'transcribe',
-      beam_size:3,
-      temperature:0.0,
-      return_timestamps:false
-    });
+    const r = await withTimeout(
+      asr(audioData, {
+        language:'en',
+        task:'transcribe',
+        beam_size:3,
+        temperature:0.0,
+        return_timestamps:false
+      }),
+      ms
+    );
+    if(!r) return '';
     return (r.text||'').trim();
   }catch(e){
-    console.warn(e);
     return '';
   }
+}
+
+/* ===========================
+   Web Speech API ASR (fast fallback)
+=========================== */
+function transcribeWithWebSpeech(ms=8000){
+  return new Promise((resolve)=>{
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR) return resolve('');
+    const rec = new SR();
+    rec.lang = 'en-US';
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+
+    let done=false;
+    const timer=setTimeout(()=>{
+      if(done) return;
+      done=true;
+      try{rec.stop();}catch(e){}
+      resolve('');
+    }, ms);
+
+    rec.onresult = (e)=>{
+      if(done) return;
+      done=true;
+      clearTimeout(timer);
+      const txt = e.results?.[0]?.[0]?.transcript || '';
+      resolve(txt.trim());
+    };
+    rec.onerror = ()=>{
+      if(done) return;
+      done=true;
+      clearTimeout(timer);
+      resolve('');
+    };
+    rec.onend = ()=>{
+      if(done) return;
+      done=true;
+      clearTimeout(timer);
+      resolve('');
+    };
+
+    try{ rec.start(); }
+    catch(e){ clearTimeout(timer); resolve(''); }
+  });
 }
 
 /* ===========================
@@ -1131,10 +1192,8 @@ function renderAnalysis(a, refText, hypText){
   ui.scoreLine.innerHTML = `
     <span class="pill">Accuracy</span>
     <b>${a.accuracy}%</b>
-    <span class="pill">WER ${(a.wer*100).toFixed(1)}%</span>
     <span class="pill">Speed ${a.wpm} WPM</span>
     <span class="pill">Pause ${(a.pauseRatio*100).toFixed(0)}%</span>
-    <span class="pill">Pitch σ ${a.pitchVar.toFixed(0)}</span>
   `;
 
   ui.diffLine.innerHTML = formatDiff(a.diffs);
@@ -1184,7 +1243,6 @@ function updateReport(){
       <div class="line">
         <span class="pill">Acc ${x.accuracy}%</span>
         <span class="pill">WPM ${x.wpm}</span>
-        <span class="pill">Pause ${(x.pauseRatio*100).toFixed(0)}%</span>
       </div>
     </div>
   `).join('');
@@ -1214,10 +1272,25 @@ function exportReport(){
 /* ===========================
    Init
 =========================== */
-initLevels();
 setSource('manual');
 renderSentence();
 setStatus('Choose Enter Manually or Sentence Bank.', 'ok');
+
+/* expose buttons */
+function startSession(){
+  if(!store.sentences.length){
+    setStatus('Please apply manual sentences or a level/unit first.', 'warn');
+    return;
+  }
+  setStatus('Session started. Press Record and speak.', 'ok');
+  ui.recordBtn.disabled = false;
+  if(store.mode==='shadowing') playSentence();
+}
+function nav(step){
+  if(!store.sentences.length) return;
+  store.idx = (store.idx + step + store.sentences.length) % store.sentences.length;
+  renderSentence();
+}
 </script>
 </body>
 </html>
