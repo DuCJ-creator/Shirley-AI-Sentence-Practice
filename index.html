@@ -1,852 +1,1226 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Shirley's AI Speaking Coach</title>
-  <style>
-    :root{ --primary-color:#4a6fa5;--secondary-color:#6b8cbc;--accent-color:#ff7e5f; --light-color:#f5f7fa;--dark-color:#2c3e50;--success-color:#2ecc71; --warning-color:#f39c12;--error-color:#e74c3c; }
-    *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}
-    body{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:var(--dark-color);line-height:1.6;padding:20px;min-height:100vh;}
-    .container{max-width:860px;margin:0 auto;background:#fff;border-radius:15px;box-shadow:0 20px 40px rgba(0,0,0,.1);padding:30px;position:relative;overflow:hidden;}
-    .container::before{content:'';position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,var(--primary-color),var(--accent-color));}
-    h1,h2,h3{color:var(--primary-color);margin-bottom:20px;}
-    h1{text-align:center;font-size:2.2em;background:linear-gradient(135deg,var(--primary-color),var(--accent-color));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:30px;}
-    .form-group{margin-bottom:25px;} label{display:block;margin-bottom:8px;font-weight:600;color:var(--dark-color);}
-    input,textarea,select{width:100%;padding:15px;border:2px solid #e1e5e9;border-radius:10px;font-size:16px;transition:all .3s ease;background:#f8f9fa;}
-    input:focus,textarea:focus,select:focus{outline:none;border-color:var(--primary-color);background:#fff;box-shadow:0 0 0 3px rgba(74,111,165,.1);}
-    textarea{min-height:120px;resize:vertical;}
-    .btn{background:linear-gradient(135deg,var(--primary-color),var(--secondary-color));color:#fff;border:none;padding:15px 30px;border-radius:10px;cursor:pointer;font-size:16px;font-weight:600;transition:all .3s ease;width:100%;margin-bottom:10px;position:relative;overflow:hidden;}
-    .btn::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);transition:left .5s;}
-    .btn:hover::before{left:100%;}
-    .btn:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(0,0,0,.2);}
-    .btn:active{transform:translateY(0);}
-    .btn-accent{background:linear-gradient(135deg,var(--accent-color),#ff9a7f);}
-    .btn-success{background:linear-gradient(135deg,var(--success-color),#27ae60);}
-    .btn-error{background:linear-gradient(135deg,var(--error-color),#c0392b);}
-    .hidden{display:none!important;}
-    .welcome-message{text-align:center;margin-bottom:30px;color:#666;font-size:1.1em;}
-    .sentence-source{display:flex;gap:15px;margin-bottom:20px;}
-    .sentence-source-btn{flex:1;padding:15px;text-align:center;border:2px solid #e1e5e9;border-radius:10px;background:#f8f9fa;cursor:pointer;transition:all .3s ease;}
-    .sentence-source-btn:hover{background:#e9ecef;}
-    .sentence-source-btn.active{background:var(--primary-color);color:#fff;border-color:var(--primary-color);}
-    .level-selection{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:15px;}
-    .level-btn{padding:12px;text-align:center;border:2px solid #e1e5e9;border-radius:8px;background:#f8f9fa;cursor:pointer;transition:all .3s ease;}
-    .level-btn:hover{background:#e9ecef;}
-    .level-btn.active{background:var(--primary-color);color:#fff;border-color:var(--primary-color);}
-    .practice-item{background:#fff;border-radius:15px;padding:25px;margin-bottom:25px;border-left:5px solid var(--primary-color);box-shadow:0 5px 15px rgba(0,0,0,.08);}
-    .sentence-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
-    .sentence-number{font-size:18px;font-weight:700;color:var(--primary-color);}
-    .sentence-container{display:flex;align-items:center;margin-bottom:20px;background:#f8f9fa;padding:20px;border-radius:10px;}
-    .sentence-text{flex-grow:1;font-size:18px;font-weight:500;color:var(--dark-color);}
-    .audio-btn{background:linear-gradient(135deg,var(--primary-color),var(--secondary-color));border:none;font-size:20px;cursor:pointer;color:#fff;margin-left:15px;padding:12px;border-radius:50%;min-width:50px;height:50px;display:flex;align-items:center;justify-content:center;transition:all .3s ease;}
-    .audio-btn:hover{transform:scale(1.1);box-shadow:0 5px 15px rgba(0,0,0,.2);}
-    .recording-controls{display:flex;flex-direction:column;align-items:center;margin-bottom:20px;}
-    .recording-btn{padding:18px 35px;border-radius:50px;font-weight:600;margin-bottom:20px;width:100%;max-width:250px;font-size:18px;}
-    .recording-indicator{display:inline-block;width:15px;height:15px;background-color:var(--error-color);border-radius:50%;margin-right:10px;animation:pulse 1.5s infinite;}
-    @keyframes pulse{0%{transform:scale(1);opacity:1;}50%{transform:scale(1.2);opacity:.7;}100%{transform:scale(1);opacity:1;}}
-    .progress-bar{height:12px;background:#e9ecef;border-radius:10px;margin:25px 0;overflow:hidden;box-shadow:inset 0 2px 4px rgba(0,0,0,.1);}
-    .progress{height:100%;background:linear-gradient(90deg,var(--primary-color),var(--accent-color));width:0%;transition:width .5s ease;border-radius:10px;}
-    .report-section{background:#fff;border-radius:15px;padding:30px;margin-top:30px;box-shadow:0 10px 30px rgba(0,0,0,.1);border:2px solid #e9ecef;}
-    .report-header{text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:3px solid var(--primary-color);}
-    .report-info-line{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;padding:15px;background:#f8f9fa;border-radius:8px;flex-wrap:wrap;gap:10px;}
-    .report-info-item{display:flex;align-items:center;gap:5px;}
-    .report-info-label{font-weight:600;color:var(--primary-color);}
-    .sentence-score-item{padding:15px;margin-bottom:10px;background:#f8f9fa;border-radius:8px;border-left:4px solid var(--primary-color);}
-    .navigation{display:flex;justify-content:space-between;margin-top:30px;gap:15px;}
-    .navigation .btn{width:auto;flex:1;}
-    .status-message{padding:15px;border-radius:10px;margin:15px 0;text-align:center;font-weight:500;}
-    .status-error{background:linear-gradient(135deg,rgba(231,76,60,.1),rgba(192,57,43,.1));color:var(--error-color);border:2px solid var(--error-color);}
-    .status-info{background:linear-gradient(135deg,rgba(52,152,219,.1),rgba(41,128,185,.1));color:var(--primary-color);border:2px solid var(--primary-color);}
-    .print-only{display:none;} .no-print{}
-    @media print{ body{background:#fff!important;padding:0;} .no-print{display:none!important;} .print-only{display:block!important;} .practice-item,.report-section{break-inside:avoid;} }
-    .report-title{ color:#2c3e50!important; background:none!important; -webkit-text-fill-color:#2c3e50!important; background-clip:initial!important; }
-    @media print{ .report-title{ color:#000!important; -webkit-text-fill-color:#000!important; background:none!important; } }
-    @media (max-width:768px){ body{padding:10px;} .container{padding:20px;border-radius:10px;} h1{font-size:1.8em;} .practice-item{padding:20px;} .sentence-container{flex-direction:column;align-items:flex-start;padding:15px;} .audio-btn{margin-left:0;margin-top:15px;align-self:center;} .report-info-line{flex-direction:column;align-items:flex-start;gap:8px;} .navigation{flex-direction:column;} .btn{padding:18px;} .sentence-source{flex-direction:column;} .level-selection{grid-template-columns:repeat(2,1fr);} }
-    @media (max-width:480px){ body{padding:5px;} .container{padding:15px;} h1{font-size:1.5em;} .sentence-text{font-size:16px;} .recording-btn{padding:20px;font-size:16px;} .level-selection{grid-template-columns:1fr;} }
-    .disclaimer { background:#fff8e1; border-left:4px solid #ffb74d; padding:15px; margin:20px 0; border-radius:8px; font-size:0.95em; color:#795548; }
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Speaking Coach</title>
 
-    button, .sentence-source-btn, .level-btn { -webkit-tap-highlight-color: transparent; }
-    .sentence-source-btn, .level-btn { cursor: pointer; }
+  <!-- Transformers.js (Whisper) -->
+  <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js"></script>
+
+  <style>
+    :root{
+      --bg-0:#05060a; --bg-1:#0b1020; --bg-2:#0a0f1a;
+      --ink-0:#e6ecf7; --ink-1:#a9b3c7; --ink-2:#7d879b;
+
+      --neon-cyan:#5ce1e6;
+      --neon-violet:#8b7cff;
+      --neon-rose:#ff8c7a;
+      --neon-green:#3ddc97;
+
+      --glass: rgba(255,255,255,0.06);
+      --glass-border: rgba(255,255,255,0.12);
+      --shadow-soft: 0 20px 60px rgba(0,0,0,.55);
+      --radius:18px;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans TC", sans-serif;
+      color:var(--ink-0);
+      background:
+        radial-gradient(1200px 700px at 10% -10%, rgba(92,225,230,.18), transparent 60%),
+        radial-gradient(900px 600px at 110% 0%, rgba(139,124,255,.16), transparent 55%),
+        radial-gradient(700px 500px at 50% 120%, rgba(255,140,122,.10), transparent 65%),
+        linear-gradient(180deg, var(--bg-0), var(--bg-1) 55%, var(--bg-2));
+      min-height:100vh; padding:16px;
+    }
+
+    .wrap{
+      max-width:1100px; margin:0 auto;
+      background: linear-gradient(180deg, rgba(10,14,25,.9), rgba(8,10,18,.9));
+      border:1px solid var(--glass-border);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(10px);
+      border-radius:var(--radius);
+      position:relative; overflow:hidden;
+    }
+    .wrap::before{
+      content:""; position:absolute; left:0; right:0; top:0; height:2px;
+      background: linear-gradient(90deg, var(--neon-cyan), var(--neon-violet), var(--neon-rose));
+      opacity:.9;
+    }
+    @keyframes drift {
+      0%{ transform: translateY(0px); opacity:.5; }
+      50%{ transform: translateY(-10px); opacity:.8; }
+      100%{ transform: translateY(0px); opacity:.5; }
+    }
+    .wrap::after{
+      content:''; position:absolute; inset:-40%;
+      background:
+        conic-gradient(from 180deg, transparent,
+          rgba(92,225,230,.12), transparent 30%,
+          rgba(139,124,255,.12), transparent 60%,
+          rgba(255,140,122,.10), transparent);
+      filter: blur(60px);
+      animation: drift 10s ease-in-out infinite;
+      pointer-events:none;
+    }
+
+    /* Header: keep super clean */
+    header{
+      padding:20px 22px 12px;
+      display:flex; align-items:center; justify-content:space-between;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      position:relative; z-index:1;
+    }
+    h1{
+      margin:0; font-size:24px; font-weight:800; letter-spacing:.5px;
+      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-violet));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+      text-shadow: 0 0 30px rgba(92,225,230,.12);
+    }
+
+    main{
+      display:grid; grid-template-columns: 1.1fr .9fr; gap:14px;
+      padding:14px; position:relative; z-index:1;
+    }
+    @media (max-width: 980px){
+      main{ grid-template-columns:1fr; }
+    }
+
+    .card{
+      background: var(--glass);
+      border:1px solid var(--glass-border);
+      box-shadow: 0 8px 25px rgba(0,0,0,.35);
+      border-radius:14px; padding:14px;
+    }
+    .card-title{
+      font-size:15px; font-weight:700; letter-spacing:.3px; margin-bottom:10px;
+      display:flex; align-items:center; gap:8px;
+    }
+    .dot{
+      width:8px; height:8px; border-radius:999px;
+      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-violet));
+      box-shadow:0 0 12px rgba(92,225,230,.6);
+    }
+
+    textarea, input, select{
+      width:100%;
+      background: rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.12);
+      color:var(--ink-0);
+      border-radius:10px; padding:10px 12px; outline:none;
+      font-size:14px; line-height:1.5;
+    }
+    textarea::placeholder, input::placeholder{ color:var(--ink-1); }
+    textarea:focus, input:focus, select:focus{
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 0 3px rgba(92,225,230,.12);
+    }
+
+    .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .row > *{ flex:1 1 auto; }
+    .row .fixed{ flex:0 0 auto; }
+
+    .btn{
+      border:0; cursor:pointer; padding:10px 12px; border-radius:10px;
+      color:#041018; font-weight:700; letter-spacing:.2px;
+      background: linear-gradient(135deg, rgba(92,225,230,.9), rgba(139,124,255,.9));
+      box-shadow: 0 10px 30px rgba(92,225,230,.18);
+      transition: transform .15s ease, filter .2s ease, opacity .2s ease;
+      font-size:14px;
+    }
+    .btn:hover{ transform: translateY(-1px); filter:saturate(1.1); }
+    .btn:disabled{ opacity:.5; cursor:not-allowed; transform:none; }
+    .btn-ghost{
+      background: rgba(255,255,255,0.06);
+      color:var(--ink-0);
+      border:1px solid rgba(255,255,255,0.12);
+      box-shadow:none;
+    }
+    .btn-accent{ background: linear-gradient(135deg, var(--neon-rose), #ffb29b); }
+    .btn-success{ background: linear-gradient(135deg, #3ddc97, #25b47e); color:#04120a; }
+    .btn-danger{ background: linear-gradient(135deg, #ff6b6b, #c44569); color:#100407; }
+
+    .pill{
+      display:inline-flex; align-items:center; gap:6px;
+      font-size:12px; color:var(--ink-1);
+      padding:4px 8px; border-radius:999px;
+      background: rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.10);
+      white-space:nowrap;
+    }
+
+    /* Disclaimer bilingual, thin */
+    .disclaimer{
+      margin: 10px 14px 0;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+      border:1px solid rgba(255,255,255,0.14);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      display:grid; gap:6px;
+      position:relative; z-index:1;
+    }
+    .disclaimer .head{
+      display:flex; align-items:center; gap:8px;
+      font-weight:800; letter-spacing:.2px;
+      font-size:14px;
+    }
+    .disclaimer .icon{
+      width:18px; height:18px; border-radius:6px;
+      display:grid; place-items:center; font-weight:900; font-size:12px;
+      background: linear-gradient(135deg, var(--neon-rose), var(--neon-violet));
+      color:#0b0f19;
+      box-shadow:0 0 14px rgba(255,140,122,.45);
+      flex:0 0 auto;
+    }
+    .disclaimer .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px 14px;
+      font-size:13px;
+      line-height:1.6;
+    }
+    @media (max-width: 780px){
+      .disclaimer .grid{ grid-template-columns: 1fr; }
+    }
+    .disclaimer .lang .label{
+      font-size:11px; color:var(--ink-2);
+      letter-spacing:.6px; text-transform:uppercase;
+      margin-bottom:2px; display:block;
+    }
+    .disclaimer .lang p{
+      margin:0; color:var(--ink-1);
+    }
+
+    .practice{
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .sentence-box{
+      padding:12px; border-radius:12px;
+      background: rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.08);
+      min-height:84px;
+    }
+    .sentence{
+      font-size:18px; font-weight:750; line-height:1.5;
+    }
+    .translation{
+      font-size:13px; color:var(--ink-1); margin-top:6px;
+    }
+
+    .mic{
+      display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+    }
+    .meter{
+      height:10px; border-radius:999px; background:rgba(255,255,255,0.08);
+      overflow:hidden; position:relative; flex:1 1 160px;
+      border:1px solid rgba(255,255,255,0.12);
+    }
+    .meter > span{
+      position:absolute; inset:0; width:0%;
+      background: linear-gradient(90deg, var(--neon-green), var(--neon-cyan));
+      box-shadow:0 0 18px rgba(61,220,151,.8);
+      transition:width .07s linear;
+    }
+
+    .status{
+      font-size:13px; color:var(--ink-1);
+      min-height:18px;
+    }
+    .status.ok{ color:#aef1d2; }
+    .status.warn{ color:#ffe3a1; }
+    .status.err{ color:#ffb3b3; }
+
+    .result{
+      padding:12px; border-radius:12px;
+      background: rgba(255,255,255,0.04);
+      border:1px dashed rgba(255,255,255,0.14);
+      display:grid; gap:8px;
+    }
+    .score{
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+      font-size:14px;
+    }
+    .score b{ font-size:22px; }
+
+    .diff{
+      font-size:14px; line-height:1.6; word-break:break-word;
+      padding:8px 10px; border-radius:10px;
+      background: rgba(0,0,0,0.25);
+      border:1px solid rgba(255,255,255,0.08);
+    }
+    .diff .ok{ color:var(--ink-0); }
+    .diff .sub{ color:#ffd0a4; text-decoration: underline wavy rgba(255,208,164,.7); }
+    .diff .del{ color:#ffadad; text-decoration: line-through rgba(255,173,173,.7); }
+    .diff .ins{ color:#b7c7ff; border-bottom:1px dotted rgba(183,199,255,.6); }
+
+    .tips{
+      display:grid; gap:6px; font-size:13px; color:var(--ink-1);
+    }
+    .tip{
+      padding:8px 10px; border-radius:10px;
+      background: rgba(255,255,255,0.05);
+      border:1px solid rgba(255,255,255,0.08);
+    }
+
+    .report{
+      display:grid; gap:10px; font-size:13px;
+    }
+    .history{
+      max-height:240px; overflow:auto; padding-right:2px;
+      display:grid; gap:8px;
+    }
+    .hitem{
+      padding:8px 10px; border-radius:10px;
+      background: rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.08);
+      display:grid; gap:4px;
+    }
+    .hitem .small{ color:var(--ink-1); font-size:12px; }
+    .hitem .line{ display:flex; justify-content:space-between; gap:8px; }
+
+    footer{
+      padding:10px 14px 16px; color:var(--ink-2); font-size:12px;
+      border-top:1px solid rgba(255,255,255,.06);
+      position:relative; z-index:1;
+    }
   </style>
 </head>
+
 <body>
-  <div class="container">
-    <!-- Source Select Page -->
-    <div id="sentence-source-page">
-      <h1>Shirley's AI Speaking Coach</h1>
-      <div class="disclaimer">
-        <strong>ℹ️ This tool--"Shirley's AI Speaking Coach",is for educational practice and entertainment only.</strong><br>
-      Due to technical factors (e.g., audio quality and device variance), the AI analysis may not perfectly reflect your true speaking ability. Focus on imitating the model—practice drives progress!
-      </div>
-      <div class="welcome-message">Please select your sentence source to start practicing.</div>
-      <div class="form-group">
-        <label>Sentence Source</label>
-        <div class="sentence-source">
-          <button type="button" class="sentence-source-btn active" data-source="manual">Enter Manually</button>
-          <button type="button" class="sentence-source-btn" data-source="level">From Sentence Bank</button>
-        </div>
-        <div id="manual-input" class="sentence-input">
-          <label for="sentences">Practice Sentences (one per line, maximum 10)</label>
-          <textarea id="sentences" placeholder="Enter or paste sentences to practice, one per line"></textarea>
-        </div>
-        <div id="level-input" class="sentence-input hidden">
-          <label>Select Difficulty Level</label>
-          <div class="level-selection">
-            <button type="button" class="level-btn" data-level="1">Level 1</button>
-            <button type="button" class="level-btn" data-level="2">Level 2</button>
-            <button type="button" class="level-btn" data-level="3">Level 3</button>
-            <button type="button" class="level-btn" data-level="4">Level 4</button>
-            <button type="button" class="level-btn" data-level="5">Level 5</button>
-            <button type="button" class="level-btn" data-level="6">Level 6</button>
-          </div>
-          <button id="load-level-sentences" class="btn btn-accent" style="margin-top:15px;">Load 10 Random Sentences</button>
-        </div>
-      </div>
-      <button id="start-practice" class="btn">Start Practice</button>
+<div class="wrap" id="app">
+  <header>
+    <div>
+      <h1>Shirley’s AI Speaking Coach</h1>
+    </div>
+  </header>
+
+  <!-- Bilingual disclaimer (clean + thin) -->
+  <div class="disclaimer">
+    <div class="head">
+      <span class="icon">i</span>
+      <span>Disclaimer / 使用提醒</span>
     </div>
 
-    <!-- Practice Page -->
-    <div id="practice-page" class="hidden">
-      <h1>English Pronunciation Practice</h1>
-      <div class="progress-bar"><div id="progress" class="progress"></div></div>
-      <div id="practice-container"></div>
-      <div class="navigation">
-        <button id="prev-sentence" class="btn">Previous</button>
-        <button id="next-sentence" class="btn">Next</button>
+    <div class="grid">
+      <div class="lang">
+        <span class="label">English</span>
+        <p>
+          This tool—“Shirley’s AI Speaking Coach”—is for educational practice and entertainment only.
+          Due to technical factors (e.g., audio quality and device variance), the AI analysis may not perfectly reflect your true speaking ability.
+          Focus on imitating the model—practice drives progress!
+        </p>
       </div>
-      <button id="finish-practice" class="btn btn-accent">Finish Practice</button>
-    </div>
 
-    <!-- Report Modal -->
-    <div id="report-modal" class="hidden">
-      <div style="background:#fff;padding:24px;border-radius:12px;max-width:640px;margin:0 auto;">
-        <h2 style="text-align:center;margin-bottom:20px;">Print Report</h2>
-        <div class="form-group">
-          <label for="report-class">Class</label>
-          <input type="text" id="report-class-input" placeholder="e.g., 5A">
-        </div>
-        <div class="form-group">
-          <label for="report-seat">Seat No.</label>
-          <input type="text" id="report-seat-input" placeholder="e.g., 12">
-        </div>
-        <div class="form-group">
-          <label for="report-name">Name</label>
-          <input type="text" id="report-name-input" placeholder="e.g., Shirley">
-        </div>
-        <button id="generate-report" class="btn btn-accent">Generate Report</button>
+      <div class="lang">
+        <span class="label">中文</span>
+        <p>
+          本工具「Shirley’s AI Speaking Coach」僅供學習練習與娛樂用途。
+          受限於技術因素（如收音品質、裝置差異等），AI 分析未必能完全反映真實口說能力。
+          請以模仿示範為主，持續練習才是進步關鍵！
+        </p>
       </div>
     </div>
   </div>
 
-  <script type="module">
-    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.6';
+  <main>
+    <!-- Left: Practice -->
+    <section class="card practice" id="practice">
+      <div class="card-title"><span class="dot"></span>Practice</div>
 
-    // Initialize Whisper Tiny model (same as your original)
-    let asr;
-    const initASR = async () => {
-      try {
-        asr = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en', {
-          dtype: 'q4',
-          device: 'webgpu'
-        });
-      } catch (e) {
-        console.warn('WebGPU failed, falling back to WASM', e);
-        asr = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en', { dtype: 'q4' });
-      }
-    };
-    initASR();
+      <div class="sentence-box">
+        <div class="sentence" id="sentenceText">Select a sentence source to start practicing.</div>
+        <div class="translation" id="sentenceTrans"></div>
+      </div>
 
-    // iOS/音訊相容工具（不影響原本成功路徑）
-    const isIOS = () =>
-      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      <div class="row">
+        <button class="btn" data-action="prev">◀ Prev</button>
+        <button class="btn btn-accent" data-action="start">Start Practice</button>
+        <button class="btn btn-ghost" data-action="next">Next ▶</button>
+      </div>
 
-    function pickAudioMime() {
-      const candidates = [
-        'audio/mp4; codecs=mp4a.40.2',
-        'audio/aac',
-        'audio/webm; codecs=opus',
-        'audio/webm'
-      ];
-      for (const m of candidates) {
-        if (window.MediaRecorder && MediaRecorder.isTypeSupported?.(m)) return m;
-      }
-      return '';
+      <div class="mic">
+        <button class="btn btn-success" id="recordBtn" data-action="record" disabled>🎙️ Record</button>
+        <button class="btn btn-danger" id="stopBtn" data-action="stop" disabled>■ Stop</button>
+        <div class="meter"><span id="meterBar"></span></div>
+        <span class="pill" id="timerPill">00:00</span>
+      </div>
+
+      <div class="status" id="statusLine"></div>
+
+      <div class="result" id="resultPanel" hidden>
+        <div class="score" id="scoreLine"></div>
+        <div class="diff" id="diffLine"></div>
+        <div class="tips" id="tipsLine"></div>
+      </div>
+    </section>
+
+    <!-- Right: Sentence Source + Settings + Report -->
+    <section class="card">
+      <div class="card-title"><span class="dot"></span>Sentence Source</div>
+
+      <div class="row" style="gap:8px">
+        <button class="btn" id="srcManualBtn" data-src="manual">Enter Manually</button>
+        <button class="btn btn-ghost" id="srcBankBtn" data-src="bank">From Sentence Bank</button>
+      </div>
+
+      <div style="height:10px"></div>
+
+      <!-- manual input -->
+      <div id="manualPane">
+        <label style="font-size:12px;color:var(--ink-1)">
+          Practice Sentences (one per line, max 10; optional “|| Chinese”)
+        </label>
+        <textarea id="manualInput" rows="7"
+          placeholder="e.g. I like apples. || 我喜歡蘋果。"></textarea>
+
+        <div style="height:8px"></div>
+        <div class="row">
+          <button class="btn btn-ghost" data-action="applyManual">Apply Manual Sentences</button>
+          <span class="pill" id="manualCount">0 / 10</span>
+        </div>
+      </div>
+
+      <!-- sentence bank -->
+      <div id="bankPane" hidden>
+        <label style="font-size:12px;color:var(--ink-1)">Choose level (CSV)</label>
+        <div class="row" id="levelButtons"></div>
+
+        <div style="height:8px"></div>
+
+        <label style="font-size:12px;color:var(--ink-1)">Choose unit</label>
+        <select id="unitSelect" disabled></select>
+
+        <div style="height:8px"></div>
+        <label style="font-size:12px;color:var(--ink-1)">Preview</label>
+        <div id="bankList" class="history" style="max-height:180px"></div>
+
+        <div style="height:8px"></div>
+        <div class="row">
+          <button class="btn btn-ghost" data-action="load10">Load 10 Random</button>
+          <button class="btn btn-ghost" data-action="applyBank">Use This Unit</button>
+          <span class="pill" id="bankCount">0 sentences</span>
+        </div>
+      </div>
+
+      <div style="height:12px"></div>
+
+      <div class="card-title"><span class="dot"></span>Mode & Difficulty</div>
+      <div class="row">
+        <div>
+          <label style="font-size:12px;color:var(--ink-1)">Mode</label>
+          <select id="modeSelect">
+            <option value="reading">Reading (match sentence)</option>
+            <option value="shadowing">Shadowing (listen & repeat)</option>
+            <option value="free">Free Speaking (topic based)</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--ink-1)">Difficulty</label>
+          <select id="diffSelect">
+            <option value="easy">Easy</option>
+            <option value="normal" selected>Normal</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="height:8px"></div>
+      <div class="row">
+        <button class="btn btn-ghost" data-action="reset">Reset Progress</button>
+        <button class="btn btn-ghost" data-action="export">Export Report (.json)</button>
+      </div>
+
+      <div style="height:12px"></div>
+
+      <div class="card-title"><span class="dot"></span>Session Report</div>
+      <div class="report">
+        <div class="pill">Completed: <b id="doneCount">0</b>/<span id="totalCount">0</span></div>
+        <div class="pill">Avg Accuracy: <b id="avgAcc">0</b>%</div>
+        <div class="pill">Avg Speed: <b id="avgWpm">0</b> WPM</div>
+        <div class="history" id="historyList"></div>
+      </div>
+
+      <!-- Teacher mode (system status hidden by default) -->
+      <div style="height:12px"></div>
+      <label class="pill" style="cursor:pointer; user-select:none;">
+        <input type="checkbox" id="teacherToggle" style="margin-right:6px; accent-color:#5ce1e6;">
+        Teacher Mode
+      </label>
+
+      <div id="sysStatus" hidden>
+        <div class="pill" id="asrBadge" style="font-size:11px; opacity:.6; margin-top:8px;">ASR: loading…</div>
+        <div class="pill" id="bankBadge" style="font-size:11px; opacity:.6; margin-top:6px;">Bank: idle</div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    CSV ex: <code>1-12,The action movie was so exciting that I watched it twice.</code><br/>
+    Unit = number before dash. Files: <code>level1.csv ~ level6.csv</code>
+  </footer>
+</div>
+
+<script>
+/* ===========================
+   Helpers / Store / UI
+=========================== */
+const $ = (s, r=document) => r.querySelector(s);
+const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
+const escapeHtml = s => s.replace(/[&<>"']/g, m=>({
+  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+}[m]));
+
+const store = {
+  sentences: [],
+  idx: 0,
+  mode: 'reading',
+  difficulty: 'normal',
+  history: [],
+  source: 'manual',      // 'manual' | 'bank'
+  level: 1,
+  unit: 'ALL',           // 'ALL' or unit id string
+  bankCache: new Map(),  // level -> { items, unitsMap }
+};
+
+const ui = {
+  sentenceText: $('#sentenceText'),
+  sentenceTrans: $('#sentenceTrans'),
+  recordBtn: $('#recordBtn'),
+  stopBtn: $('#stopBtn'),
+  statusLine: $('#statusLine'),
+  resultPanel: $('#resultPanel'),
+  scoreLine: $('#scoreLine'),
+  diffLine: $('#diffLine'),
+  tipsLine: $('#tipsLine'),
+  doneCount: $('#doneCount'),
+  totalCount: $('#totalCount'),
+  avgAcc: $('#avgAcc'),
+  avgWpm: $('#avgWpm'),
+  historyList: $('#historyList'),
+  meterBar: $('#meterBar'),
+  timerPill: $('#timerPill'),
+  asrBadge: $('#asrBadge'),
+  bankBadge: $('#bankBadge'),
+
+  srcManualBtn: $('#srcManualBtn'),
+  srcBankBtn: $('#srcBankBtn'),
+  manualPane: $('#manualPane'),
+  bankPane: $('#bankPane'),
+  manualInput: $('#manualInput'),
+  manualCount: $('#manualCount'),
+  levelButtons: $('#levelButtons'),
+  unitSelect: $('#unitSelect'),
+  bankList: $('#bankList'),
+  bankCount: $('#bankCount'),
+
+  modeSelect: $('#modeSelect'),
+  diffSelect: $('#diffSelect'),
+  teacherToggle: $('#teacherToggle'),
+  sysStatus: $('#sysStatus'),
+};
+
+ui.teacherToggle.addEventListener('change', ()=>{
+  ui.sysStatus.hidden = !ui.teacherToggle.checked;
+});
+
+/* ===========================
+   Sentence parsing
+=========================== */
+function parseManual(text){
+  return text.split('\n')
+    .map(x=>x.trim()).filter(Boolean)
+    .map(line=>{
+      line = line.replace(/^\s*[\(\[]?\d+[\)\]]?\s*[\.\:\、\)]\s*/,'');
+      const [en, zh] = line.split('||').map(s=>s.trim());
+      return { en, zh: zh || '' };
+    });
+}
+
+// CSV: split only first comma, unit = part before dash
+function parseCSV(text){
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const items = [];
+  for(const line of lines){
+    const i = line.indexOf(',');
+    if(i === -1) continue;
+    const number = line.slice(0,i).trim();        // e.g. "3-12"
+    const sentence = line.slice(i+1).trim();
+    if(!sentence) continue;
+
+    const dash = number.indexOf('-');
+    const unit = dash === -1 ? '0' : number.slice(0,dash).trim();
+
+    items.push({ en: sentence, zh:'', number, unit });
+  }
+  return items;
+}
+
+/* ===========================
+   Render
+=========================== */
+function renderSentence(){
+  const item = store.sentences[store.idx];
+  if(!item){
+    ui.sentenceText.textContent = 'Select a sentence source to start practicing.';
+    ui.sentenceTrans.textContent = '';
+    ui.totalCount.textContent = '0';
+    return;
+  }
+  ui.sentenceText.textContent = item.en;
+  ui.sentenceTrans.textContent = item.zh || '';
+  ui.totalCount.textContent = String(store.sentences.length);
+  clearResult();
+}
+function clearResult(){
+  ui.resultPanel.hidden = true;
+  ui.scoreLine.innerHTML = '';
+  ui.diffLine.innerHTML = '';
+  ui.tipsLine.innerHTML = '';
+}
+function setStatus(msg, kind=''){
+  ui.statusLine.className = 'status ' + (kind||'');
+  ui.statusLine.textContent = msg || '';
+}
+
+/* ===========================
+   Event Delegation
+=========================== */
+$('#app').addEventListener('click', (e)=>{
+  const btn = e.target.closest('[data-action]');
+  if(btn){
+    const act = btn.dataset.action;
+    if(act==='prev') nav(-1);
+    if(act==='next') nav(1);
+    if(act==='start') startSession();
+    if(act==='applyManual') applyManual();
+    if(act==='applyBank') applyBank();
+    if(act==='load10') load10Random();
+    if(act==='record') recordOnce();
+    if(act==='stop') stopRecording();
+    if(act==='reset') resetProgress();
+    if(act==='export') exportReport();
+  }
+
+  const srcBtn = e.target.closest('[data-src]');
+  if(srcBtn){
+    setSource(srcBtn.dataset.src);
+    return;
+  }
+
+  const lvlBtn = e.target.closest('[data-level]');
+  if(lvlBtn){
+    setLevel(Number(lvlBtn.dataset.level));
+    return;
+  }
+});
+
+ui.modeSelect.addEventListener('change', ()=> store.mode = ui.modeSelect.value );
+ui.diffSelect.addEventListener('change', ()=> store.difficulty = ui.diffSelect.value );
+ui.unitSelect.addEventListener('change', ()=>{
+  store.unit = ui.unitSelect.value;
+  refreshBankPreview();
+});
+
+/* ===========================
+   Source toggle
+=========================== */
+function setSource(src){
+  store.source = src;
+  const isManual = src === 'manual';
+  ui.manualPane.hidden = !isManual;
+  ui.bankPane.hidden = isManual;
+  ui.srcManualBtn.className = isManual ? 'btn' : 'btn btn-ghost';
+  ui.srcBankBtn.className   = !isManual ? 'btn' : 'btn btn-ghost';
+  clearResult();
+  setStatus(isManual ? 'Manual mode: paste your sentences.' : 'Bank mode: choose a level/unit.', 'ok');
+}
+
+/* ===========================
+   Manual apply
+=========================== */
+function applyManual(){
+  const lines = parseManual(ui.manualInput.value);
+  const limited = lines.slice(0,10);
+  store.sentences = limited;
+  store.idx = 0;
+  renderSentence();
+  updateReport();
+  ui.manualCount.textContent = `${limited.length} / 10`;
+  setStatus(limited.length ? 'Manual sentences applied.' : 'No sentences found.', limited.length?'ok':'warn');
+}
+ui.manualInput.addEventListener('input', ()=>{
+  const c = ui.manualInput.value.split('\n').filter(x=>x.trim()).length;
+  ui.manualCount.textContent = `${Math.min(c,10)} / 10`;
+});
+
+/* ===========================
+   Sentence bank via CSV + Units
+=========================== */
+const LEVELS = [1,2,3,4,5,6];
+
+function initLevels(){
+  ui.levelButtons.innerHTML = LEVELS.map(l=>`
+    <button class="btn btn-ghost" data-level="${l}">Level ${l}</button>
+  `).join('');
+  highlightLevel();
+  setLevel(store.level);
+}
+function highlightLevel(){
+  [...ui.levelButtons.children].forEach(b=>{
+    b.className = (Number(b.dataset.level)===store.level)
+      ? 'btn'
+      : 'btn btn-ghost';
+  });
+}
+
+async function loadLevel(level){
+  if(store.bankCache.has(level)) return store.bankCache.get(level);
+
+  ui.bankBadge.textContent = `Bank: loading level${level}.csv…`;
+  try{
+    const resp = await fetch(`level${level}.csv`, { cache:'no-store' });
+    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const text = await resp.text();
+    const items = parseCSV(text);
+
+    const unitsMap = new Map();
+    for(const it of items){
+      if(!unitsMap.has(it.unit)) unitsMap.set(it.unit, []);
+      unitsMap.get(it.unit).push(it);
     }
 
-    async function ensureAudioContextReady(ac) {
-      try { if (ac.state === 'suspended') await ac.resume(); } catch(e) {}
+    const pack = { items, unitsMap };
+    store.bankCache.set(level, pack);
+    ui.bankBadge.textContent = `Bank: level${level} ready`;
+    return pack;
+  }catch(err){
+    console.error(err);
+    ui.bankBadge.textContent = `Bank: failed`;
+    setStatus(`Cannot load level${level}.csv. Check file path.`, 'err');
+    const empty = { items:[], unitsMap:new Map() };
+    store.bankCache.set(level, empty);
+    return empty;
+  }
+}
+
+async function setLevel(level){
+  store.level = level;
+  store.unit = 'ALL';
+  highlightLevel();
+
+  const pack = await loadLevel(level);
+  initUnits(pack.unitsMap);
+  refreshBankPreview();
+}
+
+function initUnits(unitsMap){
+  const units = [...unitsMap.keys()].sort((a,b)=>Number(a)-Number(b));
+  ui.unitSelect.disabled = units.length===0;
+
+  ui.unitSelect.innerHTML = [
+    `<option value="ALL">All Units (${units.length})</option>`,
+    ...units.map(u=>`<option value="${u}">Unit ${u} (${unitsMap.get(u).length})</option>`)
+  ].join('');
+  ui.unitSelect.value = 'ALL';
+}
+
+function getFilteredBankItems(){
+  const pack = store.bankCache.get(store.level);
+  if(!pack) return [];
+  if(store.unit==='ALL') return pack.items;
+  return pack.unitsMap.get(store.unit) || [];
+}
+
+function refreshBankPreview(){
+  const items = getFilteredBankItems();
+  ui.bankCount.textContent = `${items.length} sentences`;
+
+  ui.bankList.innerHTML =
+    items.slice(0,120).map((it,i)=>`
+      <div class="hitem">
+        <div><b>${it.number || (i+1)}.</b> ${escapeHtml(it.en)}</div>
+      </div>
+    `).join('') || `<div class="pill">No sentences in this unit.</div>`;
+}
+
+function applyBank(){
+  const items = getFilteredBankItems();
+  store.sentences = items;
+  store.idx = 0;
+  renderSentence();
+  updateReport();
+
+  const label = store.unit==='ALL'
+    ? `Level ${store.level} (All Units)`
+    : `Level ${store.level} Unit ${store.unit}`;
+
+  setStatus(items.length ? `${label} applied.` : 'This unit is empty.', items.length?'ok':'warn');
+}
+
+function load10Random(){
+  const items = getFilteredBankItems();
+  if(!items.length){
+    setStatus('This unit is empty.', 'warn');
+    return;
+  }
+  const shuffled = items.slice().sort(()=>Math.random()-0.5);
+  store.sentences = shuffled.slice(0,10);
+  store.idx = 0;
+  renderSentence();
+  updateReport();
+
+  const label = store.unit==='ALL'
+    ? `Level ${store.level}`
+    : `Level ${store.level} Unit ${store.unit}`;
+
+  setStatus(`Loaded 10 random sentences from ${label}.`, 'ok');
+}
+
+/* ===========================
+   Navigation / session
+=========================== */
+function nav(step){
+  if(!store.sentences.length) return;
+  store.idx = (store.idx + step + store.sentences.length) % store.sentences.length;
+  renderSentence();
+}
+function startSession(){
+  if(!store.sentences.length){
+    setStatus('Please apply manual sentences or a level/unit first.', 'warn');
+    return;
+  }
+  setStatus('Session started. Press Record and speak.', 'ok');
+  ui.recordBtn.disabled = false;
+}
+function resetProgress(){
+  store.history = [];
+  updateReport();
+  setStatus('Progress reset.', 'ok');
+}
+
+/* ===========================
+   Audio recording + VAD trim
+=========================== */
+let mediaRecorder, audioChunks=[];
+let audioCtx, analyser, meterRAF;
+let startedAt=0, timerInt=null;
+let streamRef=null;
+
+async function ensureMic(){
+  if(streamRef) return streamRef;
+  streamRef = await navigator.mediaDevices.getUserMedia({ audio:true });
+  return streamRef;
+}
+function startMeter(stream){
+  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  const src = audioCtx.createMediaStreamSource(stream);
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 1024;
+  src.connect(analyser);
+
+  const data = new Uint8Array(analyser.fftSize);
+  const tick = ()=>{
+    analyser.getByteTimeDomainData(data);
+    let sum=0;
+    for(let i=0;i<data.length;i++){
+      const v=(data[i]-128)/128;
+      sum += v*v;
     }
+    const rms = Math.sqrt(sum/data.length);
+    ui.meterBar.style.width = clamp(rms*180,0,100) + '%';
+    meterRAF = requestAnimationFrame(tick);
+  };
+  tick();
+}
+function stopMeter(){
+  cancelAnimationFrame(meterRAF);
+  ui.meterBar.style.width = '0%';
+}
+function startTimer(){
+  startedAt = Date.now();
+  ui.timerPill.textContent = '00:00';
+  timerInt = setInterval(()=>{
+    const s = Math.floor((Date.now()-startedAt)/1000);
+    const mm = String(Math.floor(s/60)).padStart(2,'0');
+    const ss = String(s%60).padStart(2,'0');
+    ui.timerPill.textContent = `${mm}:${ss}`;
+  }, 250);
+}
+function stopTimer(){
+  clearInterval(timerInt); timerInt=null;
+}
 
-    // ---- 全域狀態 ----
-    let sentences=[], currentSentenceIndex=0, mediaRecorder, audioChunks=[], isRecording=false,
-        practicedSentences=[], sentenceSource='manual', selectedLevel=null, currentStream=null;
-    const feedbackResults = [];
-    const stripBracketTail = (s)=> s.replace(/\s*\[[^\]]*\]\s*$/, '');
+async function recordOnce(){
+  clearResult();
+  setStatus('Preparing microphone…');
+  const stream = await ensureMic();
+  startMeter(stream);
 
-    // DOM refs
-    const sentenceSourcePage=document.getElementById('sentence-source-page');
-    const practicePage=document.getElementById('practice-page');
-    const reportModal=document.getElementById('report-modal');
-    const startPracticeBtn=document.getElementById('start-practice');
-    const finishPracticeBtn=document.getElementById('finish-practice');
-    const prevSentenceBtn=document.getElementById('prev-sentence');
-    const nextSentenceBtn=document.getElementById('next-sentence');
-    const generateReportBtn=document.getElementById('generate-report');
-    const practiceContainer=document.getElementById('practice-container');
-    const progressBar=document.getElementById('progress');
-    const manualInput=document.getElementById('manual-input');
-    const levelInput=document.getElementById('level-input');
-    const loadLevelSentencesBtn=document.getElementById('load-level-sentences');
+  audioChunks=[];
+  mediaRecorder = new MediaRecorder(stream);
+  mediaRecorder.ondataavailable = e=> audioChunks.push(e.data);
+  mediaRecorder.onstop = handleAudioStop;
 
-    // UI helper
-    function showStatusMessage(message,type,container=document.body){ 
-      const existing=container.querySelector('.status-message'); 
-      if(existing) existing.remove(); 
-      const el=document.createElement('div'); 
-      el.className=`status-message status-${type}`; 
-      el.textContent=message; 
-      container.insertBefore(el,container.firstChild); 
-      setTimeout(()=>el.remove(), 5000); 
-    }
+  mediaRecorder.start();
+  startTimer();
+  ui.recordBtn.disabled = true;
+  ui.stopBtn.disabled = false;
+  setStatus('Recording… speak now.', 'ok');
+}
+function stopRecording(){
+  if(mediaRecorder && mediaRecorder.state==='recording'){
+    mediaRecorder.stop();
+  }
+}
 
-    function addPressListener(el, handler){
-      el.addEventListener('pointerdown', (e)=>{ e.preventDefault(); handler(e); }, { passive: false });
-      el.addEventListener('click', handler);
-    }
+async function handleAudioStop(){
+  stopMeter();
+  stopTimer();
+  ui.stopBtn.disabled = true;
+  ui.recordBtn.disabled = false;
 
-    document.querySelectorAll('.sentence-source-btn').forEach(btn=>{
-      addPressListener(btn, function(){
-        document.querySelectorAll('.sentence-source-btn').forEach(b=>b.classList.remove('active'));
-        this.classList.add('active');
-        sentenceSource = this.getAttribute('data-source');
-        if(sentenceSource==='manual'){
-          manualInput.classList.remove('hidden');
-          levelInput.classList.add('hidden');
-        } else {
-          manualInput.classList.add('hidden');
-          levelInput.classList.remove('hidden');
-        }
+  const blob = new Blob(audioChunks, { type:'audio/webm' });
+  const arrayBuffer = await blob.arrayBuffer();
+  const ctx = new (window.AudioContext||window.webkitAudioContext)();
+  const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+
+  const trimmed = trimSilence(audioBuffer, 0.01, 0.12);
+  const audioData = trimmed.getChannelData(0);
+
+  setStatus('Transcribing…');
+  const hypText = await transcribeWithASR(audioData);
+  if(!hypText){
+    setStatus('No speech detected. Try again.', 'warn');
+    return;
+  }
+
+  const refText = (store.sentences[store.idx]?.en || '').trim();
+  const analysis = analyzePronunciation(refText, hypText, trimmed.sampleRate, audioData);
+
+  store.history.push({
+    idx: store.idx,
+    ref: refText,
+    hyp: hypText,
+    source: store.source,
+    level: store.source==='bank' ? store.level : null,
+    unit: store.source==='bank' ? store.unit : null,
+    ...analysis,
+    time: new Date().toISOString()
+  });
+
+  renderAnalysis(analysis, refText, hypText);
+  updateReport();
+  nav(1);
+}
+
+function trimSilence(audioBuffer, thr=0.01, padSec=0.12){
+  const ch = audioBuffer.getChannelData(0);
+  const sr = audioBuffer.sampleRate;
+  let s=0, e=ch.length-1;
+  while(s<ch.length && Math.abs(ch[s])<thr) s++;
+  while(e>0 && Math.abs(ch[e])<thr) e--;
+  const pad = Math.floor(sr*padSec);
+  s = Math.max(0, s-pad);
+  e = Math.min(ch.length-1, e+pad);
+  const len = e-s+1;
+
+  const out = new AudioBuffer({ length: len, numberOfChannels:1, sampleRate: sr });
+  out.copyToChannel(ch.slice(s,e+1), 0);
+  return out;
+}
+
+/* ===========================
+   Whisper ASR (auto fallback)
+=========================== */
+const { pipeline } = window.transformers;
+let asr=null;
+
+async function initASR(){
+  const prefer = [
+    'Xenova/whisper-base.en',
+    'Xenova/whisper-small.en',
+    'Xenova/whisper-tiny.en'
+  ];
+  for (const m of prefer){
+    try{
+      asr = await pipeline('automatic-speech-recognition', m, {
+        dtype:'q4', device:'webgpu'
       });
-    });
-
-    document.querySelectorAll('.level-btn').forEach(btn=>{
-      addPressListener(btn, function(){
-        document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active'));
-        this.classList.add('active');
-        selectedLevel=this.getAttribute('data-level');
-      });
-    });
-
-    async function fetchLevelSentences(level){ 
-      const resp = await fetch(`level${level}.csv`); 
-      if(!resp.ok) throw new Error(`Failed to load Level ${level}`); 
-      const text = await resp.text(); 
-      const lines = text.trim().split('\n'); 
-      return lines.map(l=>l.trim()).filter(Boolean).map((line,idx)=>{ 
-        const firstComma=line.indexOf(','); 
-        if(firstComma===-1) return { number:`${idx+1}`, sentence:line }; 
-        return { number: line.substring(0,firstComma).trim(), sentence: line.substring(firstComma+1).trim() }; 
-      }); 
-    }
-
-    async function loadLevelSentences(){ 
-      if(!selectedLevel){ 
-        showStatusMessage('Please select a difficulty level first','error',levelInput); 
-        return; 
-      } 
-      try{ 
-        showStatusMessage(`Loading sentences from Level ${selectedLevel}...`,'info',levelInput); 
-        const rows = await fetchLevelSentences(selectedLevel); 
-        if(rows.length===0){ 
-          showStatusMessage('No sentences found for this level','error',levelInput); 
-          return; 
-        } 
-        const shuffled=[...rows].sort(()=>0.5-Math.random()); 
-        const chosen=shuffled.slice(0,10); 
-        const formatted = chosen.map((item,idx)=> `${item.sentence} [${idx+1}/10 - Level ${selectedLevel}, Sentence ${item.number}]`); 
-        document.getElementById('sentences').value = formatted.join('\n'); 
-        showStatusMessage(`Loaded 10 sentences from Level ${selectedLevel}`,'info',levelInput); 
-      }catch(e){ 
-        console.error(e); 
-        document.getElementById('sentences').value=''; 
-        showStatusMessage(`Failed: ${e.message}`,'error',levelInput); 
-      } 
-    }
-    addPressListener(loadLevelSentencesBtn, loadLevelSentences);
-
-    addPressListener(startPracticeBtn, ()=>{ 
-      let arr = document.getElementById('sentences').value.split('\n').map(s=>s.trim()).filter(Boolean); 
-      if(sentenceSource==='level' && arr.length===0){ 
-        showStatusMessage('Please load sentences from Sentence Bank first','error'); 
-        return; 
-      } 
-      if(arr.length===0){ 
-        showStatusMessage('Please enter at least one sentence','error'); 
-        return; 
-      } 
-      if(arr.length>10) arr = arr.slice(0,10); 
-      sentences=arr; 
-      practicedSentences=[...arr]; 
-      currentSentenceIndex=0; 
-      feedbackResults.length = sentences.length; 
-      sentenceSourcePage.classList.add('hidden'); 
-      practicePage.classList.remove('hidden'); 
-      showCurrentSentence(); 
-      updateProgress(); 
-    });
-
-    function showCurrentSentence(){ 
-      practiceContainer.innerHTML=''; 
-      const raw = sentences[currentSentenceIndex]; 
-      const m = raw.match(/^[\s\S]+?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*-\s*Level\s*(\d+)\s*,\s*Sentence\s*([^\]]+)\s*\]\s*$/i); 
-      const displaySentence = m ? raw.replace(/\s*\[[^\]]*\]\s*$/,'').trim() : stripBracketTail(raw).trim(); 
-      const practiceNumber = m ? `${m[1]}/${m[2]}` : `${currentSentenceIndex+1}/${sentences.length}`; 
-      const levelNo = m ? m[3] : null; 
-      const sentNo = m ? m[4].trim() : null; 
-      const sourceLabel = (levelNo && sentNo) ? `Level ${levelNo}；${sentNo}` : '';
-
-      practiceContainer.innerHTML = `
-        <div class="practice-item">
-          <div class="sentence-header">
-            <div class="sentence-number">Sentence ${practiceNumber}</div>
-            ${sourceLabel ? `<div class="sentence-source" style="color:#666;font-size:14px;">${sourceLabel}</div>` : ''}
-          </div>
-          <div class="sentence-container">
-            <div class="sentence-text">${displaySentence}</div>
-            <button class="audio-btn" data-sentence="${displaySentence.replace(/"/g,'&quot;')}" title="Listen to original">Listen</button>
-          </div>
-          <div class="recording-controls">
-            <button id="record-btn" class="btn recording-btn btn-success">Start Recording</button>
-            <div id="recording-indicator" class="hidden"><span class="recording-indicator"></span> Recording...</div>
-            <div id="recording-error" class="hidden status-error" style="margin-top:10px;">Recording failed. Please check microphone permissions.</div>
-          </div>
-          <div id="playback-section" class="hidden">
-            <p>Your recording:</p>
-            <audio id="playback-audio" controls playsinline style="width:100%;margin:15px 0;"></audio>
-          </div>
-          <div id="feedback-panel" class="hidden" style="margin-top:10px;">
-            <div id="feedback-status" class="status-message status-info">Ready.</div>
-            <div id="feedback-result" style="display:none;">
-              <div style="padding:12px;border-radius:8px;background:#f8f9fa;margin-top:8px;">
-                <div><strong>Total Score:</strong> <span id="fb-total">-</span>/100</div>
-                <div>Accuracy: <span id="fb-acc">-</span> | Fluency: <span id="fb-flu">-</span> | Prosody: <span id="fb-pro">-</span></div>
-                <div style="margin-top:6px;">WPM: <span id="fb-wpm">-</span> · Pauses: <span id="fb-pause">-</span> · PitchVar: <span id="fb-pitch">-</span></div>
-                <div style="margin-top:6px;">Transcript: <span id="fb-hyp">-</span></div>
-                <div style="margin-top:2px;">Target: <span id="fb-ref">-</span></div>
-                <div style="margin-top:10px;"><strong>Tips:</strong>
-                  <ul id="fb-tips" style="margin-left:20px;"></ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>`;
-      document.querySelector('.audio-btn').addEventListener('click', function(){ 
-        const utter = new SpeechSynthesisUtterance(this.getAttribute('data-sentence')); 
-        utter.lang='en-US'; 
-        utter.rate=0.9; 
-        speechSynthesis.speak(utter); 
-      });
-      document.getElementById('record-btn').addEventListener('click', toggleRecording);
-      const fbPanel = document.getElementById('feedback-panel'); 
-      fbPanel.classList.remove('hidden');
-      window.renderFeedbackStatus = function(msg){ 
-        const s = document.getElementById('feedback-status'); 
-        const r = document.getElementById('feedback-result'); 
-        s.textContent = msg; 
-        s.style.display = 'block'; 
-        r.style.display = 'none'; 
-      }
-      window.renderFeedbackResult = function(res){ 
-        const s = document.getElementById('feedback-status'); 
-        const r = document.getElementById('feedback-result'); 
-        document.getElementById('fb-total').textContent = res.scores.total; 
-        document.getElementById('fb-acc').textContent = res.scores.accuracy; 
-        document.getElementById('fb-flu').textContent = res.scores.fluency; 
-        document.getElementById('fb-pro').textContent = res.scores.prosody; 
-        document.getElementById('fb-wpm').textContent = res.metrics.wpm; 
-        document.getElementById('fb-pause').textContent = res.metrics.pauseRatio; 
-        document.getElementById('fb-pitch').textContent = res.metrics.pitchVar; 
-        const tipsUl = document.getElementById('fb-tips'); 
-        tipsUl.innerHTML = ''; 
-        (res.tips||[]).forEach(t=>{ 
-          const li=document.createElement('li'); 
-          li.textContent=t; 
-          tipsUl.appendChild(li); 
-        }); 
-        document.getElementById('fb-hyp').textContent = res.transcripts?.hypText || ''; 
-        document.getElementById('fb-ref').textContent = res.transcripts?.targetText || ''; 
-        s.style.display = 'none'; 
-        r.style.display = 'block'; 
-        feedbackResults[currentSentenceIndex]=res; 
-      }
-    }
-
-    document.getElementById('prev-sentence').addEventListener('click', ()=>{ 
-      if(currentSentenceIndex>0){ 
-        currentSentenceIndex--; 
-        showCurrentSentence(); 
-        updateProgress(); 
-      } 
-    });
-
-    document.getElementById('next-sentence').addEventListener('click', ()=>{ 
-      if(currentSentenceIndex<sentences.length-1){ 
-        currentSentenceIndex++; 
-        showCurrentSentence(); 
-        updateProgress(); 
-      } 
-    });
-
-    function updateProgress(){ 
-      const p=((currentSentenceIndex+1)/sentences.length)*100; 
-      progressBar.style.width=p+'%'; 
-    }
-
-    async function toggleRecording(){ 
-      if(!isRecording) await startRecording(); 
-      else stopRecording(); 
-    }
-
-    async function startRecording(){ 
+      ui.asrBadge.textContent = `ASR: ${m.split('/')[1]} (WebGPU)`;
+      return;
+    }catch(e){
       try{
-        if (!navigator.mediaDevices?.getUserMedia) {
-          alert('This browser does not support audio recording. Please use Safari/Chrome with HTTPS.');
-          return;
-        }
-        if (!window.MediaRecorder) {
-          alert('MediaRecorder is not supported on this device/browser.');
-          return;
-        }
-
-        const stream = await navigator.mediaDevices.getUserMedia({audio:true}); 
-        const mimeType = pickAudioMime();
-        mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-        currentStream=stream; 
-        audioChunks=[]; 
-
-        mediaRecorder.ondataavailable=e=>audioChunks.push(e.data); 
-
-        mediaRecorder.onstop=async ()=>{ 
-          const rawBlob = new Blob(audioChunks,{type: mediaRecorder.mimeType || mimeType || 'audio/mp4'}); 
-          const url = URL.createObjectURL(rawBlob); 
-          const audioEl = document.getElementById('playback-audio');
-          audioEl.setAttribute('playsinline','');
-          audioEl.src=url; 
-          document.getElementById('playback-section').classList.remove('hidden'); 
-
-          const displaySentence = document.querySelector('.audio-btn')?.getAttribute('data-sentence') || ''; 
-          window.renderFeedbackStatus && window.renderFeedbackStatus('Analyzing pronunciation…'); 
-
-          let hypText = '';
-          if(asr){ 
-            try {
-              // ====== 原本 ASR 流程（不動）======
-              const arrayBuffer = await rawBlob.arrayBuffer();
-              const audioCtx = new (window.AudioContext||window.webkitAudioContext)({ sampleRate: 16000 });
-              await ensureAudioContextReady(audioCtx);
-              let buffer;
-              try {
-                buffer = await audioCtx.decodeAudioData(arrayBuffer);
-              } catch (primaryErr) {
-                // ====== 備援（僅當 decodeAudioData 失敗時啟用）======
-                const ctx2 = new (window.AudioContext||window.webkitAudioContext)();
-                await ensureAudioContextReady(ctx2);
-                const buf2 = await ctx2.decodeAudioData(arrayBuffer);
-                // 混成 mono 並以 OfflineAudioContext 轉 16k
-                const mono = (() => {
-                  if (buf2.numberOfChannels === 1) return buf2.getChannelData(0);
-                  const len = buf2.length;
-                  const tmp = new Float32Array(len);
-                  for (let ch = 0; ch < buf2.numberOfChannels; ch++) {
-                    const data = buf2.getChannelData(ch);
-                    for (let i = 0; i < len; i++) tmp[i] += data[i];
-                  }
-                  for (let i = 0; i < len; i++) tmp[i] /= buf2.numberOfChannels;
-                  return tmp;
-                })();
-                const offline = new OfflineAudioContext(1, Math.ceil(buf2.duration*16000), 16000);
-                const src = offline.createBufferSource();
-                const monoBuf = offline.createBuffer(1, mono.length, buf2.sampleRate);
-                monoBuf.copyToChannel(mono, 0);
-                src.buffer = monoBuf;
-                src.connect(offline.destination);
-                src.start(0);
-                const rendered = await offline.startRendering();
-                buffer = rendered;
-                ctx2.close?.();
-              }
-              const audioData = buffer.getChannelData(0);
-              const result = await asr(audioData);
-              hypText = result.text || '';
-              audioCtx.close?.();
-              // ====== 原流程結束 ======
-            } catch (err) {
-              console.warn('ASR failed; continue without hypText', err);
-            }
-          }
-
-          try {
-            const res = await analyzePronunciation({ blob: rawBlob, targetText: displaySentence, hypText });
-            window.renderFeedbackResult(res);
-          } catch (err) {
-            console.error(err);
-            window.renderFeedbackStatus && window.renderFeedbackStatus('Analysis failed. Please try again on a different device or browser.');
-          }
-        }; 
-
-        mediaRecorder.start(); 
-        isRecording=true; 
-        const btn=document.getElementById('record-btn'); 
-        btn.textContent='Stop Recording'; 
-        btn.classList.remove('btn-success'); 
-        btn.classList.add('btn-error'); 
-        document.getElementById('recording-indicator').classList.remove('hidden'); 
-      }catch(err){ 
-        alert('Microphone access denied or unsupported on this device/browser.');
-      } 
+        asr = await pipeline('automatic-speech-recognition', m, { dtype:'q4' });
+        ui.asrBadge.textContent = `ASR: ${m.split('/')[1]} (WASM)`;
+        return;
+      }catch(e2){}
     }
+  }
+  ui.asrBadge.textContent = 'ASR: failed';
+  setStatus('ASR model failed to load. Try Chrome/Edge.', 'err');
+}
+initASR();
 
-    function stopRecording(){ 
-      if(mediaRecorder && isRecording){ 
-        mediaRecorder.stop(); 
-        isRecording=false; 
-        if(currentStream){ 
-          currentStream.getTracks().forEach(t=>t.stop()); 
-          currentStream=null; 
-        } 
-        const btn=document.getElementById('record-btn'); 
-        btn.textContent='Record Again'; 
-        btn.classList.remove('btn-error'); 
-        btn.classList.add('btn-success'); 
-        document.getElementById('recording-indicator').classList.add('hidden'); 
-      } 
-    }
-
-    addPressListener(finishPracticeBtn, ()=>{ 
-      reportModal.classList.remove('hidden'); 
+async function transcribeWithASR(audioData){
+  if(!asr) return '';
+  try{
+    const r = await asr(audioData, {
+      language:'en',
+      task:'transcribe',
+      beam_size:3,
+      temperature:0.0,
+      return_timestamps:false
     });
+    return (r.text||'').trim();
+  }catch(e){
+    console.warn(e);
+    return '';
+  }
+}
 
-    addPressListener(generateReportBtn, generateReport);
-
-    // === Scoring ===
-    const FILLERS = new Set(['um','uh','erm','hmm','like','you','know','i','mean','ah','uhh']);
-    const EQUIV = new Map([
-      ["i'm","i am"],["you're","you are"],["we're","we are"],["they're","they are"],["he's","he is"],["she's","she is"],["it's","it is"],["that's","that is"],["what's","what is"],["there's","there is"],["won't","will not"],["can't","can not"],["don't","do not"],["doesn't","does not"],["didn't","did not"],["isn't","is not"],["aren't","are not"],["wasn't","was not"],["weren't","were not"],["gonna","going to"],["wanna","want to"],["gotta","got to"],["kinda","kind of"],["sorta","sort of"],["lemme","let me"]
-    ]);
-
-    function norm(s) { return s.toLowerCase().replace(/[^\w\s']/g, ' ').replace(/\s+/g, ' ').trim(); }
-    function tokenize(s){ return norm(s).split(' ').filter(Boolean); }
-    function expandEquivalents(tokens){
-      const out=[];
-      for(const t of tokens){
-        const m=EQUIV.get(t);
-        if(m){ out.push(...m.split(' ')); } else out.push(t);
-      }
-      return out;
+/* ===========================
+   Scoring
+=========================== */
+function normalizeText(s){
+  return s.toLowerCase()
+    .replace(/[“”"']/g,'')
+    .replace(/[^a-z0-9\s]/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+function lev(a,b){
+  const m=a.length,n=b.length;
+  const dp=Array.from({length:m+1}, ()=>Array(n+1).fill(0));
+  for(let i=0;i<=m;i++) dp[i][0]=i;
+  for(let j=0;j<=n;j++) dp[0][j]=j;
+  for(let i=1;i<=m;i++){
+    for(let j=1;j<=n;j++){
+      dp[i][j] = Math.min(
+        dp[i-1][j]+1,
+        dp[i][j-1]+1,
+        dp[i-1][j-1] + (a[i-1]===b[j-1]?0:1)
+      );
     }
-    function dropFillers(tokens){ return tokens.filter(w=>!FILLERS.has(w)); }
+  }
+  return dp[m][n];
+}
+function diffWords(ref, hyp){
+  const a = ref, b = hyp;
+  const m=a.length,n=b.length;
+  const dp=Array.from({length:m+1},()=>Array(n+1).fill(0));
+  const bt=Array.from({length:m+1},()=>Array(n+1).fill(null));
+  for(let i=0;i<=m;i++){ dp[i][0]=i; bt[i][0]='del'; }
+  for(let j=0;j<=n;j++){ dp[0][j]=j; bt[0][j]='ins'; }
+  bt[0][0]=null;
 
-    function lev(a,b){
-      const m=a.length,n=b.length;
-      const dp=Array.from({length:m+1},()=>Array(n+1).fill(0));
-      for(let i=0;i<=m;i++) dp[i][0]=i;
-      for(let j=0;j<=n;j++) dp[0][j]=j;
-      for(let i=1;i<=m;i++){
-        for(let j=1;j<=n;j++){
-          const cost=a[i-1]===b[j-1]?0:1;
-          dp[i][j]=Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+cost);
-        }
-      }
-      return dp[m][n];
+  for(let i=1;i<=m;i++){
+    for(let j=1;j<=n;j++){
+      const cost=a[i-1]===b[j-1]?0:1;
+      const opts=[
+        [dp[i-1][j]+1,'del'],
+        [dp[i][j-1]+1,'ins'],
+        [dp[i-1][j-1]+cost, cost? 'sub':'ok'],
+      ];
+      opts.sort((x,y)=>x[0]-y[0]);
+      dp[i][j]=opts[0][0]; bt[i][j]=opts[0][1];
     }
+  }
 
-    function WER(refTokens,hypTokens){
-      if(refTokens.length===0) return hypTokens.length===0?0:1;
-      return lev(refTokens,hypTokens)/refTokens.length;
+  let i=m,j=n, out=[];
+  while(i>0||j>0){
+    const op=bt[i][j];
+    if(op==='ok'){ out.push({op, ref:a[i-1], hyp:b[j-1]}); i--; j--; }
+    else if(op==='sub'){ out.push({op, ref:a[i-1], hyp:b[j-1]}); i--; j--; }
+    else if(op==='del'){ out.push({op, ref:a[i-1], hyp:''}); i--; }
+    else { out.push({op:'ins', ref:'', hyp:b[j-1]}); j--; }
+  }
+  return out.reverse();
+}
+
+function analyzePronunciation(refText, hypText, sr, audioData){
+  const refN = normalizeText(refText);
+  const hypN = normalizeText(hypText);
+  const refTokens = refN.split(' ').filter(Boolean);
+  const hypTokens = hypN.split(' ').filter(Boolean);
+
+  const edits = lev(refTokens, hypTokens);
+  const wer = refTokens.length ? edits / refTokens.length : 1;
+  const accuracy = clamp(Math.round((1-wer)*100), 0, 100);
+
+  const durSec = audioData.length / sr;
+  const wpm = durSec>0 ? Math.round((hypTokens.length / durSec)*60) : 0;
+
+  const pauseRatio = estimatePauseRatio(audioData, sr, 0.01, 0.18);
+  const pitchVar = estimatePitchVar(audioData, sr);
+
+  const tips=[];
+  const diffs = diffWords(refTokens, hypTokens);
+  const missed = diffs.filter(d=>d.op==='del').map(d=>d.ref);
+  const substituted = diffs.filter(d=>d.op==='sub');
+
+  if(missed.length){
+    tips.push(`Missing words: ${missed.slice(0,4).join(', ')}${missed.length>4?'…':''}`);
+  }
+  if(substituted.length){
+    const s=substituted[0];
+    tips.push(`You said "${s.hyp}" but target was "${s.ref}".`);
+  }
+
+  const diff = store.difficulty;
+  const ACC_OK = diff==='easy'?70:diff==='hard'?88:80;
+  const WPM_LOW = diff==='easy'?70:diff==='hard'?95:80;
+  const WPM_HIGH= diff==='easy'?160:diff==='hard'?175:168;
+  const PAUSE_OK= diff==='easy'?0.22:diff==='hard'?0.14:0.18;
+
+  if(accuracy < ACC_OK) tips.push('Try to pronounce each word clearly. Slow down a bit.');
+  if(wpm < WPM_LOW) tips.push('Speak a little faster to sound more natural.');
+  if(wpm > WPM_HIGH) tips.push('You are speaking too fast. Aim for clearer pacing.');
+  if(pauseRatio > PAUSE_OK) tips.push('Fewer pauses will make your speech smoother.');
+  if(pitchVar < 35) tips.push('Use more intonation to avoid a monotone voice.');
+
+  return { accuracy, wer, wpm, durSec, pauseRatio, pitchVar, diffs, tips };
+}
+
+function estimatePauseRatio(audio, sr, thr=0.01, winSec=0.18){
+  const win = Math.max(1, Math.floor(sr*winSec));
+  let silent=0, total=0;
+  for(let i=0;i<audio.length;i+=win){
+    let sum=0, cnt=0;
+    for(let j=i;j<i+win && j<audio.length;j++){
+      sum+=Math.abs(audio[j]); cnt++;
     }
+    const mean = sum/cnt;
+    total++;
+    if(mean < thr) silent++;
+  }
+  return total? silent/total : 0;
+}
 
-    // ====== 新：加入 VAD，回傳 speechDuration / pauseRatioSpeech ======
-    async function analyzeAudioFeatures(blob){
-      try {
-        const ac=new (window.AudioContext||window.webkitAudioContext)();
-        await ensureAudioContextReady(ac);
-        const buf=await ac.decodeAudioData(await blob.arrayBuffer());
-        const pcm=buf.getChannelData(0);
-        const sr=buf.sampleRate;
-        ac.close?.();
-
-        const duration = Math.max(0.001, pcm.length / sr);
-        const frameSize = Math.floor(sr * 0.03), hop = Math.floor(frameSize * 0.5);
-
-        // 能量序列
-        const energies=[];
-        for(let i=0;i+frameSize<=pcm.length;i+=hop){
-          let s=0;
-          for(let j=0;j<frameSize;j++){
-            const v=pcm[i+j];
-            s+=v*v;
-          }
-          energies.push(s/frameSize);
-        }
-        if(energies.length===0){
-          return { duration, speechDuration: duration, pauseRatio:1, pauseRatioSpeech:1, energyMean:0, pitchVar:0, sampleRate: sr };
-        }
-
-        // 自適應門檻
-        const sorted=[...energies].sort((a,b)=>a-b);
-        const p15 = sorted[Math.floor(sorted.length*0.15)];
-        const p50 = sorted[Math.floor(sorted.length*0.50)];
-        const energyFloor = 1e-6;
-        const thr = Math.max(p15*1.2, p50*0.5, energyFloor);
-
-        // VAD + 去毛刺
-        let voiced = energies.map(e => e > thr);
-        const deSpur = (arr, span=3) => {
-          const out = arr.slice();
-          for (let i=1;i<out.length-1;i++){
-            if(out[i]!==out[i-1] && out[i]!==out[i+1]){
-              let j=i, k=i;
-              while (j>0 && out[j-1]!==out[i]) j--;
-              while (k<out.length-1 && out[k+1]!==out[i]) k++;
-              if (k-j+1 <= span) for(let t=j;t<=k;t++) out[t]=out[i-1];
-            }
-          }
-          return out;
-        };
-        voiced = deSpur(voiced, 3);
-
-        // 去頭去尾靜音
-        const firstVoiced = voiced.findIndex(v=>v);
-        const lastVoiced  = voiced.length - 1 - [...voiced].reverse().findIndex(v=>v);
-        const hasSpeech = firstVoiced !== -1;
-        const trimStart = hasSpeech ? firstVoiced : 0;
-        const trimEnd   = hasSpeech ? lastVoiced  : voiced.length-1;
-
-        // 語音/停頓統計（限裁切範圍）
-        const frameSec = hop / sr;
-        let speechFrames = 0, pauseFramesInSpeech = 0;
-        for(let fi=trimStart; fi<=trimEnd; fi++){
-          if (voiced[fi]) speechFrames++;
-          else pauseFramesInSpeech++;
-        }
-        const speechDuration = Math.max(0.001, speechFrames * frameSec);
-        const pauseRatioSpeech = (speechFrames + pauseFramesInSpeech) > 0
-          ? pauseFramesInSpeech / (speechFrames + pauseFramesInSpeech)
-          : 1;
-
-        // Pitch（只在有聲幀做）
-        function estimatePitchHz(frame){
-          let maxLag=Math.floor(sr/80), minLag=Math.floor(sr/500);
-          let bestLag=0,best=-Infinity;
-          for(let lag=minLag; lag<=maxLag; lag++){
-            let sum=0;
-            for(let i=0;i+lag<frame.length;i++){
-              sum+=frame[i]*frame[i+lag];
-            }
-            if(sum>best){
-              best=sum;
-              bestLag=lag;
-            }
-          }
-          return bestLag? (sr/bestLag):0;
-        }
-        let pitches=[];
-        for(let fi=trimStart; fi+1<voiced.length && (fi*hop + frameSize)<=pcm.length; fi++){
-          if (!voiced[fi]) continue;
-          const start = fi*hop;
-          const frame = pcm.slice(start, start + frameSize);
-          let e=0; for(let j=0;j<frame.length;j++){ const v=frame[j]; e+=v*v; }
-          const pitch = estimatePitchHz(frame);
-          if(pitch>60 && pitch<400) pitches.push(pitch);
-        }
-        const mean = pitches.length? pitches.reduce((a,b)=>a+b,0)/pitches.length : 0;
-        let pitchVar = pitches.length? (pitches.reduce((a,b)=>a+(b-mean)*(b-mean),0)/pitches.length) : 0;
-        pitchVar = Math.min(pitchVar, 2000);
-
-        // 全段停頓比例（保留舊值）
-        const pauses = energies.filter(e=>e<thr).length;
-        const pauseRatio = (energies.length? (pauses/energies.length) : 1);
-
-        return {
-          duration,
-          speechDuration,
-          pauseRatio,
-          pauseRatioSpeech,
-          energyMean: sorted[Math.floor(sorted.length*0.5)]||0,
-          pitchVar,
-          sampleRate: sr
-        };
-      } catch (e) {
-        console.warn('Feature extraction failed; using safe defaults', e);
-        const url = URL.createObjectURL(blob);
-        const temp = document.createElement('audio');
-        temp.preload = 'metadata';
-        temp.src = url;
-        await new Promise(res => temp.onloadedmetadata = res);
-        const duration = isFinite(temp.duration) ? temp.duration : 3.0;
-        URL.revokeObjectURL(url);
-        return { duration, speechDuration: duration*0.7, pauseRatio: 0.3, pauseRatioSpeech: 0.3, energyMean: 0.01, pitchVar: 300, sampleRate: 48000 };
-      }
+function estimatePitchVar(audio, sr){
+  const frame = Math.floor(sr*0.03);
+  const hop = Math.floor(sr*0.015);
+  const pitches=[];
+  for(let i=0; i+frame<audio.length; i+=hop){
+    const x = audio.slice(i, i+frame);
+    let bestLag=0, best=0;
+    const minLag = Math.floor(sr/300);
+    const maxLag = Math.floor(sr/70);
+    for(let lag=minLag; lag<=maxLag; lag++){
+      let c=0;
+      for(let j=0; j<frame-lag; j++) c += x[j]*x[j+lag];
+      if(c>best){ best=c; bestLag=lag; }
     }
-
-    function wordsPerMinute(spokenWordsCount, durationSec){
-      const minutes=Math.max(durationSec/60,1e-3);
-      return spokenWordsCount/minutes;
+    if(bestLag>0){
+      const f0 = sr/bestLag;
+      if(f0>70 && f0<300) pitches.push(f0);
     }
+  }
+  if(pitches.length<5) return 0;
+  const mean = pitches.reduce((a,b)=>a+b,0)/pitches.length;
+  const varr = pitches.reduce((a,b)=>a+(b-mean)**2,0)/pitches.length;
+  return Math.sqrt(varr);
+}
 
-    async function analyzePronunciation({ blob, targetText, hypText='' }){
-      const refTokens0 = tokenize(targetText);
-      const hypTokens0 = tokenize(hypText);
-      const refTokens = dropFillers(expandEquivalents(refTokens0));
-      const hypTokens = dropFillers(expandEquivalents(hypTokens0));
+/* ===========================
+   Render analysis
+=========================== */
+function renderAnalysis(a, refText, hypText){
+  ui.resultPanel.hidden = false;
 
-      let accuracyScore = 50;      // ★ 門檻分 50
-      let wer = 0.5;
-      if (hypTokens.length > 0 && refTokens.length > 0) {
-        wer = WER(refTokens, hypTokens);
-        const sim = 1 - wer;
-        accuracyScore = Math.round(sim * 100);
-      }
-      // 不低於門檻 50
-      accuracyScore = Math.max(50, accuracyScore);
+  ui.scoreLine.innerHTML = `
+    <span class="pill">Accuracy</span>
+    <b>${a.accuracy}%</b>
+    <span class="pill">WER ${(a.wer*100).toFixed(1)}%</span>
+    <span class="pill">Speed ${a.wpm} WPM</span>
+    <span class="pill">Pause ${(a.pauseRatio*100).toFixed(0)}%</span>
+    <span class="pill">Pitch σ ${a.pitchVar.toFixed(0)}</span>
+  `;
 
-      const feats = await analyzeAudioFeatures(blob);
+  ui.diffLine.innerHTML = formatDiff(a.diffs);
+  ui.tipsLine.innerHTML = a.tips.length
+    ? a.tips.map(t=>`<div class="tip">• ${escapeHtml(t)}</div>`).join('')
+    : `<div class="tip">Nice! Keep going.</div>`;
 
-      // ★ 使用語音時長避免前後靜音影響 WPM
-      const effDuration = Math.max(feats.speechDuration || feats.duration, 0.001);
-      const wpm = wordsPerMinute(Math.max(hypTokens.length, 1), effDuration);
+  setStatus(`Heard: “${hypText}”`, 'ok');
+}
+function formatDiff(diffs){
+  if(!diffs?.length) return '';
+  return diffs.map(d=>{
+    if(d.op==='ok') return `<span class="ok">${escapeHtml(d.hyp)}</span>`;
+    if(d.op==='sub') return `<span class="sub">${escapeHtml(d.hyp)}</span>`;
+    if(d.op==='del') return `<span class="del">${escapeHtml(d.ref)}</span>`;
+    if(d.op==='ins') return `<span class="ins">${escapeHtml(d.hyp)}</span>`;
+  }).join(' ');
+}
 
-      // ★ 使用語音區間暫停比例
-      const pauseRatioForScore = (typeof feats.pauseRatioSpeech === 'number')
-        ? feats.pauseRatioSpeech
-        : feats.pauseRatio;
+/* ===========================
+   Report
+=========================== */
+function updateReport(){
+  const h = store.history;
+  ui.doneCount.textContent = String(h.length);
 
-      const wpmScore = (() => {
-        if (wpm >= 110 && wpm <= 180) return 100;
-        if (wpm < 60) return 40 * (wpm / 60);
-        if (wpm > 220) return Math.max(20, 100 - (wpm - 180));
-        if (wpm < 110) return 60 + (wpm - 60) * (40 / 50);
-        return 100 - (wpm - 180) * (100 / 40);
-      })();
-      const pauseScore = Math.max(0, 100 - (pauseRatioForScore * 200));
-      const fluencyScore = Math.round(0.7 * wpmScore + 0.3 * pauseScore);
+  if(!h.length){
+    ui.avgAcc.textContent='0';
+    ui.avgWpm.textContent='0';
+    ui.historyList.innerHTML = `<div class="pill">No attempts yet.</div>`;
+    return;
+  }
 
-      const pv = feats.pitchVar;
-      const prosodyScore = (() => {
-        if (pv === 0) return 50;
-        if (pv < 150) return 60 + (pv / 150) * 20;
-        if (pv < 1200) return 80 + (Math.min(pv, 1200) - 150) * (20 / 1050);
-        return Math.max(65, 100 - (pv - 1200) / 8);
-      })();
+  const avgAcc = Math.round(h.reduce((a,b)=>a+b.accuracy,0)/h.length);
+  const avgWpm = Math.round(h.reduce((a,b)=>a+b.wpm,0)/h.length);
+  ui.avgAcc.textContent = String(avgAcc);
+  ui.avgWpm.textContent = String(avgWpm);
 
-      // ★ 新權重：Accuracy 80% + Fluency 15% + Prosody 5%
-      const total = Math.round(0.80 * accuracyScore + 0.15 * fluencyScore + 0.05 * prosodyScore);
+  ui.historyList.innerHTML = h.slice().reverse().map(x=>`
+    <div class="hitem">
+      <div class="line">
+        <b>#${x.idx+1}</b>
+        <span class="small">${new Date(x.time).toLocaleTimeString()}</span>
+      </div>
+      <div class="small">Ref: ${escapeHtml(x.ref)}</div>
+      <div class="small">Hyp: ${escapeHtml(x.hyp)}</div>
+      <div class="line">
+        <span class="pill">Acc ${x.accuracy}%</span>
+        <span class="pill">WPM ${x.wpm}</span>
+        <span class="pill">Pause ${(x.pauseRatio*100).toFixed(0)}%</span>
+      </div>
+    </div>
+  `).join('');
+}
 
-      const tips = [];
-      if (wer > 0.25 || accuracyScore < 75) tips.push('Practice word linking and stress; compare keywords carefully.');
-      if (wpm < 100) tips.push('Speak a bit faster; try following the model audio.');
-      if (wpm > 190) tips.push('Slow down slightly for clarity.');
-      if (pauseRatioForScore > 0.25) tips.push('Too many pauses; practice in chunks then combine.');
-      if (prosodyScore < 80) tips.push('Add more pitch variation on stressed words.');
-      if (tips.length === 0) tips.push('Great job! Keep practicing!');
+function exportReport(){
+  const payload = {
+    meta:{
+      exportedAt: new Date().toISOString(),
+      mode: store.mode,
+      difficulty: store.difficulty,
+      totalSentences: store.sentences.length
+    },
+    source: store.source,
+    level: store.source==='bank' ? store.level : null,
+    unit: store.source==='bank' ? store.unit : null,
+    history: store.history
+  };
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='speaking_report.json'; a.click();
+  URL.revokeObjectURL(url);
+  setStatus('Report exported.', 'ok');
+}
 
-      return {
-        ok: true,
-        transcripts: { hypText, targetText },
-        metrics: {
-          wer: +wer.toFixed(3),
-          wpm: Math.round(wpm),
-          pauseRatio: +pauseRatioForScore.toFixed(3),
-          pitchVar: Math.round(pv)
-        },
-        scores: {
-          accuracy: accuracyScore,
-          fluency: fluencyScore,
-          prosody: prosodyScore,
-          total: total
-        },
-        tips: tips
-      };
-    }
-
-    function safeNum(x, digits=2){ if(x==null || isNaN(x)) return '-'; const f=parseFloat(x); return isFinite(f)? f.toFixed(digits) : '-'; }
-    function avg(arr){ const v=arr.filter(n=>typeof n==='number' && isFinite(n)); if(!v.length) return null; return v.reduce((a,b)=>a+b,0)/v.length; }
-    function pickEncouragement(score){ if(score==null) return 'Keep going—your persistence will pay off!'; if(score>=90) return 'Outstanding! Your pronunciation is clear and expressive—keep shining!'; if(score>=80) return 'Great job! Your speaking is fluent and confident—stay consistent!'; if(score>=70) return 'Nice work! A bit more practice on stress and rhythm will bring you to the next level.'; if(score>=60) return 'Good effort! Focus on accuracy and pacing—you are on the right track.'; return 'Every try counts! Read along with the model audio and practice shorter chunks—you’ll get there!'; }
-
-    function generateReport(){
-      const className=document.getElementById('report-class-input').value.trim();
-      const seatNo=document.getElementById('report-seat-input').value.trim();
-      const name=document.getElementById('report-name-input').value.trim();
-      if(!className||!seatNo||!name){ alert('Please fill in all fields'); return; }
-      const valid = feedbackResults.filter(r=>r);
-      const totals = {
-        total: avg(valid.map(r=>r.scores?.total)),
-        acc: avg(valid.map(r=>r.scores?.accuracy)),
-        flu: avg(valid.map(r=>r.scores?.fluency)),
-        pro: avg(valid.map(r=>r.scores?.prosody)),
-        wpm: avg(valid.map(r=>r.metrics?.wpm)),
-        pause: avg(valid.map(r=>r.metrics?.pauseRatio)),
-        pitch: avg(valid.map(r=>r.metrics?.pitchVar)),
-      };
-      const encouragement = pickEncouragement(totals.total);
-      const reportDiv=document.createElement('div');
-      reportDiv.className='container print-only'; reportDiv.style.display='block';
-      const date=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
-      const listHtml = practicedSentences.map((s,i)=>{
-        const m = s.match(/^[\s\S]+?\s*\[\s*(\d+)\s*\/\s*(\d+)\s*-\s*Level\s*(\d+)\s*,\s*Sentence\s*([^\]]+)\s*\]\s*$/i);
-        const main = m ? s.replace(/\s*\[[^\]]*\]\s*$/,'').trim() : stripBracketTail(s).trim();
-        const source = m ? ` <span style="color:#666;font-size:0.95em;">（Level ${m[3]}；${(m[4]||'').trim()}）</span>` : '';
-        const r = feedbackResults[i] || { scores:{ total:'-', accuracy:'-', fluency:'-', prosody:'-' }, metrics:{ wpm:'-', pauseRatio:'-' } };
-        const lineScore = ` — <strong>${r.scores.total}</strong>/100 (A:${r.scores.accuracy} F:${r.scores.fluency} P:${r.scores.prosody})`;
-        const lineMeta = ` | WPM ${r.metrics.wpm}, Pauses ${safeNum(r.metrics.pauseRatio,2)}`;
-        return `
-          <div class="sentence-score-item">
-            <div><strong>Sentence ${i+1}:</strong> ${main}${source}${lineScore}${lineMeta}</div>
-          </div>`;
-      }).join('');
-      const tipsAll = [];
-      valid.forEach(r=> (r.tips||[]).forEach(t=> tipsAll.push(t)) );
-      const topTips = Array.from(new Set(tipsAll)).slice(0,3).map(t=>`<li>${t}</li>`).join('');
-      reportDiv.innerHTML=`
-        <div class="report-section">
-          <div class="report-header" style="text-align:center;margin-bottom:25px;">
-            <h1 class="report-title" style="font-size:1.9em;margin-bottom:8px;font-weight:800;">Practice Report with Shirley's AI Speaking Coach</h1>
-            <hr style="border:none;height:3px;background:linear-gradient(90deg,#4a6fa5,#ff7e5f);border-radius:2px;margin:15px auto;width:80%;">
-          </div>
-          <div class="report-info-line">
-            <div class="report-info-item"><span class="report-info-label">Class:</span> ${className}</div>
-            <div class="report-info-item"><span class="report-info-label">Seat No.:</span> ${seatNo}</div>
-            <div class="report-info-item"><span class="report-info-label">Name:</span> ${name}</div>
-            <div class="report-info-item"><span class="report-info-label">Date:</span> ${date}</div>
-          </div>
-          <div class="report-section" style="margin-top:10px;">
-            <h3>Session Summary (Accuracy 80%, Fluency 15%, Prosody 5%)</h3>
-            <ul style="margin-left:20px;">
-              <li>Sentences practiced: <strong>${sentences.length}</strong></li>
-              <li>Average Score: <strong>${totals.total==null?'-':Math.round(totals.total)}</strong>/100 (Acc ${safeNum(totals.acc)}, Flu ${safeNum(totals.flu)}, Pro ${safeNum(totals.pro)})</li>
-              <li>Avg WPM: <strong>${totals.wpm==null?'-':Math.round(totals.wpm)}</strong> · Avg Pauses: <strong>${safeNum(totals.pause,2)}</strong> · Avg PitchVar: <strong>${totals.pitch==null?'-':Math.round(totals.pitch)}</strong></li>
-            </ul>
-            ${topTips?`<div style="margin-top:8px;"><strong>Focus Tips:</strong><ul style="margin-left:20px;">${topTips}</ul></div>`:''}
-            <div style="margin-top:10px;padding:12px;background:#f8fff5;border:1px solid #cdeccd;border-radius:8px;">
-              <strong>Encouragement:</strong>
-              <div>${encouragement}</div>
-            </div>
-          </div>
-          <div class="sentence-list" style="margin-top:18px;">
-            <h3>Per-Sentence Scores</h3>
-            ${listHtml}
-          </div>
-        </div>`;
-      const appContainer=document.querySelector('body > .container');
-      if(appContainer) appContainer.classList.add('no-print');
-      document.body.appendChild(reportDiv);
-      reportModal.classList.add('hidden');
-      window.print();
-      if(appContainer) appContainer.classList.remove('no-print');
-      document.body.removeChild(reportDiv);
-    }
-  </script>
+/* ===========================
+   Init
+=========================== */
+initLevels();
+setSource('manual');
+renderSentence();
+setStatus('Choose Enter Manually or Sentence Bank.', 'ok');
+</script>
 </body>
 </html>
