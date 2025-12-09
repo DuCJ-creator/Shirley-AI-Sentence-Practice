@@ -543,7 +543,7 @@ function renderCurrent(){
     ui.hypLine.textContent=r.hyp;
     ui.accLine.textContent=r.acc+'%';
     ui.diffLine.innerHTML=formatDiff(r.diffs);
-    ui.finePanel.innerHTML=formatFine(r, item.en);
+    ui.finePanel.innerHTML=formatFine(r);
     ui.playMineBtn.disabled=!store.lastRecordingBlob;
   }
 
@@ -808,6 +808,7 @@ async function recordOnce(){
   mediaRecorder.onstop=handleAudioStop;
 
   startLiveWebSpeech();
+  // auto stop to avoid stuck ASR
   liveTimeout=setTimeout(()=>{
     if(mediaRecorder && mediaRecorder.state==='recording'){
       stopRecording();
@@ -852,7 +853,7 @@ async function handleAudioStop(){
   ui.hypLine.textContent=hypText;
   ui.accLine.textContent=analysis.acc+'%';
   ui.diffLine.innerHTML=formatDiff(analysis.diffs);
-  ui.finePanel.innerHTML=formatFine(analysis, refText);
+  ui.finePanel.innerHTML=formatFine(analysis);
 
   setStatus('Done. You can listen to your voice and go next.','ok');
 
@@ -884,22 +885,6 @@ function normalizeText(s){
     .replace(/\s+/g,' ')
     .trim();
 }
-function lev(a,b){
-  const m=a.length,n=b.length;
-  const dp=Array.from({length:m+1},()=>Array(n+1).fill(0));
-  for(let i=0;i<=m;i++) dp[i][0]=i;
-  for(let j=0;j<=n;j++) dp[0][j]=j;
-  for(let i=1;i<=m;i++){
-    for(let j=1;j<=n;j++){
-      dp[i][j]=Math.min(
-        dp[i-1][j]+1,
-        dp[i][j-1]+1,
-        dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1)
-      );
-    }
-  }
-  return dp[m][n];
-}
 function diffWords(ref,hyp){
   const a=ref,b=hyp,m=a.length,n=b.length;
   const dp=Array.from({length:m+1},()=>Array(n+1).fill(0));
@@ -910,12 +895,12 @@ function diffWords(ref,hyp){
   for(let i=1;i<=m;i++){
     for(let j=1;j<=n;j++){
       const cost=a[i-1]===b[j-1]?0:1;
-      const opts=[
+      const candidates=[
         [dp[i-1][j]+1,'del'],
         [dp[i][j-1]+1,'ins'],
         [dp[i-1][j-1]+cost,cost?'sub':'ok']
       ].sort((x,y)=>x[0]-y[0])[0];
-      dp[i][j]=opts[0]; bt[i][j]=opts[1];
+      dp[i][j]=candidates[0]; bt[i][j]=candidates[1];
     }
   }
   let i=m,j=n,out=[];
@@ -945,7 +930,6 @@ function analyze(refText,hypText,durationSec){
   const edits=del+ins+sub;
   const wer=refTokens.length?edits/refTokens.length:1;
   const acc=clamp(Math.round((1-wer)*100),0,100);
-
   const wpm = Math.round((hypTokens.length / durationSec) * 60);
 
   return {
@@ -956,7 +940,6 @@ function analyze(refText,hypText,durationSec){
     wpm, durationSec: Number(durationSec.toFixed(2))
   };
 }
-
 function formatDiff(diffs){
   return diffs.map(d=>{
     if(d.op==='ok') return `<span class="ok">${escapeHtml(d.hyp)}</span>`;
@@ -965,8 +948,7 @@ function formatDiff(diffs){
     if(d.op==='ins') return `<span class="ins">${escapeHtml(d.hyp)}</span>`;
   }).join(' ');
 }
-
-function formatFine(r, refText){
+function formatFine(r){
   const miss = r.missing.length ? r.missing.join(', ') : '—';
   const extra = r.extra.length ? r.extra.join(', ') : '—';
   const subs = r.substituted.length ? r.substituted.join(' | ') : '—';
@@ -1027,8 +1009,10 @@ function downloadJson(){
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url; a.download=`speaking_report_${student.class||'class'}_${student.seat||'seat'}_${student.name||'name'}.json`;
-  a.click(); URL.revokeObjectURL(url);
+  a.href=url; 
+  a.download=`speaking_report_${student.class||'class'}_${student.seat||'seat'}_${student.name||'name'}.json`;
+  a.click(); 
+  URL.revokeObjectURL(url);
 }
 function printReport(){
   if(!ui.classInput.value.trim() || !ui.seatInput.value.trim() || !ui.nameInput.value.trim()){
@@ -1038,29 +1022,39 @@ function printReport(){
   window.print();
 }
 
-/* ===== Bind actions ===== */
-$('#app').addEventListener('click',(e)=>{
+/* ===== Bind actions (GLOBAL) ===== */
+document.addEventListener('click',(e)=>{
   const btn=e.target.closest('[data-action]');
   if(!btn) return;
   const a=btn.dataset.action;
+
   if(a==='prev') nav(-1);
   if(a==='next') nav(1);
   if(a==='listenTarget') listenTarget();
   if(a==='record') recordOnce();
   if(a==='stop') stopRecording();
   if(a==='playMine') playMine();
+
   if(a==='applyManual') applyManual();
   if(a==='load10') load10Random();
   if(a==='applyBankUnit') applyBankUnit();
+
   if(a==='export') openExport();
   if(a==='closeExport') closeExport();
   if(a==='downloadJson') downloadJson();
   if(a==='print') printReport();
 });
-$('#app').addEventListener('click',(e)=>{
+
+/* source toggle (GLOBAL) */
+document.addEventListener('click',(e)=>{
   const sbtn=e.target.closest('[data-src]');
   if(!sbtn) return;
   setSource(sbtn.dataset.src);
+});
+
+/* click backdrop to close */
+ui.exportBackdrop.addEventListener('click',(e)=>{
+  if(e.target === ui.exportBackdrop) closeExport();
 });
 
 /* init */
