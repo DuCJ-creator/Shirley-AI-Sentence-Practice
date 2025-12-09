@@ -200,9 +200,11 @@
     .pitem.active{ border-color: var(--neon-cyan); box-shadow:0 0 0 2px rgba(92,225,230,.12); }
     .pitem .small{ font-size:var(--fs-small); color:var(--ink-1); }
 
+    /* ===== Modal (guarantee clickable) ===== */
     .modal-backdrop{
       position:fixed; inset:0; background:rgba(0,0,0,.6);
       display:none; place-items:center; padding:16px; z-index:999;
+      pointer-events:auto;
     }
     .modal{
       width:min(980px, 100%);
@@ -213,6 +215,9 @@
       border-radius:14px;
       box-shadow: var(--shadow-soft);
       overflow:hidden;
+      pointer-events:auto;
+      position:relative;
+      z-index:1000;
     }
     .modal-header{
       padding:12px 14px; border-bottom:1px solid rgba(255,255,255,0.08);
@@ -221,14 +226,13 @@
     .modal h2{ margin:0; font-size:20px; }
     .modal-close{
       font-size:22px; cursor:pointer; padding:0 8px; line-height:1; opacity:.8;
+      pointer-events:auto;
     }
     .modal-close:hover{ opacity:1; }
-
     .modal-body{
       padding:14px; overflow:auto; flex:1;
       display:grid; gap:10px;
     }
-
     .table{
       width:100%; border-collapse:separate; border-spacing:0 8px;
       font-size:15px;
@@ -239,14 +243,15 @@
       padding:8px 10px; vertical-align:top;
     }
     .table th{ text-align:left; font-weight:800; }
-
     .modal-footer{
       position:sticky; bottom:0;
       padding:10px 14px;
       background:#0b0f19;
       border-top:1px solid rgba(255,255,255,0.08);
       display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;
+      pointer-events:auto;
     }
+    .modal-footer .btn{ pointer-events:auto; }
 
     .disclaimer{
       margin:10px 14px 14px;
@@ -290,18 +295,18 @@
       </div>
 
       <div class="row">
-        <button class="btn btn-ghost" data-action="prev">◀ Prev</button>
+        <button class="btn btn-ghost" id="prevBtn">◀ Prev</button>
         <span class="pill" id="progressPill">0 / 0</span>
-        <button class="btn btn-ghost" data-action="next">Next ▶</button>
+        <button class="btn btn-ghost" id="nextBtn">Next ▶</button>
       </div>
 
       <div style="height:6px"></div>
 
       <div class="row">
-        <button class="btn" data-action="listenTarget">🔊 Listen Target</button>
-        <button class="btn btn-success" id="recordBtn" data-action="record" disabled>🎙️ Record</button>
-        <button class="btn btn-danger" id="stopBtn" data-action="stop" disabled>■ Stop</button>
-        <button class="btn btn-ghost" id="playMineBtn" data-action="playMine" disabled>▶ Play My Voice</button>
+        <button class="btn" id="listenTargetBtn">🔊 Listen Target</button>
+        <button class="btn btn-success" id="recordBtn" disabled>🎙️ Record</button>
+        <button class="btn btn-danger" id="stopBtn" disabled>■ Stop</button>
+        <button class="btn btn-ghost" id="playMineBtn" disabled>▶ Play My Voice</button>
       </div>
 
       <div class="mic">
@@ -339,8 +344,8 @@
       <div class="card-title"><span class="dot"></span>Sentence Source</div>
 
       <div class="row">
-        <button class="btn" id="srcManualBtn" data-src="manual">Enter Manually</button>
-        <button class="btn btn-ghost" id="srcBankBtn" data-src="bank">From Sentence Bank</button>
+        <button class="btn" id="srcManualBtn">Enter Manually</button>
+        <button class="btn btn-ghost" id="srcBankBtn">From Sentence Bank</button>
       </div>
 
       <div style="height:10px"></div>
@@ -352,7 +357,7 @@
         <textarea id="manualInput" rows="7" placeholder="e.g. I like apples."></textarea>
         <div style="height:8px"></div>
         <div class="row">
-          <button class="btn btn-ghost" data-action="applyManual">Use These 10</button>
+          <button class="btn btn-ghost" id="applyManualBtn">Use These 10</button>
           <span class="pill" id="manualCount">0 / 10</span>
         </div>
       </div>
@@ -370,8 +375,8 @@
 
         <div style="height:10px"></div>
         <div class="row">
-          <button class="btn btn-ghost" data-action="load10">Load 10 Random</button>
-          <button class="btn btn-ghost" data-action="applyBankUnit">Use Whole Unit</button>
+          <button class="btn btn-ghost" id="load10Btn">Load 10 Random</button>
+          <button class="btn btn-ghost" id="applyUnitBtn">Use Whole Unit</button>
           <span class="pill" id="bankCount">0 sentences</span>
         </div>
       </div>
@@ -381,7 +386,7 @@
       <div class="card-title"><span class="dot"></span>Preview (This Session)</div>
       <div id="rightPanelControls" class="row" style="margin-bottom:6px;">
         <span class="pill" id="sessionPill">0 / 10 completed</span>
-        <button class="btn btn-ghost" data-action="export">Export Report</button>
+        <button class="btn btn-ghost" id="exportBtn">Export Report</button>
       </div>
 
       <div id="previewList" class="plist">
@@ -399,10 +404,10 @@
 
 <!-- Export Modal -->
 <div class="modal-backdrop" id="exportBackdrop">
-  <div class="modal">
+  <div class="modal" id="exportModal">
     <div class="modal-header">
       <h2>Export / Print Report</h2>
-      <div class="modal-close" data-action="closeExport" title="Close">✕</div>
+      <div class="modal-close" id="exportCloseX" title="Close">✕</div>
     </div>
 
     <div class="modal-body">
@@ -426,15 +431,15 @@
     </div>
 
     <div class="modal-footer">
-      <button class="btn btn-ghost" data-action="closeExport">Close / Back</button>
-      <button class="btn btn-ghost" data-action="downloadJson">Download JSON</button>
-      <button class="btn btn-accent" data-action="print">Print</button>
+      <button class="btn btn-ghost" id="exportCloseBtn">Close / Back</button>
+      <button class="btn btn-ghost" id="downloadJsonBtn">Download JSON</button>
+      <button class="btn btn-accent" id="printBtn">Print</button>
     </div>
   </div>
 </div>
 
 <script>
-/* ===== Helpers / UI ===== */
+/* ===== Helpers ===== */
 const $ = (s, r=document) => r.querySelector(s);
 const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
 const escapeHtml = s => s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -469,8 +474,6 @@ const ui = {
   finePanel:$('#finePanel'),
   fineDetails:$('#fineDetails'),
   sessionDone:$('#sessionDone'),
-  srcManualBtn:$('#srcManualBtn'),
-  srcBankBtn:$('#srcBankBtn'),
   manualPane:$('#manualPane'),
   bankPane:$('#bankPane'),
   manualInput:$('#manualInput'),
@@ -480,12 +483,14 @@ const ui = {
   bankCount:$('#bankCount'),
   previewList:$('#previewList'),
   exportBackdrop:$('#exportBackdrop'),
+  exportModal:$('#exportModal'),
   exportTableBody:$('#exportTable tbody'),
   classInput:$('#classInput'),
   seatInput:$('#seatInput'),
   nameInput:$('#nameInput'),
 };
 
+/* ===== Status / Result ===== */
 function setStatus(msg, kind=''){
   ui.statusLine.className = 'status '+kind;
   ui.statusLine.textContent = msg||'';
@@ -524,6 +529,24 @@ function parseCSV(text){
 }
 
 /* ===== Render ===== */
+function renderPreview(){
+  if(!store.session.length){
+    ui.previewList.innerHTML=`<div class="pill">尚未載入題目。</div>`;
+    return;
+  }
+  ui.previewList.innerHTML=store.session.map((it,i)=>{
+    const r=store.results.get(i);
+    const acc=r?`<span class="pill" style="font-weight:900">${r.acc}%</span>`:'';
+    const hyp=r?`<div class="small">You: ${escapeHtml(r.hyp)}</div>`:'<div class="small">Not attempted</div>';
+    return `
+      <div class="pitem ${i===store.idx?'active':''}" data-jump="${i}">
+        <div><b>${i+1}.</b> ${escapeHtml(it.en)}</div>
+        ${hyp}
+        ${acc}
+      </div>
+    `;
+  }).join('');
+}
 function renderCurrent(){
   const item=store.session[store.idx];
   if(!item){
@@ -559,44 +582,6 @@ function renderCurrent(){
   renderPreview();
 }
 
-function renderPreview(){
-  if(!store.session.length){
-    ui.previewList.innerHTML=`<div class="pill">尚未載入題目。</div>`;
-    return;
-  }
-  ui.previewList.innerHTML=store.session.map((it,i)=>{
-    const r=store.results.get(i);
-    const acc=r?`<span class="pill" style="font-weight:900">${r.acc}%</span>`:'';
-    const hyp=r?`<div class="small">You: ${escapeHtml(r.hyp)}</div>`:'<div class="small">Not attempted</div>';
-    return `
-      <div class="pitem ${i===store.idx?'active':''}" data-jump="${i}">
-        <div><b>${i+1}.</b> ${escapeHtml(it.en)}</div>
-        ${hyp}
-        ${acc}
-      </div>
-    `;
-  }).join('');
-}
-ui.previewList.addEventListener('click',(e)=>{
-  const it=e.target.closest('[data-jump]');
-  if(!it) return;
-  store.idx=Number(it.dataset.jump);
-  renderCurrent();
-});
-
-/* ===== Source toggle ===== */
-function setSource(src){
-  store.source=src;
-  const isManual=src==='manual';
-  ui.manualPane.hidden=!isManual;
-  ui.bankPane.hidden=isManual;
-  ui.srcManualBtn.className=isManual?'btn':'btn btn-ghost';
-  ui.srcBankBtn.className=!isManual?'btn':'btn btn-ghost';
-  setStatus(isManual?'Manual mode ready.':'Sentence bank ready.','ok');
-  clearSession();
-  if(!isManual) setLevel(store.level);
-}
-
 /* ===== Session control ===== */
 function clearSession(){
   store.session=[];
@@ -614,6 +599,19 @@ function useSession(items){
   ui.playMineBtn.disabled=true;
   ui.recordBtn.disabled=false;
   renderCurrent();
+}
+
+/* ===== Source toggle ===== */
+function setSource(src){
+  store.source=src;
+  const isManual=src==='manual';
+  ui.manualPane.hidden=!isManual;
+  ui.bankPane.hidden=isManual;
+  $('#srcManualBtn').className=isManual?'btn':'btn btn-ghost';
+  $('#srcBankBtn').className=!isManual?'btn':'btn btn-ghost';
+  setStatus(isManual?'Manual mode ready.':'Sentence bank ready.','ok');
+  clearSession();
+  if(!isManual) setLevel(store.level);
 }
 
 /* Manual apply */
@@ -808,7 +806,6 @@ async function recordOnce(){
   mediaRecorder.onstop=handleAudioStop;
 
   startLiveWebSpeech();
-  // auto stop to avoid stuck ASR
   liveTimeout=setTimeout(()=>{
     if(mediaRecorder && mediaRecorder.state==='recording'){
       stopRecording();
@@ -825,7 +822,6 @@ function stopRecording(){
   stopLiveWebSpeech();
   if(mediaRecorder&&mediaRecorder.state==='recording') mediaRecorder.stop();
 }
-
 async function handleAudioStop(){
   stopMeter(); stopTimer();
   ui.stopBtn.disabled=true;
@@ -975,7 +971,7 @@ function openExport(){
   if(!store.session.length){
     setStatus('No session to export.','warn'); return;
   }
-  const rows=store.session.map((it,i)=>{
+  ui.exportTableBody.innerHTML = store.session.map((it,i)=>{
     const r=store.results.get(i);
     return `
       <tr>
@@ -986,7 +982,6 @@ function openExport(){
       </tr>
     `;
   }).join('');
-  ui.exportTableBody.innerHTML=rows;
   ui.exportBackdrop.style.display='grid';
 }
 function closeExport(){ ui.exportBackdrop.style.display='none'; }
@@ -1022,39 +1017,40 @@ function printReport(){
   window.print();
 }
 
-/* ===== Bind actions (GLOBAL) ===== */
-document.addEventListener('click',(e)=>{
-  const btn=e.target.closest('[data-action]');
-  if(!btn) return;
-  const a=btn.dataset.action;
+/* ===== Direct bindings (NO delegation) ===== */
+$('#prevBtn').onclick = ()=>nav(-1);
+$('#nextBtn').onclick = ()=>nav(1);
+$('#listenTargetBtn').onclick = listenTarget;
+ui.recordBtn.onclick = recordOnce;
+ui.stopBtn.onclick = stopRecording;
+ui.playMineBtn.onclick = playMine;
 
-  if(a==='prev') nav(-1);
-  if(a==='next') nav(1);
-  if(a==='listenTarget') listenTarget();
-  if(a==='record') recordOnce();
-  if(a==='stop') stopRecording();
-  if(a==='playMine') playMine();
+$('#srcManualBtn').onclick = ()=>setSource('manual');
+$('#srcBankBtn').onclick = ()=>setSource('bank');
+$('#applyManualBtn').onclick = applyManual;
 
-  if(a==='applyManual') applyManual();
-  if(a==='load10') load10Random();
-  if(a==='applyBankUnit') applyBankUnit();
+$('#load10Btn').onclick = load10Random;
+$('#applyUnitBtn').onclick = applyBankUnit;
 
-  if(a==='export') openExport();
-  if(a==='closeExport') closeExport();
-  if(a==='downloadJson') downloadJson();
-  if(a==='print') printReport();
-});
+$('#exportBtn').onclick = openExport;
 
-/* source toggle (GLOBAL) */
-document.addEventListener('click',(e)=>{
-  const sbtn=e.target.closest('[data-src]');
-  if(!sbtn) return;
-  setSource(sbtn.dataset.src);
-});
+/* modal buttons */
+$('#exportCloseBtn').onclick = closeExport;
+$('#exportCloseX').onclick = closeExport;
+$('#downloadJsonBtn').onclick = downloadJson;
+$('#printBtn').onclick = printReport;
 
 /* click backdrop to close */
 ui.exportBackdrop.addEventListener('click',(e)=>{
   if(e.target === ui.exportBackdrop) closeExport();
+});
+
+/* preview jump */
+ui.previewList.addEventListener('click',(e)=>{
+  const it=e.target.closest('[data-jump]');
+  if(!it) return;
+  store.idx=Number(it.dataset.jump);
+  renderCurrent();
 });
 
 /* init */
