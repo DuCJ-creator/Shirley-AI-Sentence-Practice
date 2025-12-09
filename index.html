@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Shirley’s AI Speaking Coach</title>
 
-  <!-- Whisper (optional refine) -->
-  <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js"></script>
-
   <style>
     :root{
       --bg-0:#05060a; --bg-1:#0b1020; --bg-2:#0a0f1a;
@@ -172,7 +169,6 @@
     .diff .del{ color:#ffadad; text-decoration: line-through rgba(255,173,173,.7); }
     .diff .ins{ color:#b7c7ff; border-bottom:1px dotted rgba(183,199,255,.6); }
 
-    /* Preview list */
     .plist{ display:grid; gap:8px; max-height:420px; overflow:auto; padding-right:2px;}
     .pitem{
       padding:10px 12px; border-radius:10px;
@@ -183,7 +179,6 @@
     .pitem.active{ border-color: var(--neon-cyan); box-shadow:0 0 0 2px rgba(92,225,230,.12); }
     .pitem .small{ font-size:var(--fs-small); color:var(--ink-1); }
 
-    /* Modal */
     .modal-backdrop{
       position:fixed; inset:0; background:rgba(0,0,0,.6);
       display:none; place-items:center; padding:16px; z-index:999;
@@ -207,6 +202,18 @@
     }
     .table th{ text-align:left; font-weight:800; }
 
+    .disclaimer{
+      margin:10px 14px 14px;
+      padding:10px 12px;
+      border-radius:12px;
+      background: rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.08);
+      font-size:var(--fs-small);
+      color:var(--ink-1);
+      line-height:1.6;
+      letter-spacing:.2px;
+    }
+
     @media print{
       body{ background:#fff; color:#000; }
       .wrap, header, main{ box-shadow:none; border:0; background:#fff; }
@@ -215,6 +222,7 @@
       .modal-backdrop{ position:static; display:block; background:none; padding:0; }
       .modal{ border:0; box-shadow:none; }
       .table td, .table th{ background:#fff; border:1px solid #ddd; }
+      .disclaimer{ border:0; background:#fff; color:#000; font-size:12px; }
     }
   </style>
 </head>
@@ -226,7 +234,7 @@
   </header>
 
   <main>
-    <!-- Left: Practice -->
+    <!-- Left -->
     <section class="card">
       <div class="card-title"><span class="dot"></span>Practice (Match Sentences)</div>
 
@@ -272,7 +280,7 @@
       </div>
     </section>
 
-    <!-- Right: Source + Preview -->
+    <!-- Right -->
     <section class="card">
       <div class="card-title"><span class="dot"></span>Sentence Source</div>
 
@@ -327,6 +335,12 @@
       </div>
     </section>
   </main>
+
+  <!-- Disclaimer -->
+  <div class="disclaimer" id="disclaimerBox">
+    <b>This tool—"Shirley's AI Speaking Coach"</b>, is for educational practice and entertainment only.<br>
+    Due to technical factors (e.g., audio quality and device variance), the AI analysis may not perfectly reflect your true speaking ability. Focus on imitating the model—practice drives progress!
+  </div>
 </div>
 
 <!-- Export Modal -->
@@ -362,29 +376,25 @@
 </div>
 
 <script>
-/* ===========================
-   Helpers / Store / UI
-=========================== */
+/* ===== Helpers / UI ===== */
 const $ = (s, r=document) => r.querySelector(s);
 const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
 const escapeHtml = s => s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
+/* ===== Store ===== */
 const store = {
   source:'manual',
   level:1,
   unit:'ALL',
   bankCache:new Map(),
 
-  session:[],        // current working set (10 or a unit)
+  session:[],
   idx:0,
-  results:new Map(), // idx -> {hyp, acc, diffs}
-
-  whisperReady:false,
-  preferWhisper:true,
-
+  results:new Map(),
   lastRecordingBlob:null,
 };
 
+/* ===== UI refs ===== */
 const ui = {
   sentenceText:$('#sentenceText'),
   progressPill:$('#progressPill'),
@@ -419,9 +429,6 @@ const ui = {
   nameInput:$('#nameInput'),
 };
 
-/* ===========================
-   Status helpers
-=========================== */
 function setStatus(msg, kind=''){
   ui.statusLine.className = 'status '+kind;
   ui.statusLine.textContent = msg||'';
@@ -433,9 +440,7 @@ function clearResult(){
   ui.diffLine.innerHTML='';
 }
 
-/* ===========================
-   Parsing
-=========================== */
+/* ===== Parsing ===== */
 function parseManual(text){
   return text.split('\n').map(x=>x.trim()).filter(Boolean).slice(0,10)
     .map(line=>{
@@ -459,15 +464,14 @@ function parseCSV(text){
   return items;
 }
 
-/* ===========================
-   Render
-=========================== */
+/* ===== Render ===== */
 function renderCurrent(){
   const item=store.session[store.idx];
   if(!item){
     ui.sentenceText.textContent='請先載入題目再開始。';
     ui.progressPill.textContent='0 / 0';
     ui.recordBtn.disabled=true;
+    renderPreview();
     return;
   }
   ui.sentenceText.textContent=item.en;
@@ -483,7 +487,6 @@ function renderCurrent(){
     ui.playMineBtn.disabled=!store.lastRecordingBlob;
   }
 
-  // session done?
   if(store.session.length===10){
     const doneCount=[...store.results.keys()].length;
     ui.sessionPill.textContent=`${doneCount} / 10 completed`;
@@ -514,8 +517,6 @@ function renderPreview(){
     `;
   }).join('');
 }
-
-/* click preview to jump */
 ui.previewList.addEventListener('click',(e)=>{
   const it=e.target.closest('[data-jump]');
   if(!it) return;
@@ -523,9 +524,7 @@ ui.previewList.addEventListener('click',(e)=>{
   renderCurrent();
 });
 
-/* ===========================
-   Source toggle
-=========================== */
+/* ===== Source toggle ===== */
 function setSource(src){
   store.source=src;
   const isManual=src==='manual';
@@ -538,9 +537,7 @@ function setSource(src){
   if(!isManual) setLevel(store.level);
 }
 
-/* ===========================
-   Session control
-=========================== */
+/* ===== Session control ===== */
 function clearSession(){
   store.session=[];
   store.idx=0;
@@ -559,7 +556,7 @@ function useSession(items){
   renderCurrent();
 }
 
-/* Manual apply: exactly those 10 */
+/* Manual apply */
 function applyManual(){
   const items=parseManual(ui.manualInput.value);
   useSession(items);
@@ -570,11 +567,12 @@ ui.manualInput.addEventListener('input',()=>{
   ui.manualCount.textContent=`${Math.min(c,10)} / 10`;
 });
 
-/* Bank load */
+/* ===== Bank load (stable) ===== */
 async function loadLevel(level){
   if(store.bankCache.has(level)) return store.bankCache.get(level);
   try{
     const resp=await fetch(`level${level}.csv`,{cache:'no-store'});
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
     const text=await resp.text();
     const items=parseCSV(text);
     const unitsMap=new Map();
@@ -586,7 +584,8 @@ async function loadLevel(level){
     store.bankCache.set(level,pack);
     return pack;
   }catch(e){
-    setStatus('Cannot load csv. Use a local server if file://','err');
+    console.error(e);
+    setStatus('CSV 無法載入：請用 Live Server / http 方式開啟頁面。','err');
     return {items:[],unitsMap:new Map()};
   }
 }
@@ -621,8 +620,6 @@ ui.unitSelect.addEventListener('change',()=>{
   store.unit=ui.unitSelect.value;
   refreshBankCount();
 });
-
-/* Load 10 random from selected unit */
 function load10Random(){
   const items=getFilteredBankItems();
   if(!items.length){ setStatus('This unit is empty.','warn'); return; }
@@ -630,14 +627,13 @@ function load10Random(){
   useSession(shuffled.slice(0,10));
   setStatus('Loaded 10 random sentences.','ok');
 }
-/* Use whole unit (not session stop at 10) */
 function applyBankUnit(){
   const items=getFilteredBankItems();
   useSession(items);
   setStatus('Loaded this unit.','ok');
 }
 
-/* Nav */
+/* ===== Navigation ===== */
 function nav(step){
   if(!store.session.length) return;
   const next=store.idx+step;
@@ -646,9 +642,7 @@ function nav(step){
   renderCurrent();
 }
 
-/* ===========================
-   TTS target
-=========================== */
+/* ===== TTS target ===== */
 function listenTarget(){
   const item=store.session[store.idx];
   if(!item) return;
@@ -661,74 +655,65 @@ function listenTarget(){
   window.speechSynthesis.speak(u);
 }
 
-/* ===========================
-   Live WebSpeech ASR + Whisper refine
-=========================== */
-let liveRec=null, liveTranscript='';
+/* ===== Live WebSpeech ASR (stable) ===== */
+let liveRec=null, liveTranscript='', liveFinal=false;
+let liveTimeout=null;
 
 function startLiveWebSpeech(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  liveTranscript='';
-  if(!SR) return;
+  liveTranscript=''; liveFinal=false;
+  if(!SR){
+    setStatus('This browser does not support SpeechRecognition. Please use Chrome.','err');
+    return null;
+  }
   liveRec=new SR();
   liveRec.lang='en-US';
   liveRec.interimResults=true;
   liveRec.maxAlternatives=1;
+
   liveRec.onresult=(e)=>{
     let txt='';
     for(let i=e.resultIndex;i<e.results.length;i++){
       txt+=e.results[i][0].transcript+' ';
+      if(e.results[i].isFinal) liveFinal=true;
     }
     liveTranscript=txt.trim();
   };
+
+  liveRec.onerror=(e)=>{
+    console.warn(e);
+    setStatus('ASR error. Please try again.','warn');
+  };
+
+  liveRec.onend=()=>{
+    clearTimeout(liveTimeout);
+    liveTimeout=null;
+  };
+
   try{ liveRec.start(); }catch(e){}
+  return liveRec;
 }
+
 function stopLiveWebSpeech(){
+  clearTimeout(liveTimeout);
+  liveTimeout=null;
   try{ liveRec&&liveRec.stop(); }catch(e){}
   liveRec=null;
 }
 
-/* Whisper loading */
-const { pipeline } = window.transformers;
-let asr=null;
-async function initWhisper(){
-  const prefer=['Xenova/whisper-base.en','Xenova/whisper-small.en','Xenova/whisper-tiny.en'];
-  for(const m of prefer){
-    try{
-      asr=await pipeline('automatic-speech-recognition',m,{dtype:'q4',device:'webgpu'});
-      store.whisperReady=true; return;
-    }catch(e){
-      try{
-        asr=await pipeline('automatic-speech-recognition',m,{dtype:'q4'});
-        store.whisperReady=true; return;
-      }catch(e2){}
-    }
-  }
-  store.whisperReady=false;
-}
-initWhisper();
-function withTimeout(p,ms){
-  return Promise.race([p,new Promise(r=>setTimeout(()=>r(null),ms))]);
-}
-async function transcribeWithWhisper(audioData,ms=20000){
-  if(!asr) return '';
-  const r=await withTimeout(
-    asr(audioData,{language:'en',task:'transcribe',beam_size:3,temperature:0.0}),
-    ms
-  );
-  return r?.text?.trim()||'';
-}
-
-/* ===========================
-   Recording + meter
-=========================== */
+/* ===== Recording + meter ===== */
 let mediaRecorder,audioChunks=[],audioCtx,analyser,meterRAF;
 let startedAt=0,timerInt=null,streamRef=null;
 
 async function ensureMic(){
   if(streamRef) return streamRef;
-  streamRef=await navigator.mediaDevices.getUserMedia({audio:true});
-  return streamRef;
+  try{
+    streamRef=await navigator.mediaDevices.getUserMedia({audio:true});
+    return streamRef;
+  }catch(e){
+    setStatus('Microphone permission denied. Please allow mic.','err');
+    throw e;
+  }
 }
 function startMeter(stream){
   audioCtx=new (window.AudioContext||window.webkitAudioContext)();
@@ -782,6 +767,13 @@ async function recordOnce(){
 
   startLiveWebSpeech();
 
+  // safety: auto stop at 8 seconds to avoid "stuck transcribing"
+  liveTimeout=setTimeout(()=>{
+    if(mediaRecorder && mediaRecorder.state==='recording'){
+      stopRecording();
+    }
+  }, 8000);
+
   mediaRecorder.start();
   startTimer();
   ui.recordBtn.disabled=true;
@@ -815,22 +807,9 @@ async function handleAudioStop(){
   store.lastRecordingBlob=blob;
   ui.playMineBtn.disabled=false;
 
-  const arrayBuffer=await blob.arrayBuffer();
-  const ctx=new (window.AudioContext||window.webkitAudioContext)();
-  const audioBuffer=await ctx.decodeAudioData(arrayBuffer);
-
-  let trimmed=trimSilence(audioBuffer,0.006,0.12);
-  if(trimmed.length/trimmed.sampleRate<0.35) trimmed=audioBuffer;
-  const audioData=trimmed.getChannelData(0);
-
   setStatus('Transcribing…');
 
   let hypText=liveTranscript||'';
-  if(store.whisperReady&&store.preferWhisper){
-    const w=await transcribeWithWhisper(audioData,20000);
-    if(w) hypText=w;
-  }
-
   if(!hypText){
     setStatus('No speech detected. Try again.','warn');
     return;
@@ -838,7 +817,6 @@ async function handleAudioStop(){
 
   const refText=store.session[store.idx].en.trim();
   const analysis=analyze(refText,hypText);
-
   store.results.set(store.idx, analysis);
 
   ui.resultPanel.hidden=false;
@@ -848,7 +826,6 @@ async function handleAudioStop(){
 
   setStatus('Done. You can listen to your voice and go next.','ok');
 
-  // auto next inside 10 session, but stop at end
   if(store.session.length===10){
     const doneCount=[...store.results.keys()].length;
     if(doneCount>=10){
@@ -862,7 +839,6 @@ async function handleAudioStop(){
   renderCurrent();
 }
 
-/* Playback student's voice */
 function playMine(){
   if(!store.lastRecordingBlob) return;
   const url=URL.createObjectURL(store.lastRecordingBlob);
@@ -871,9 +847,7 @@ function playMine(){
   audio.play();
 }
 
-/* ===========================
-   Scoring (match sentences)
-=========================== */
+/* ===== Scoring (stable deterministic) ===== */
 function normalizeText(s){
   return s.toLowerCase()
     .replace(/[“”"']/g,'')
@@ -943,9 +917,7 @@ function formatDiff(diffs){
   }).join(' ');
 }
 
-/* ===========================
-   Export / Print
-=========================== */
+/* ===== Export / Print ===== */
 function openExport(){
   if(!store.session.length){
     setStatus('No session to export.','warn'); return;
@@ -995,9 +967,7 @@ function printReport(){
   window.print();
 }
 
-/* ===========================
-   Bind actions
-=========================== */
+/* ===== Bind actions ===== */
 $('#app').addEventListener('click',(e)=>{
   const btn=e.target.closest('[data-action]');
   if(!btn) return;
@@ -1016,15 +986,13 @@ $('#app').addEventListener('click',(e)=>{
   if(a==='downloadJson') downloadJson();
   if(a==='print') printReport();
 });
-
-/* source buttons */
 $('#app').addEventListener('click',(e)=>{
   const sbtn=e.target.closest('[data-src]');
   if(!sbtn) return;
   setSource(sbtn.dataset.src);
 });
 
-/* init */
+/* ===== init ===== */
 setSource('manual');
 renderCurrent();
 setStatus('請先載入 10 題再開始練習。','ok');
