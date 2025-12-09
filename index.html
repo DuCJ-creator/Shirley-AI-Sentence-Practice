@@ -3,31 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AI Speaking Coach</title>
+  <title>Shirley’s AI Speaking Coach</title>
 
-  <!-- Transformers.js (Whisper) -->
+  <!-- Whisper (optional refine) -->
   <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js"></script>
 
   <style>
     :root{
       --bg-0:#05060a; --bg-1:#0b1020; --bg-2:#0a0f1a;
       --ink-0:#e6ecf7; --ink-1:#a9b3c7; --ink-2:#7d879b;
-
-      --neon-cyan:#5ce1e6;
-      --neon-violet:#8b7cff;
-      --neon-rose:#ff8c7a;
-      --neon-green:#3ddc97;
-
+      --neon-cyan:#5ce1e6; --neon-violet:#8b7cff; --neon-rose:#ff8c7a; --neon-green:#3ddc97;
       --glass: rgba(255,255,255,0.06);
       --glass-border: rgba(255,255,255,0.12);
       --shadow-soft: 0 20px 60px rgba(0,0,0,.55);
       --radius:18px;
 
-      --fs-base:16px;
-      --fs-small:14px;
-      --fs-tiny:12.5px;
+      --fs-base:17px;
+      --fs-small:15px;
       --fs-title:26px;
-      --fs-sentence:20px;
+      --fs-sentence:22px;
     }
 
     *{ box-sizing:border-box; }
@@ -57,25 +51,9 @@
       background: linear-gradient(90deg, var(--neon-cyan), var(--neon-violet), var(--neon-rose));
       opacity:.9;
     }
-    @keyframes drift {
-      0%{ transform: translateY(0px); opacity:.5; }
-      50%{ transform: translateY(-10px); opacity:.8; }
-      100%{ transform: translateY(0px); opacity:.5; }
-    }
-    .wrap::after{
-      content:''; position:absolute; inset:-40%;
-      background:
-        conic-gradient(from 180deg, transparent,
-          rgba(92,225,230,.12), transparent 30%,
-          rgba(139,124,255,.12), transparent 60%,
-          rgba(255,140,122,.10), transparent);
-      filter: blur(60px);
-      animation: drift 10s ease-in-out infinite;
-      pointer-events:none;
-    }
 
     header{
-      padding:20px 22px 12px;
+      padding:18px 20px 12px;
       display:flex; align-items:center; justify-content:space-between;
       border-bottom:1px solid rgba(255,255,255,.06);
       position:relative; z-index:1;
@@ -92,9 +70,7 @@
       display:grid; grid-template-columns: 1.1fr .9fr; gap:14px;
       padding:14px; position:relative; z-index:1;
     }
-    @media (max-width: 980px){
-      main{ grid-template-columns:1fr; }
-    }
+    @media (max-width: 980px){ main{ grid-template-columns:1fr; } }
 
     .card{
       background: var(--glass);
@@ -103,7 +79,7 @@
       border-radius:14px; padding:14px;
     }
     .card-title{
-      font-size:17px; font-weight:750; letter-spacing:.3px; margin-bottom:10px;
+      font-size:18px; font-weight:800; letter-spacing:.3px; margin-bottom:10px;
       display:flex; align-items:center; gap:8px;
     }
     .dot{
@@ -112,18 +88,13 @@
       box-shadow:0 0 12px rgba(92,225,230,.6);
     }
 
-    textarea, input, select{
+    textarea, select, input{
       width:100%;
       background: rgba(255,255,255,0.04);
       border:1px solid rgba(255,255,255,0.12);
       color:var(--ink-0);
       border-radius:10px; padding:11px 12px; outline:none;
       font-size:var(--fs-base); line-height:1.6;
-    }
-    textarea::placeholder, input::placeholder{ color:var(--ink-1); }
-    textarea:focus, input:focus, select:focus{
-      border-color: var(--neon-cyan);
-      box-shadow: 0 0 0 3px rgba(92,225,230,.12);
     }
 
     .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
@@ -158,41 +129,6 @@
       white-space:nowrap;
     }
 
-    .disclaimer{
-      margin: 10px 14px 0;
-      padding: 12px 14px;
-      border-radius: 14px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
-      border:1px solid rgba(255,255,255,0.14);
-      box-shadow: 0 10px 30px rgba(0,0,0,.35);
-      display:grid; gap:6px;
-      position:relative; z-index:1;
-      font-size:var(--fs-small);
-      line-height:1.6;
-    }
-    .disclaimer .head{
-      display:flex; align-items:center; gap:8px;
-      font-weight:800; letter-spacing:.2px;
-      font-size:var(--fs-base);
-    }
-    .disclaimer .icon{
-      width:18px; height:18px; border-radius:6px;
-      display:grid; place-items:center; font-weight:900; font-size:12px;
-      background: linear-gradient(135deg, var(--neon-rose), var(--neon-violet));
-      color:#0b0f19;
-      box-shadow:0 0 14px rgba(255,140,122,.45);
-      flex:0 0 auto;
-    }
-    .disclaimer .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px 14px; }
-    @media (max-width: 780px){ .disclaimer .grid{ grid-template-columns: 1fr; } }
-    .disclaimer .lang .label{
-      font-size:var(--fs-tiny); color:var(--ink-2);
-      letter-spacing:.6px; text-transform:uppercase;
-      margin-bottom:2px; display:block;
-    }
-    .disclaimer .lang p{ margin:0; color:var(--ink-1); }
-
-    .practice{ display:flex; flex-direction:column; gap:12px; }
     .sentence-box{
       padding:14px; border-radius:12px;
       background: rgba(255,255,255,0.04);
@@ -200,7 +136,6 @@
       min-height:96px;
     }
     .sentence{ font-size:var(--fs-sentence); font-weight:800; line-height:1.6; }
-    .translation{ font-size:var(--fs-small); color:var(--ink-1); margin-top:8px; line-height:1.6; }
 
     .mic{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
     .meter{
@@ -224,11 +159,8 @@
       padding:12px; border-radius:12px;
       background: rgba(255,255,255,0.04);
       border:1px dashed rgba(255,255,255,0.14);
-      display:grid; gap:10px;
+      display:grid; gap:8px;
     }
-    .score{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:var(--fs-base); }
-    .score b{ font-size:24px; }
-
     .diff{
       font-size:var(--fs-base); line-height:1.7; word-break:break-word;
       padding:10px 12px; border-radius:10px;
@@ -240,82 +172,84 @@
     .diff .del{ color:#ffadad; text-decoration: line-through rgba(255,173,173,.7); }
     .diff .ins{ color:#b7c7ff; border-bottom:1px dotted rgba(183,199,255,.6); }
 
-    .tips{ display:grid; gap:8px; font-size:var(--fs-base); color:var(--ink-1); }
-    .tip{
-      padding:10px 12px; border-radius:10px;
-      background: rgba(255,255,255,0.05);
-      border:1px solid rgba(255,255,255,0.08);
-    }
-
-    .report{ display:grid; gap:10px; font-size:var(--fs-small); opacity:.95; }
-    .history{
-      max-height:260px; overflow:auto; padding-right:2px;
-      display:grid; gap:8px;
-    }
-    .hitem{
+    /* Preview list */
+    .plist{ display:grid; gap:8px; max-height:420px; overflow:auto; padding-right:2px;}
+    .pitem{
       padding:10px 12px; border-radius:10px;
       background: rgba(255,255,255,0.04);
       border:1px solid rgba(255,255,255,0.08);
-      display:grid; gap:6px;
+      display:grid; gap:6px; cursor:pointer;
     }
-    .hitem .small{ color:var(--ink-1); font-size:var(--fs-small); }
-    .hitem .line{ display:flex; justify-content:space-between; gap:8px; }
+    .pitem.active{ border-color: var(--neon-cyan); box-shadow:0 0 0 2px rgba(92,225,230,.12); }
+    .pitem .small{ font-size:var(--fs-small); color:var(--ink-1); }
 
-    footer{ padding:6px 14px 12px; border-top:1px solid rgba(255,255,255,.06); min-height:6px; }
+    /* Modal */
+    .modal-backdrop{
+      position:fixed; inset:0; background:rgba(0,0,0,.6);
+      display:none; place-items:center; padding:16px; z-index:999;
+    }
+    .modal{
+      width:min(900px, 100%);
+      background: #0b0f19;
+      border:1px solid var(--glass-border);
+      border-radius:14px; padding:14px;
+      box-shadow: var(--shadow-soft);
+    }
+    .modal h2{ margin:0 0 8px; font-size:20px; }
+    .table{
+      width:100%; border-collapse:separate; border-spacing:0 8px;
+      font-size:15px;
+    }
+    .table td, .table th{
+      background: rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.08);
+      padding:8px 10px; vertical-align:top;
+    }
+    .table th{ text-align:left; font-weight:800; }
+
+    @media print{
+      body{ background:#fff; color:#000; }
+      .wrap, header, main{ box-shadow:none; border:0; background:#fff; }
+      .btn, .meter, .status, .mic, .card-title .dot, #rightPanelControls { display:none !important; }
+      .card{ border:0; }
+      .modal-backdrop{ position:static; display:block; background:none; padding:0; }
+      .modal{ border:0; box-shadow:none; }
+      .table td, .table th{ background:#fff; border:1px solid #ddd; }
+    }
   </style>
 </head>
 
 <body>
 <div class="wrap" id="app">
   <header>
-    <h1 id="title">Shirley’s AI Speaking Coach</h1>
+    <h1>Shirley’s AI Speaking Coach</h1>
   </header>
 
-  <div class="disclaimer">
-    <div class="head">
-      <span class="icon">i</span>
-      <span>Disclaimer / 使用提醒</span>
-    </div>
-    <div class="grid">
-      <div class="lang">
-        <span class="label">English</span>
-        <p>
-          This tool—“Shirley’s AI Speaking Coach”—is for educational practice and entertainment only.
-          Due to technical factors (e.g., audio quality and device variance), the AI analysis may not perfectly reflect your true speaking ability.
-          Focus on imitating the model—practice drives progress!
-        </p>
-      </div>
-      <div class="lang">
-        <span class="label">中文</span>
-        <p>
-          本工具「Shirley’s AI Speaking Coach」僅供學習練習與娛樂用途。
-          受限於技術因素（如收音品質、裝置差異等），AI 分析未必能完全反映真實口說能力。
-          請以模仿示範為主，持續練習才是進步關鍵！
-        </p>
-      </div>
-    </div>
-  </div>
-
   <main>
-    <!-- Left -->
-    <section class="card practice" id="practice">
-      <div class="card-title"><span class="dot"></span>Practice</div>
+    <!-- Left: Practice -->
+    <section class="card">
+      <div class="card-title"><span class="dot"></span>Practice (Match Sentences)</div>
 
       <div class="sentence-box">
-        <div class="sentence" id="sentenceText">Select a sentence source to start practicing.</div>
-        <div class="translation" id="sentenceTrans"></div>
+        <div class="sentence" id="sentenceText">請先載入句子再開始。</div>
       </div>
 
       <div class="row">
-        <button class="btn" data-action="prev">◀ Prev</button>
-        <button class="btn btn-accent" data-action="start">Start Practice</button>
+        <button class="btn btn-ghost" data-action="prev">◀ Prev</button>
+        <span class="pill" id="progressPill">0 / 0</span>
         <button class="btn btn-ghost" data-action="next">Next ▶</button>
-        <button class="btn btn-ghost" id="listenBtn" data-action="listen" hidden>🔊 Listen</button>
+      </div>
+
+      <div style="height:6px"></div>
+
+      <div class="row">
+        <button class="btn" data-action="listenTarget">🔊 Listen Target</button>
+        <button class="btn btn-success" id="recordBtn" data-action="record" disabled>🎙️ Record</button>
+        <button class="btn btn-danger" id="stopBtn" data-action="stop" disabled>■ Stop</button>
+        <button class="btn btn-ghost" id="playMineBtn" data-action="playMine" disabled>▶ Play My Voice</button>
       </div>
 
       <div class="mic">
-        <button class="btn btn-success" id="recordBtn" data-action="record" disabled>🎙️ Record</button>
-        <button class="btn btn-danger" id="stopBtn" data-action="stop" disabled>■ Stop</button>
         <div class="meter"><span id="meterBar"></span></div>
         <span class="pill" id="timerPill">00:00</span>
       </div>
@@ -323,13 +257,22 @@
       <div class="status" id="statusLine"></div>
 
       <div class="result" id="resultPanel" hidden>
-        <div class="score" id="scoreLine"></div>
+        <div class="pill">Your Speech (ASR):</div>
+        <div id="hypLine"></div>
+        <div class="pill">Accuracy:</div>
+        <div id="accLine" style="font-size:20px;font-weight:900;"></div>
+        <div class="pill">Diff:</div>
         <div class="diff" id="diffLine"></div>
-        <div class="tips" id="tipsLine"></div>
+      </div>
+
+      <div id="sessionDone" hidden style="margin-top:10px;">
+        <div class="pill" style="font-size:18px;color:#fff;">
+          ✅ 本組 10 題完成！請到右側檢視每題狀況，或輸出報表。
+        </div>
       </div>
     </section>
 
-    <!-- Right -->
+    <!-- Right: Source + Preview -->
     <section class="card">
       <div class="card-title"><span class="dot"></span>Sentence Source</div>
 
@@ -338,16 +281,16 @@
         <button class="btn btn-ghost" id="srcBankBtn" data-src="bank">From Sentence Bank</button>
       </div>
 
-      <div style="height:12px"></div>
+      <div style="height:10px"></div>
 
       <div id="manualPane">
         <label style="font-size:var(--fs-small);color:var(--ink-1)">
-          Practice Sentences (one per line, max 10; optional “|| Chinese”)
+          Sentences (one per line, max 10)
         </label>
-        <textarea id="manualInput" rows="7" placeholder="e.g. I like apples. || 我喜歡蘋果。"></textarea>
+        <textarea id="manualInput" rows="7" placeholder="e.g. I like apples."></textarea>
         <div style="height:8px"></div>
         <div class="row">
-          <button class="btn btn-ghost" data-action="applyManual">Apply Manual Sentences</button>
+          <button class="btn btn-ghost" data-action="applyManual">Use These 10</button>
           <span class="pill" id="manualCount">0 / 10</span>
         </div>
       </div>
@@ -355,12 +298,8 @@
       <div id="bankPane" hidden>
         <label style="font-size:var(--fs-small);color:var(--ink-1)">Choose Level</label>
         <select id="levelSelect">
-          <option value="1">Level 1</option>
-          <option value="2">Level 2</option>
-          <option value="3">Level 3</option>
-          <option value="4">Level 4</option>
-          <option value="5">Level 5</option>
-          <option value="6">Level 6</option>
+          <option value="1">Level 1</option><option value="2">Level 2</option><option value="3">Level 3</option>
+          <option value="4">Level 4</option><option value="5">Level 5</option><option value="6">Level 6</option>
         </select>
 
         <div style="height:10px"></div>
@@ -368,65 +307,58 @@
         <select id="unitSelect" disabled></select>
 
         <div style="height:10px"></div>
-        <label style="font-size:var(--fs-small);color:var(--ink-1)">Preview</label>
-        <div id="bankList" class="history" style="max-height:190px"></div>
-
-        <div style="height:10px"></div>
         <div class="row">
           <button class="btn btn-ghost" data-action="load10">Load 10 Random</button>
-          <button class="btn btn-ghost" data-action="applyBank">Use This Unit</button>
+          <button class="btn btn-ghost" data-action="applyBankUnit">Use Whole Unit</button>
           <span class="pill" id="bankCount">0 sentences</span>
         </div>
       </div>
 
       <div style="height:14px"></div>
 
-      <div class="card-title"><span class="dot"></span>Mode & Difficulty</div>
-      <div class="row">
-        <div>
-          <label style="font-size:var(--fs-small);color:var(--ink-1)">Mode</label>
-          <select id="modeSelect">
-            <option value="reading">Reading (match sentence)</option>
-            <option value="shadowing">Shadowing (listen & repeat)</option>
-            <option value="free">Free Speaking (topic based)</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:var(--fs-small);color:var(--ink-1)">Difficulty</label>
-          <select id="diffSelect">
-            <option value="easy">Easy</option>
-            <option value="normal" selected>Normal</option>
-            <option value="hard">Hard</option>
-          </select>
-        </div>
-      </div>
-
-      <div style="height:10px"></div>
-      <div class="row">
-        <button class="btn btn-ghost" data-action="reset">Reset Progress</button>
+      <div class="card-title"><span class="dot"></span>Preview (This Session)</div>
+      <div id="rightPanelControls" class="row" style="margin-bottom:6px;">
+        <span class="pill" id="sessionPill">0 / 10 completed</span>
         <button class="btn btn-ghost" data-action="export">Export Report</button>
       </div>
 
-      <div style="height:14px"></div>
-
-      <div class="card-title"><span class="dot"></span>Session Report</div>
-      <div class="report">
-        <div class="pill">Completed: <b id="doneCount">0</b>/<span id="totalCount">0</span></div>
-        <div class="pill">Avg Accuracy: <b id="avgAcc">0</b>%</div>
-        <div class="pill">Avg Speed: <b id="avgWpm">0</b> WPM</div>
-        <div class="history" id="historyList"></div>
-      </div>
-
-      <!-- Fully hidden debug statuses (double click title to show) -->
-      <div id="sysStatus" hidden style="margin-top:10px">
-        <div class="pill" id="asrBadge" style="font-size:var(--fs-tiny); opacity:.6;">ASR: loading…</div>
-        <div class="pill" id="bankBadge" style="font-size:var(--fs-tiny); opacity:.6; margin-top:6px;">Bank: idle</div>
-        <div class="pill" id="engineBadge" style="font-size:var(--fs-tiny); opacity:.6; margin-top:6px;">Engine: auto</div>
+      <div id="previewList" class="plist">
+        <div class="pill">尚未載入題目。</div>
       </div>
     </section>
   </main>
+</div>
 
-  <footer></footer>
+<!-- Export Modal -->
+<div class="modal-backdrop" id="exportBackdrop">
+  <div class="modal">
+    <h2>Export / Print Report</h2>
+    <div class="row">
+      <input id="classInput" placeholder="班級 (e.g. 702)" />
+      <input id="seatInput" placeholder="座號 (e.g. 15)" />
+      <input id="nameInput" placeholder="姓名 (e.g. 王小明)" />
+    </div>
+
+    <div style="height:10px"></div>
+
+    <table class="table" id="exportTable">
+      <thead>
+        <tr>
+          <th style="width:44px">#</th>
+          <th>Target</th>
+          <th>Your ASR</th>
+          <th style="width:90px">Accuracy</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="row" style="justify-content:flex-end;margin-top:8px;">
+      <button class="btn btn-ghost" data-action="closeExport">Close</button>
+      <button class="btn btn-ghost" data-action="downloadJson">Download JSON</button>
+      <button class="btn btn-accent" data-action="print">Print</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -435,601 +367,512 @@
 =========================== */
 const $ = (s, r=document) => r.querySelector(s);
 const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
-const escapeHtml = s => s.replace(/[&<>"']/g, m=>({
-  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-}[m]));
+const escapeHtml = s => s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
 const store = {
-  sentences: [],
-  idx: 0,
-  mode: 'reading',
-  difficulty: 'normal',
-  history: [],
-  source: 'manual',
-  level: 1,
-  unit: 'ALL',
-  bankCache: new Map(),
+  source:'manual',
+  level:1,
+  unit:'ALL',
+  bankCache:new Map(),
 
-  whisperReady: false,
-  preferWhisper: true, // auto: whisper if ready else webspeech-live
+  session:[],        // current working set (10 or a unit)
+  idx:0,
+  results:new Map(), // idx -> {hyp, acc, diffs}
+
+  whisperReady:false,
+  preferWhisper:true,
+
+  lastRecordingBlob:null,
 };
 
 const ui = {
-  title: $('#title'),
-  sysStatus: $('#sysStatus'),
-  sentenceText: $('#sentenceText'),
-  sentenceTrans: $('#sentenceTrans'),
-  recordBtn: $('#recordBtn'),
-  stopBtn: $('#stopBtn'),
-  listenBtn: $('#listenBtn'),
-  statusLine: $('#statusLine'),
-  resultPanel: $('#resultPanel'),
-  scoreLine: $('#scoreLine'),
-  diffLine: $('#diffLine'),
-  tipsLine: $('#tipsLine'),
-  doneCount: $('#doneCount'),
-  totalCount: $('#totalCount'),
-  avgAcc: $('#avgAcc'),
-  avgWpm: $('#avgWpm'),
-  historyList: $('#historyList'),
-  meterBar: $('#meterBar'),
-  timerPill: $('#timerPill'),
-  asrBadge: $('#asrBadge'),
-  bankBadge: $('#bankBadge'),
-  engineBadge: $('#engineBadge'),
+  sentenceText:$('#sentenceText'),
+  progressPill:$('#progressPill'),
+  sessionPill:$('#sessionPill'),
+  recordBtn:$('#recordBtn'),
+  stopBtn:$('#stopBtn'),
+  playMineBtn:$('#playMineBtn'),
+  meterBar:$('#meterBar'),
+  timerPill:$('#timerPill'),
+  statusLine:$('#statusLine'),
+  resultPanel:$('#resultPanel'),
+  hypLine:$('#hypLine'),
+  accLine:$('#accLine'),
+  diffLine:$('#diffLine'),
+  sessionDone:$('#sessionDone'),
 
-  srcManualBtn: $('#srcManualBtn'),
-  srcBankBtn: $('#srcBankBtn'),
-  manualPane: $('#manualPane'),
-  bankPane: $('#bankPane'),
-  manualInput: $('#manualInput'),
-  manualCount: $('#manualCount'),
-  levelSelect: $('#levelSelect'),
-  unitSelect: $('#unitSelect'),
-  bankList: $('#bankList'),
-  bankCount: $('#bankCount'),
+  srcManualBtn:$('#srcManualBtn'),
+  srcBankBtn:$('#srcBankBtn'),
+  manualPane:$('#manualPane'),
+  bankPane:$('#bankPane'),
+  manualInput:$('#manualInput'),
+  manualCount:$('#manualCount'),
+  levelSelect:$('#levelSelect'),
+  unitSelect:$('#unitSelect'),
+  bankCount:$('#bankCount'),
+  previewList:$('#previewList'),
 
-  modeSelect: $('#modeSelect'),
-  diffSelect: $('#diffSelect'),
+  exportBackdrop:$('#exportBackdrop'),
+  exportTableBody:$('#exportTable tbody'),
+  classInput:$('#classInput'),
+  seatInput:$('#seatInput'),
+  nameInput:$('#nameInput'),
 };
 
-/* Hidden debug toggle: double click title */
-ui.title.addEventListener('dblclick', ()=>{
-  ui.sysStatus.hidden = !ui.sysStatus.hidden;
-});
-
-function clearResult(){
-  ui.resultPanel.hidden = true;
-  ui.scoreLine.innerHTML = '';
-  ui.diffLine.innerHTML = '';
-  ui.tipsLine.innerHTML = '';
-}
+/* ===========================
+   Status helpers
+=========================== */
 function setStatus(msg, kind=''){
-  ui.statusLine.className = 'status ' + (kind||'');
-  ui.statusLine.textContent = msg || '';
+  ui.statusLine.className = 'status '+kind;
+  ui.statusLine.textContent = msg||'';
+}
+function clearResult(){
+  ui.resultPanel.hidden=true;
+  ui.hypLine.textContent='';
+  ui.accLine.textContent='';
+  ui.diffLine.innerHTML='';
 }
 
 /* ===========================
-   Sentence parsing
+   Parsing
 =========================== */
 function parseManual(text){
-  return text.split('\n')
-    .map(x=>x.trim()).filter(Boolean)
+  return text.split('\n').map(x=>x.trim()).filter(Boolean).slice(0,10)
     .map(line=>{
-      line = line.replace(/^\s*[\(\[]?\d+[\)\]]?\s*[\.\:\、\)]\s*/,'');
-      const [en, zh] = line.split('||').map(s=>s.trim());
-      return { en, zh: zh || '' };
+      line=line.replace(/^\s*[\(\[]?\d+[\)\]]?\s*[\.\:\、\)]\s*/,'');
+      return { en: line };
     });
 }
 function parseCSV(text){
-  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
-  const items = [];
+  const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const items=[];
   for(const line of lines){
-    const i = line.indexOf(',');
-    if(i === -1) continue;
-    const number = line.slice(0,i).trim();
-    const sentence = line.slice(i+1).trim();
+    const i=line.indexOf(',');
+    if(i===-1) continue;
+    const number=line.slice(0,i).trim();
+    const sentence=line.slice(i+1).trim();
     if(!sentence) continue;
-
-    const dash = number.indexOf('-');
-    const unit = dash === -1 ? '0' : number.slice(0,dash).trim(); // unit= before dash
-    items.push({ en: sentence, zh:'', number, unit });
+    const dash=number.indexOf('-');
+    const unit=dash===-1?'0':number.slice(0,dash).trim();
+    items.push({ en: sentence, number, unit });
   }
   return items;
 }
 
 /* ===========================
-   Render sentences
+   Render
 =========================== */
-function renderSentence(){
-  const item = store.sentences[store.idx];
+function renderCurrent(){
+  const item=store.session[store.idx];
   if(!item){
-    ui.sentenceText.textContent = 'Select a sentence source to start practicing.';
-    ui.sentenceTrans.textContent = '';
-    ui.totalCount.textContent = '0';
-    ui.listenBtn.hidden = true;
+    ui.sentenceText.textContent='請先載入題目再開始。';
+    ui.progressPill.textContent='0 / 0';
+    ui.recordBtn.disabled=true;
     return;
   }
-  ui.sentenceText.textContent = item.en;
-  ui.sentenceTrans.textContent = item.zh || '';
-  ui.totalCount.textContent = String(store.sentences.length);
+  ui.sentenceText.textContent=item.en;
+  ui.progressPill.textContent=`${store.idx+1} / ${store.session.length}`;
 
-  ui.listenBtn.hidden = (store.mode !== 'shadowing');
   clearResult();
+  const r=store.results.get(store.idx);
+  if(r){
+    ui.resultPanel.hidden=false;
+    ui.hypLine.textContent=r.hyp;
+    ui.accLine.textContent=r.acc+'%';
+    ui.diffLine.innerHTML=formatDiff(r.diffs);
+    ui.playMineBtn.disabled=!store.lastRecordingBlob;
+  }
+
+  // session done?
+  if(store.session.length===10){
+    const doneCount=[...store.results.keys()].length;
+    ui.sessionPill.textContent=`${doneCount} / 10 completed`;
+    ui.sessionDone.hidden = doneCount<10;
+  }else{
+    ui.sessionPill.textContent=`${[...store.results.keys()].length} completed`;
+    ui.sessionDone.hidden=true;
+  }
+
+  renderPreview();
 }
 
-/* ===========================
-   Event Delegation
-=========================== */
-$('#app').addEventListener('click', (e)=>{
-  const actBtn = e.target.closest('[data-action]');
-  if(actBtn){
-    const act = actBtn.dataset.action;
-    if(act==='prev') nav(-1);
-    if(act==='next') nav(1);
-    if(act==='start') startSession();
-    if(act==='applyManual') applyManual();
-    if(act==='applyBank') applyBank();
-    if(act==='load10') load10Random();
-    if(act==='record') recordOnce();
-    if(act==='stop') stopRecording();
-    if(act==='reset') resetProgress();
-    if(act==='export') exportReport();
-    if(act==='listen') playSentence();
-  }
-
-  const srcBtn = e.target.closest('[data-src]');
-  if(srcBtn){
-    setSource(srcBtn.dataset.src);
+function renderPreview(){
+  if(!store.session.length){
+    ui.previewList.innerHTML=`<div class="pill">尚未載入題目。</div>`;
     return;
   }
-});
-
-ui.modeSelect.addEventListener('change', ()=>{
-  store.mode = ui.modeSelect.value;
-  renderSentence();
-  if(store.mode==='shadowing' && store.sentences[store.idx]) playSentence();
-});
-ui.diffSelect.addEventListener('change', ()=> store.difficulty = ui.diffSelect.value );
-ui.unitSelect.addEventListener('change', ()=>{
-  store.unit = ui.unitSelect.value;
-  refreshBankPreview();
-});
-ui.levelSelect.addEventListener('change', ()=>{
-  setLevel(Number(ui.levelSelect.value));
-});
-
-/* ===========================
-   TTS (Shadowing demo voice)
-=========================== */
-function playSentence(){
-  const item = store.sentences[store.idx];
-  if(!item) return;
-  if(!('speechSynthesis' in window)){
-    setStatus('This browser does not support TTS.', 'warn');
-    return;
-  }
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(item.en);
-  u.lang = 'en-US';
-  u.rate = 0.95;
-  u.pitch = 1.0;
-  window.speechSynthesis.speak(u);
+  ui.previewList.innerHTML=store.session.map((it,i)=>{
+    const r=store.results.get(i);
+    const acc=r?`<span class="pill" style="font-weight:900">${r.acc}%</span>`:'';
+    const hyp=r?`<div class="small">You: ${escapeHtml(r.hyp)}</div>`:'<div class="small">Not attempted</div>';
+    return `
+      <div class="pitem ${i===store.idx?'active':''}" data-jump="${i}">
+        <div><b>${i+1}.</b> ${escapeHtml(it.en)}</div>
+        ${hyp}
+        ${acc}
+      </div>
+    `;
+  }).join('');
 }
+
+/* click preview to jump */
+ui.previewList.addEventListener('click',(e)=>{
+  const it=e.target.closest('[data-jump]');
+  if(!it) return;
+  store.idx=Number(it.dataset.jump);
+  renderCurrent();
+});
 
 /* ===========================
    Source toggle
 =========================== */
 function setSource(src){
-  store.source = src;
-  const isManual = src === 'manual';
-  ui.manualPane.hidden = !isManual;
-  ui.bankPane.hidden = isManual;
-  ui.srcManualBtn.className = isManual ? 'btn' : 'btn btn-ghost';
-  ui.srcBankBtn.className   = !isManual ? 'btn' : 'btn btn-ghost';
-  clearResult();
-
-  if(!isManual){
-    ui.levelSelect.value = String(store.level);
-    setLevel(store.level);
-  }
-  setStatus(isManual ? 'Manual mode ready.' : 'Sentence bank ready.', 'ok');
+  store.source=src;
+  const isManual=src==='manual';
+  ui.manualPane.hidden=!isManual;
+  ui.bankPane.hidden=isManual;
+  ui.srcManualBtn.className=isManual?'btn':'btn btn-ghost';
+  ui.srcBankBtn.className=!isManual?'btn':'btn btn-ghost';
+  setStatus(isManual?'Manual mode ready.':'Sentence bank ready.','ok');
+  clearSession();
+  if(!isManual) setLevel(store.level);
 }
 
 /* ===========================
-   Manual apply
+   Session control
 =========================== */
-function applyManual(){
-  const lines = parseManual(ui.manualInput.value);
-  const limited = lines.slice(0,10);
-  store.sentences = limited;
-  store.idx = 0;
-  renderSentence();
-  updateReport();
-  ui.manualCount.textContent = `${limited.length} / 10`;
-  setStatus(limited.length ? 'Manual sentences applied.' : 'No sentences found.', limited.length?'ok':'warn');
+function clearSession(){
+  store.session=[];
+  store.idx=0;
+  store.results.clear();
+  store.lastRecordingBlob=null;
+  ui.playMineBtn.disabled=true;
+  renderCurrent();
 }
-ui.manualInput.addEventListener('input', ()=>{
-  const c = ui.manualInput.value.split('\n').filter(x=>x.trim()).length;
-  ui.manualCount.textContent = `${Math.min(c,10)} / 10`;
+function useSession(items){
+  store.session=items;
+  store.idx=0;
+  store.results.clear();
+  store.lastRecordingBlob=null;
+  ui.playMineBtn.disabled=true;
+  ui.recordBtn.disabled=false;
+  renderCurrent();
+}
+
+/* Manual apply: exactly those 10 */
+function applyManual(){
+  const items=parseManual(ui.manualInput.value);
+  useSession(items);
+  setStatus(items.length?'Loaded manual session.':'No sentences found.','ok');
+}
+ui.manualInput.addEventListener('input',()=>{
+  const c=ui.manualInput.value.split('\n').filter(x=>x.trim()).length;
+  ui.manualCount.textContent=`${Math.min(c,10)} / 10`;
 });
 
-/* ===========================
-   Sentence bank via CSV + Units
-=========================== */
+/* Bank load */
 async function loadLevel(level){
   if(store.bankCache.has(level)) return store.bankCache.get(level);
-
-  ui.bankBadge.textContent = `Bank: loading level${level}…`;
   try{
-    const resp = await fetch(`level${level}.csv`, { cache:'no-store' });
-    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const text = await resp.text();
-    const items = parseCSV(text);
-
-    const unitsMap = new Map();
+    const resp=await fetch(`level${level}.csv`,{cache:'no-store'});
+    const text=await resp.text();
+    const items=parseCSV(text);
+    const unitsMap=new Map();
     for(const it of items){
-      if(!unitsMap.has(it.unit)) unitsMap.set(it.unit, []);
+      if(!unitsMap.has(it.unit)) unitsMap.set(it.unit,[]);
       unitsMap.get(it.unit).push(it);
     }
-
-    const pack = { items, unitsMap };
-    store.bankCache.set(level, pack);
-    ui.bankBadge.textContent = `Bank: level${level} ready`;
+    const pack={items,unitsMap};
+    store.bankCache.set(level,pack);
     return pack;
-  }catch(err){
-    console.error(err);
-    ui.bankBadge.textContent = `Bank: failed`;
-    setStatus(`Cannot load level${level}.csv. If you open by file://, please run a local server.`, 'err');
-    const empty = { items:[], unitsMap:new Map() };
-    store.bankCache.set(level, empty);
-    return empty;
+  }catch(e){
+    setStatus('Cannot load csv. Use a local server if file://','err');
+    return {items:[],unitsMap:new Map()};
   }
 }
-
 async function setLevel(level){
-  store.level = level;
-  store.unit = 'ALL';
-  const pack = await loadLevel(level);
+  store.level=level;
+  store.unit='ALL';
+  const pack=await loadLevel(level);
   initUnits(pack.unitsMap);
-  refreshBankPreview();
+  refreshBankCount();
 }
-
 function initUnits(unitsMap){
-  const units = [...unitsMap.keys()].sort((a,b)=>Number(a)-Number(b));
-  ui.unitSelect.disabled = units.length===0;
-
-  ui.unitSelect.innerHTML = [
+  const units=[...unitsMap.keys()].sort((a,b)=>Number(a)-Number(b));
+  ui.unitSelect.disabled=units.length===0;
+  ui.unitSelect.innerHTML=[
     `<option value="ALL">All Units (${units.length})</option>`,
     ...units.map(u=>`<option value="${u}">Unit ${u} (${unitsMap.get(u).length})</option>`)
   ].join('');
-  ui.unitSelect.value = 'ALL';
+  ui.unitSelect.value='ALL';
 }
-
 function getFilteredBankItems(){
-  const pack = store.bankCache.get(store.level);
+  const pack=store.bankCache.get(store.level);
   if(!pack) return [];
   if(store.unit==='ALL') return pack.items;
-  return pack.unitsMap.get(store.unit) || [];
+  return pack.unitsMap.get(store.unit)||[];
 }
-
-function refreshBankPreview(){
-  const items = getFilteredBankItems();
-  ui.bankCount.textContent = `${items.length} sentences`;
-  ui.bankList.innerHTML =
-    items.slice(0,140).map((it,i)=>`
-      <div class="hitem">
-        <div><b>${it.number || (i+1)}.</b> ${escapeHtml(it.en)}</div>
-      </div>
-    `).join('') || `<div class="pill">No sentences in this unit.</div>`;
+function refreshBankCount(){
+  const items=getFilteredBankItems();
+  ui.bankCount.textContent=`${items.length} sentences`;
 }
+ui.levelSelect.addEventListener('change',()=>setLevel(Number(ui.levelSelect.value)));
+ui.unitSelect.addEventListener('change',()=>{
+  store.unit=ui.unitSelect.value;
+  refreshBankCount();
+});
 
-function applyBank(){
-  const items = getFilteredBankItems();
-  store.sentences = items;
-  store.idx = 0;
-  renderSentence();
-  updateReport();
-  setStatus(items.length ? `Level ${store.level} Unit ${store.unit} applied.` : 'This unit is empty.', items.length?'ok':'warn');
-}
-
+/* Load 10 random from selected unit */
 function load10Random(){
-  const items = getFilteredBankItems();
-  if(!items.length){
-    setStatus('This unit is empty.', 'warn');
-    return;
-  }
-  const shuffled = items.slice().sort(()=>Math.random()-0.5);
-  store.sentences = shuffled.slice(0,10);
-  store.idx = 0;
-  renderSentence();
-  updateReport();
-  setStatus(`Loaded 10 random sentences.`, 'ok');
+  const items=getFilteredBankItems();
+  if(!items.length){ setStatus('This unit is empty.','warn'); return; }
+  const shuffled=items.slice().sort(()=>Math.random()-0.5);
+  useSession(shuffled.slice(0,10));
+  setStatus('Loaded 10 random sentences.','ok');
+}
+/* Use whole unit (not session stop at 10) */
+function applyBankUnit(){
+  const items=getFilteredBankItems();
+  useSession(items);
+  setStatus('Loaded this unit.','ok');
 }
 
-/* ===========================
-   Navigation / session
-=========================== */
+/* Nav */
 function nav(step){
-  if(!store.sentences.length) return;
-  store.idx = (store.idx + step + store.sentences.length) % store.sentences.length;
-  renderSentence();
-}
-function startSession(){
-  if(!store.sentences.length){
-    setStatus('Please apply manual sentences or a level/unit first.', 'warn');
-    return;
-  }
-  setStatus('Session started. Press Record and speak.', 'ok');
-  ui.recordBtn.disabled = false;
-
-  if(store.mode==='shadowing') playSentence();
-}
-function resetProgress(){
-  store.history = [];
-  updateReport();
-  setStatus('Progress reset.', 'ok');
+  if(!store.session.length) return;
+  const next=store.idx+step;
+  if(next<0 || next>=store.session.length) return;
+  store.idx=next;
+  renderCurrent();
 }
 
 /* ===========================
-   Live WebSpeech ASR (fix No speech detected)
+   TTS target
 =========================== */
-let liveRec = null;
-let liveTranscript = '';
-let liveFinished = false;
+function listenTarget(){
+  const item=store.session[store.idx];
+  if(!item) return;
+  if(!('speechSynthesis' in window)){
+    setStatus('This browser does not support TTS.','warn'); return;
+  }
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(item.en);
+  u.lang='en-US'; u.rate=0.95; u.pitch=1.0;
+  window.speechSynthesis.speak(u);
+}
+
+/* ===========================
+   Live WebSpeech ASR + Whisper refine
+=========================== */
+let liveRec=null, liveTranscript='';
 
 function startLiveWebSpeech(){
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  liveTranscript = '';
-  liveFinished = false;
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  liveTranscript='';
   if(!SR) return;
-
-  liveRec = new SR();
-  liveRec.lang = 'en-US';
-  liveRec.interimResults = true;
-  liveRec.maxAlternatives = 1;
-
-  liveRec.onresult = (e)=>{
-    let txt = '';
-    for (let i = e.resultIndex; i < e.results.length; i++){
-      txt += e.results[i][0].transcript + ' ';
-      if(e.results[i].isFinal) liveFinished = true;
+  liveRec=new SR();
+  liveRec.lang='en-US';
+  liveRec.interimResults=true;
+  liveRec.maxAlternatives=1;
+  liveRec.onresult=(e)=>{
+    let txt='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      txt+=e.results[i][0].transcript+' ';
     }
-    liveTranscript = txt.trim();
+    liveTranscript=txt.trim();
   };
-  liveRec.onerror = ()=>{};
-  liveRec.onend = ()=>{};
-
-  try{ liveRec.start(); } catch(e){}
+  try{ liveRec.start(); }catch(e){}
 }
 function stopLiveWebSpeech(){
-  try{ liveRec && liveRec.stop(); }catch(e){}
-  liveRec = null;
+  try{ liveRec&&liveRec.stop(); }catch(e){}
+  liveRec=null;
+}
+
+/* Whisper loading */
+const { pipeline } = window.transformers;
+let asr=null;
+async function initWhisper(){
+  const prefer=['Xenova/whisper-base.en','Xenova/whisper-small.en','Xenova/whisper-tiny.en'];
+  for(const m of prefer){
+    try{
+      asr=await pipeline('automatic-speech-recognition',m,{dtype:'q4',device:'webgpu'});
+      store.whisperReady=true; return;
+    }catch(e){
+      try{
+        asr=await pipeline('automatic-speech-recognition',m,{dtype:'q4'});
+        store.whisperReady=true; return;
+      }catch(e2){}
+    }
+  }
+  store.whisperReady=false;
+}
+initWhisper();
+function withTimeout(p,ms){
+  return Promise.race([p,new Promise(r=>setTimeout(()=>r(null),ms))]);
+}
+async function transcribeWithWhisper(audioData,ms=20000){
+  if(!asr) return '';
+  const r=await withTimeout(
+    asr(audioData,{language:'en',task:'transcribe',beam_size:3,temperature:0.0}),
+    ms
+  );
+  return r?.text?.trim()||'';
 }
 
 /* ===========================
-   Audio recording + VAD trim
+   Recording + meter
 =========================== */
-let mediaRecorder, audioChunks=[];
-let audioCtx, analyser, meterRAF;
-let startedAt=0, timerInt=null;
-let streamRef=null;
+let mediaRecorder,audioChunks=[],audioCtx,analyser,meterRAF;
+let startedAt=0,timerInt=null,streamRef=null;
 
 async function ensureMic(){
   if(streamRef) return streamRef;
-  streamRef = await navigator.mediaDevices.getUserMedia({ audio:true });
+  streamRef=await navigator.mediaDevices.getUserMedia({audio:true});
   return streamRef;
 }
 function startMeter(stream){
-  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-  const src = audioCtx.createMediaStreamSource(stream);
-  analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 1024;
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  const src=audioCtx.createMediaStreamSource(stream);
+  analyser=audioCtx.createAnalyser();
+  analyser.fftSize=1024;
   src.connect(analyser);
 
-  const data = new Uint8Array(analyser.fftSize);
-  const tick = ()=>{
+  const data=new Uint8Array(analyser.fftSize);
+  const tick=()=>{
     analyser.getByteTimeDomainData(data);
     let sum=0;
     for(let i=0;i<data.length;i++){
-      const v=(data[i]-128)/128;
-      sum += v*v;
+      const v=(data[i]-128)/128; sum+=v*v;
     }
-    const rms = Math.sqrt(sum/data.length);
-    ui.meterBar.style.width = clamp(rms*180,0,100) + '%';
-    meterRAF = requestAnimationFrame(tick);
+    const rms=Math.sqrt(sum/data.length);
+    ui.meterBar.style.width=clamp(rms*180,0,100)+'%';
+    meterRAF=requestAnimationFrame(tick);
   };
   tick();
 }
 function stopMeter(){
   cancelAnimationFrame(meterRAF);
-  ui.meterBar.style.width = '0%';
+  ui.meterBar.style.width='0%';
 }
 function startTimer(){
-  startedAt = Date.now();
-  ui.timerPill.textContent = '00:00';
-  timerInt = setInterval(()=>{
-    const s = Math.floor((Date.now()-startedAt)/1000);
-    const mm = String(Math.floor(s/60)).padStart(2,'0');
-    const ss = String(s%60).padStart(2,'0');
-    ui.timerPill.textContent = `${mm}:${ss}`;
-  }, 250);
+  startedAt=Date.now();
+  ui.timerPill.textContent='00:00';
+  timerInt=setInterval(()=>{
+    const s=Math.floor((Date.now()-startedAt)/1000);
+    const mm=String(Math.floor(s/60)).padStart(2,'0');
+    const ss=String(s%60).padStart(2,'0');
+    ui.timerPill.textContent=`${mm}:${ss}`;
+  },250);
 }
-function stopTimer(){
-  clearInterval(timerInt); timerInt=null;
-}
+function stopTimer(){ clearInterval(timerInt); timerInt=null; }
 
 async function recordOnce(){
   clearResult();
-  setStatus('Preparing microphone…');
-  const stream = await ensureMic();
+  const item=store.session[store.idx];
+  if(!item) return;
+
+  setStatus('Recording… speak now.','ok');
+  const stream=await ensureMic();
   startMeter(stream);
 
   audioChunks=[];
-  mediaRecorder = new MediaRecorder(stream);
-  mediaRecorder.ondataavailable = e=> audioChunks.push(e.data);
-  mediaRecorder.onstop = handleAudioStop;
+  mediaRecorder=new MediaRecorder(stream);
+  mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);
+  mediaRecorder.onstop=handleAudioStop;
 
-  // ✅ Start live ASR while recording
   startLiveWebSpeech();
 
   mediaRecorder.start();
   startTimer();
-  ui.recordBtn.disabled = true;
-  ui.stopBtn.disabled = false;
-  setStatus('Recording… speak now.', 'ok');
+  ui.recordBtn.disabled=true;
+  ui.stopBtn.disabled=false;
+  ui.playMineBtn.disabled=true;
 }
 function stopRecording(){
-  // ✅ Stop live ASR, keep transcript
   stopLiveWebSpeech();
-
-  if(mediaRecorder && mediaRecorder.state==='recording'){
-    mediaRecorder.stop();
-  }
+  if(mediaRecorder&&mediaRecorder.state==='recording') mediaRecorder.stop();
 }
 
-async function handleAudioStop(){
-  stopMeter();
-  stopTimer();
-  ui.stopBtn.disabled = true;
-  ui.recordBtn.disabled = false;
-
-  const blob = new Blob(audioChunks, { type:'audio/webm' });
-  const arrayBuffer = await blob.arrayBuffer();
-  const ctx = new (window.AudioContext||window.webkitAudioContext)();
-  const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-
-  // ✅ more conservative trim + fallback to raw audio if too short
-  let trimmed = trimSilence(audioBuffer, 0.006, 0.12);
-  if(trimmed.length / trimmed.sampleRate < 0.35){
-    trimmed = audioBuffer;
-  }
-  const audioData = trimmed.getChannelData(0);
-
-  setStatus('Transcribing…');
-
-  let hypText = '';
-
-  try{
-    // 1) ✅ use live transcript first (always matches what student just said)
-    if(liveTranscript){
-      hypText = liveTranscript;
-      ui.engineBadge.textContent = 'Engine: webspeech-live';
-    }
-
-    // 2) if whisper ready, refine using recorded audio
-    if(store.whisperReady && store.preferWhisper){
-      const w = await transcribeWithWhisper(audioData, 20000);
-      if(w) hypText = w;
-      ui.engineBadge.textContent = store.whisperReady ? 'Engine: whisper' : ui.engineBadge.textContent;
-    }
-  }catch(e){
-    console.warn(e);
-  }
-
-  if(!hypText){
-    setStatus('No speech detected. Try again.', 'warn');
-    return;
-  }
-
-  const refText = (store.sentences[store.idx]?.en || '').trim();
-  const analysis = analyzePronunciation(refText, hypText, trimmed.sampleRate, audioData);
-
-  store.history.push({
-    idx: store.idx,
-    ref: refText,
-    hyp: hypText,
-    source: store.source,
-    level: store.source==='bank' ? store.level : null,
-    unit: store.source==='bank' ? store.unit : null,
-    ...analysis,
-    time: new Date().toISOString()
-  });
-
-  renderAnalysis(analysis, refText, hypText);
-  updateReport();
-  nav(1);
-}
-
-function trimSilence(audioBuffer, thr=0.006, padSec=0.12){
-  const ch = audioBuffer.getChannelData(0);
-  const sr = audioBuffer.sampleRate;
-  let s=0, e=ch.length-1;
-  while(s<ch.length && Math.abs(ch[s])<thr) s++;
-  while(e>0 && Math.abs(ch[e])<thr) e--;
-  const pad = Math.floor(sr*padSec);
-  s = Math.max(0, s-pad);
-  e = Math.min(ch.length-1, e+pad);
-  const len = e-s+1;
-
-  const out = new AudioBuffer({ length: len, numberOfChannels:1, sampleRate: sr });
-  out.copyToChannel(ch.slice(s,e+1), 0);
+function trimSilence(audioBuffer,thr=0.006,padSec=0.12){
+  const ch=audioBuffer.getChannelData(0), sr=audioBuffer.sampleRate;
+  let s=0,e=ch.length-1;
+  while(s<ch.length&&Math.abs(ch[s])<thr) s++;
+  while(e>0&&Math.abs(ch[e])<thr) e--;
+  const pad=Math.floor(sr*padSec);
+  s=Math.max(0,s-pad); e=Math.min(ch.length-1,e+pad);
+  const len=e-s+1;
+  const out=new AudioBuffer({length:len,numberOfChannels:1,sampleRate:sr});
+  out.copyToChannel(ch.slice(s,e+1),0);
   return out;
 }
 
-/* ===========================
-   Whisper ASR (background load + timeout)
-=========================== */
-const { pipeline } = window.transformers;
-let asr=null;
+async function handleAudioStop(){
+  stopMeter(); stopTimer();
+  ui.stopBtn.disabled=true;
+  ui.recordBtn.disabled=false;
 
-function withTimeout(promise, ms){
-  return Promise.race([
-    promise,
-    new Promise(resolve => setTimeout(()=>resolve(null), ms))
-  ]);
-}
+  const blob=new Blob(audioChunks,{type:'audio/webm'});
+  store.lastRecordingBlob=blob;
+  ui.playMineBtn.disabled=false;
 
-async function initWhisper(){
-  const prefer = [
-    'Xenova/whisper-base.en',
-    'Xenova/whisper-small.en',
-    'Xenova/whisper-tiny.en'
-  ];
-  for (const m of prefer){
-    try{
-      asr = await pipeline('automatic-speech-recognition', m, {
-        dtype:'q4', device:'webgpu'
-      });
-      store.whisperReady = true;
-      ui.asrBadge.textContent = `ASR: ${m.split('/')[1]} (WebGPU)`;
-      return;
-    }catch(e){
-      try{
-        asr = await pipeline('automatic-speech-recognition', m, { dtype:'q4' });
-        store.whisperReady = true;
-        ui.asrBadge.textContent = `ASR: ${m.split('/')[1]} (WASM)`;
-        return;
-      }catch(e2){}
+  const arrayBuffer=await blob.arrayBuffer();
+  const ctx=new (window.AudioContext||window.webkitAudioContext)();
+  const audioBuffer=await ctx.decodeAudioData(arrayBuffer);
+
+  let trimmed=trimSilence(audioBuffer,0.006,0.12);
+  if(trimmed.length/trimmed.sampleRate<0.35) trimmed=audioBuffer;
+  const audioData=trimmed.getChannelData(0);
+
+  setStatus('Transcribing…');
+
+  let hypText=liveTranscript||'';
+  if(store.whisperReady&&store.preferWhisper){
+    const w=await transcribeWithWhisper(audioData,20000);
+    if(w) hypText=w;
+  }
+
+  if(!hypText){
+    setStatus('No speech detected. Try again.','warn');
+    return;
+  }
+
+  const refText=store.session[store.idx].en.trim();
+  const analysis=analyze(refText,hypText);
+
+  store.results.set(store.idx, analysis);
+
+  ui.resultPanel.hidden=false;
+  ui.hypLine.textContent=hypText;
+  ui.accLine.textContent=analysis.acc+'%';
+  ui.diffLine.innerHTML=formatDiff(analysis.diffs);
+
+  setStatus('Done. You can listen to your voice and go next.','ok');
+
+  // auto next inside 10 session, but stop at end
+  if(store.session.length===10){
+    const doneCount=[...store.results.keys()].length;
+    if(doneCount>=10){
+      ui.sessionDone.hidden=false;
+    }else{
+      if(store.idx<9){ store.idx++; }
     }
+  }else{
+    if(store.idx<store.session.length-1) store.idx++;
   }
-  store.whisperReady = false;
-  ui.asrBadge.textContent = 'ASR: fallback (webspeech-live)';
+  renderCurrent();
 }
-initWhisper();
 
-async function transcribeWithWhisper(audioData, ms=20000){
-  if(!asr) return '';
-  try{
-    const r = await withTimeout(
-      asr(audioData, {
-        language:'en',
-        task:'transcribe',
-        beam_size:3,
-        temperature:0.0,
-        return_timestamps:false
-      }),
-      ms
-    );
-    if(!r) return '';
-    return (r.text||'').trim();
-  }catch(e){
-    return '';
-  }
+/* Playback student's voice */
+function playMine(){
+  if(!store.lastRecordingBlob) return;
+  const url=URL.createObjectURL(store.lastRecordingBlob);
+  const audio=new Audio(url);
+  audio.onended=()=>URL.revokeObjectURL(url);
+  audio.play();
 }
 
 /* ===========================
-   Scoring
+   Scoring (match sentences)
 =========================== */
 function normalizeText(s){
   return s.toLowerCase()
@@ -1040,159 +883,58 @@ function normalizeText(s){
 }
 function lev(a,b){
   const m=a.length,n=b.length;
-  const dp=Array.from({length:m+1}, ()=>Array(n+1).fill(0));
+  const dp=Array.from({length:m+1},()=>Array(n+1).fill(0));
   for(let i=0;i<=m;i++) dp[i][0]=i;
   for(let j=0;j<=n;j++) dp[0][j]=j;
   for(let i=1;i<=m;i++){
     for(let j=1;j<=n;j++){
-      dp[i][j] = Math.min(
+      dp[i][j]=Math.min(
         dp[i-1][j]+1,
         dp[i][j-1]+1,
-        dp[i-1][j-1] + (a[i-1]===b[j-1]?0:1)
+        dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1)
       );
     }
   }
   return dp[m][n];
 }
-function diffWords(ref, hyp){
-  const a = ref, b = hyp;
-  const m=a.length,n=b.length;
+function diffWords(ref,hyp){
+  const a=ref,b=hyp,m=a.length,n=b.length;
   const dp=Array.from({length:m+1},()=>Array(n+1).fill(0));
   const bt=Array.from({length:m+1},()=>Array(n+1).fill(null));
-  for(let i=0;i<=m;i++){ dp[i][0]=i; bt[i][0]='del'; }
-  for(let j=0;j<=n;j++){ dp[0][j]=j; bt[0][j]='ins'; }
+  for(let i=0;i<=m;i++){dp[i][0]=i;bt[i][0]='del'}
+  for(let j=0;j<=n;j++){dp[0][j]=j;bt[0][j]='ins'}
   bt[0][0]=null;
-
   for(let i=1;i<=m;i++){
     for(let j=1;j<=n;j++){
       const cost=a[i-1]===b[j-1]?0:1;
       const opts=[
         [dp[i-1][j]+1,'del'],
         [dp[i][j-1]+1,'ins'],
-        [dp[i-1][j-1]+cost, cost? 'sub':'ok'],
-      ];
-      opts.sort((x,y)=>x[0]-y[0]);
-      dp[i][j]=opts[0][0]; bt[i][j]=opts[0][1];
+        [dp[i-1][j-1]+cost,cost?'sub':'ok']
+      ].sort((x,y)=>x[0]-y[0])[0];
+      dp[i][j]=opts[0]; bt[i][j]=opts[1];
     }
   }
-
-  let i=m,j=n, out=[];
+  let i=m,j=n,out=[];
   while(i>0||j>0){
     const op=bt[i][j];
-    if(op==='ok'){ out.push({op, ref:a[i-1], hyp:b[j-1]}); i--; j--; }
-    else if(op==='sub'){ out.push({op, ref:a[i-1], hyp:b[j-1]}); i--; j--; }
-    else if(op==='del'){ out.push({op, ref:a[i-1], hyp:''}); i--; }
-    else { out.push({op:'ins', ref:'', hyp:b[j-1]}); j--; }
+    if(op==='ok'||op==='sub'){out.push({op,ref:a[i-1],hyp:b[j-1]});i--;j--;}
+    else if(op==='del'){out.push({op,ref:a[i-1],hyp:''});i--;}
+    else {out.push({op:'ins',ref:'',hyp:b[j-1]});j--;}
   }
   return out.reverse();
 }
-
-function analyzePronunciation(refText, hypText, sr, audioData){
-  const refN = normalizeText(refText);
-  const hypN = normalizeText(hypText);
-  const refTokens = refN.split(' ').filter(Boolean);
-  const hypTokens = hypN.split(' ').filter(Boolean);
-
-  const edits = lev(refTokens, hypTokens);
-  const wer = refTokens.length ? edits / refTokens.length : 1;
-  const accuracy = clamp(Math.round((1-wer)*100), 0, 100);
-
-  const durSec = audioData.length / sr;
-  const wpm = durSec>0 ? Math.round((hypTokens.length / durSec)*60) : 0;
-
-  const pauseRatio = estimatePauseRatio(audioData, sr, 0.01, 0.18);
-  const pitchVar = estimatePitchVar(audioData, sr);
-
-  const tips=[];
-  const diffs = diffWords(refTokens, hypTokens);
-  const missed = diffs.filter(d=>d.op==='del').map(d=>d.ref);
-  const substituted = diffs.filter(d=>d.op==='sub');
-
-  if(missed.length){
-    tips.push(`Missing words: ${missed.slice(0,4).join(', ')}${missed.length>4?'…':''}`);
-  }
-  if(substituted.length){
-    const s=substituted[0];
-    tips.push(`You said "${s.hyp}" but target was "${s.ref}".`);
-  }
-
-  const diff = store.difficulty;
-  const ACC_OK = diff==='easy'?70:diff==='hard'?88:80;
-  const WPM_LOW = diff==='easy'?70:diff==='hard'?95:80;
-  const WPM_HIGH= diff==='easy'?160:diff==='hard'?175:168;
-  const PAUSE_OK= diff==='easy'?0.22:diff==='hard'?0.14:0.18;
-
-  if(accuracy < ACC_OK) tips.push('Try to pronounce each word clearly. Slow down a bit.');
-  if(wpm < WPM_LOW) tips.push('Speak a little faster to sound more natural.');
-  if(wpm > WPM_HIGH) tips.push('You are speaking too fast. Aim for clearer pacing.');
-  if(pauseRatio > PAUSE_OK) tips.push('Fewer pauses will make your speech smoother.');
-  if(pitchVar < 35) tips.push('Use more intonation to avoid a monotone voice.');
-
-  return { accuracy, wer, wpm, durSec, pauseRatio, pitchVar, diffs, tips };
-}
-
-function estimatePauseRatio(audio, sr, thr=0.01, winSec=0.18){
-  const win = Math.max(1, Math.floor(sr*winSec));
-  let silent=0, total=0;
-  for(let i=0;i<audio.length;i+=win){
-    let sum=0, cnt=0;
-    for(let j=i;j<i+win && j<audio.length;j++){
-      sum+=Math.abs(audio[j]); cnt++;
-    }
-    const mean = sum/cnt;
-    total++;
-    if(mean < thr) silent++;
-  }
-  return total? silent/total : 0;
-}
-
-function estimatePitchVar(audio, sr){
-  const frame = Math.floor(sr*0.03);
-  const hop = Math.floor(sr*0.015);
-  const pitches=[];
-  for(let i=0; i+frame<audio.length; i+=hop){
-    const x = audio.slice(i, i+frame);
-    let bestLag=0, best=0;
-    const minLag = Math.floor(sr/300);
-    const maxLag = Math.floor(sr/70);
-    for(let lag=minLag; lag<=maxLag; lag++){
-      let c=0;
-      for(let j=0; j<frame-lag; j++) c += x[j]*x[j+lag];
-      if(c>best){ best=c; bestLag=lag; }
-    }
-    if(bestLag>0){
-      const f0 = sr/bestLag;
-      if(f0>70 && f0<300) pitches.push(f0);
-    }
-  }
-  if(pitches.length<5) return 0;
-  const mean = pitches.reduce((a,b)=>a+b,0)/pitches.length;
-  const varr = pitches.reduce((a,b)=>a+(b-mean)**2,0)/pitches.length;
-  return Math.sqrt(varr);
-}
-
-/* ===========================
-   Render analysis
-=========================== */
-function renderAnalysis(a, refText, hypText){
-  ui.resultPanel.hidden = false;
-
-  ui.scoreLine.innerHTML = `
-    <span class="pill">Accuracy</span>
-    <b>${a.accuracy}%</b>
-    <span class="pill">Speed ${a.wpm} WPM</span>
-    <span class="pill">Pause ${(a.pauseRatio*100).toFixed(0)}%</span>
-  `;
-
-  ui.diffLine.innerHTML = formatDiff(a.diffs);
-  ui.tipsLine.innerHTML = a.tips.length
-    ? a.tips.map(t=>`<div class="tip">• ${escapeHtml(t)}</div>`).join('')
-    : `<div class="tip">Nice! Keep going.</div>`;
-
-  setStatus(`Heard: “${hypText}”`, 'ok');
+function analyze(refText,hypText){
+  const refN=normalizeText(refText), hypN=normalizeText(hypText);
+  const refTokens=refN.split(' ').filter(Boolean);
+  const hypTokens=hypN.split(' ').filter(Boolean);
+  const edits=lev(refTokens,hypTokens);
+  const wer=refTokens.length?edits/refTokens.length:1;
+  const acc=clamp(Math.round((1-wer)*100),0,100);
+  const diffs=diffWords(refTokens,hypTokens);
+  return { hyp:hypText, acc, diffs };
 }
 function formatDiff(diffs){
-  if(!diffs?.length) return '';
   return diffs.map(d=>{
     if(d.op==='ok') return `<span class="ok">${escapeHtml(d.hyp)}</span>`;
     if(d.op==='sub') return `<span class="sub">${escapeHtml(d.hyp)}</span>`;
@@ -1202,67 +944,90 @@ function formatDiff(diffs){
 }
 
 /* ===========================
-   Report
+   Export / Print
 =========================== */
-function updateReport(){
-  const h = store.history;
-  ui.doneCount.textContent = String(h.length);
+function openExport(){
+  if(!store.session.length){
+    setStatus('No session to export.','warn'); return;
+  }
+  const rows=store.session.map((it,i)=>{
+    const r=store.results.get(i);
+    return `
+      <tr>
+        <td>${i+1}</td>
+        <td>${escapeHtml(it.en)}</td>
+        <td>${escapeHtml(r?.hyp||'')}</td>
+        <td>${r? (r.acc+'%') : ''}</td>
+      </tr>
+    `;
+  }).join('');
+  ui.exportTableBody.innerHTML=rows;
+  ui.exportBackdrop.style.display='grid';
+}
+function closeExport(){ ui.exportBackdrop.style.display='none'; }
 
-  if(!h.length){
-    ui.avgAcc.textContent='0';
-    ui.avgWpm.textContent='0';
-    ui.historyList.innerHTML = `<div class="pill">No attempts yet.</div>`;
+function downloadJson(){
+  const student={
+    class: ui.classInput.value.trim(),
+    seat: ui.seatInput.value.trim(),
+    name: ui.nameInput.value.trim(),
+  };
+  const payload={
+    student,
+    source: store.source,
+    level: store.source==='bank'?store.level:null,
+    unit: store.source==='bank'?store.unit:null,
+    session: store.session,
+    results: [...store.results.entries()].map(([i,r])=>({index:i+1,...r}))
+  };
+
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`speaking_report_${student.class||'class'}_${student.seat||'seat'}_${student.name||'name'}.json`;
+  a.click(); URL.revokeObjectURL(url);
+}
+function printReport(){
+  if(!ui.classInput.value.trim() || !ui.seatInput.value.trim() || !ui.nameInput.value.trim()){
+    alert('請先填寫班級、座號、姓名再列印。');
     return;
   }
-
-  const avgAcc = Math.round(h.reduce((a,b)=>a+b.accuracy,0)/h.length);
-  const avgWpm = Math.round(h.reduce((a,b)=>a+b.wpm,0)/h.length);
-  ui.avgAcc.textContent = String(avgAcc);
-  ui.avgWpm.textContent = String(avgWpm);
-
-  ui.historyList.innerHTML = h.slice().reverse().map(x=>`
-    <div class="hitem">
-      <div class="line">
-        <b>#${x.idx+1}</b>
-        <span class="small">${new Date(x.time).toLocaleTimeString()}</span>
-      </div>
-      <div class="small">Ref: ${escapeHtml(x.ref)}</div>
-      <div class="small">Hyp: ${escapeHtml(x.hyp)}</div>
-      <div class="line">
-        <span class="pill">Acc ${x.accuracy}%</span>
-        <span class="pill">WPM ${x.wpm}</span>
-      </div>
-    </div>
-  `).join('');
-}
-
-function exportReport(){
-  const payload = {
-    meta:{
-      exportedAt: new Date().toISOString(),
-      mode: store.mode,
-      difficulty: store.difficulty,
-      totalSentences: store.sentences.length
-    },
-    source: store.source,
-    level: store.source==='bank' ? store.level : null,
-    unit: store.source==='bank' ? store.unit : null,
-    history: store.history
-  };
-  const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download='speaking_report.json'; a.click();
-  URL.revokeObjectURL(url);
-  setStatus('Report exported.', 'ok');
+  window.print();
 }
 
 /* ===========================
-   Init
+   Bind actions
 =========================== */
+$('#app').addEventListener('click',(e)=>{
+  const btn=e.target.closest('[data-action]');
+  if(!btn) return;
+  const a=btn.dataset.action;
+  if(a==='prev') nav(-1);
+  if(a==='next') nav(1);
+  if(a==='listenTarget') listenTarget();
+  if(a==='record') recordOnce();
+  if(a==='stop') stopRecording();
+  if(a==='playMine') playMine();
+  if(a==='applyManual') applyManual();
+  if(a==='load10') load10Random();
+  if(a==='applyBankUnit') applyBankUnit();
+  if(a==='export') openExport();
+  if(a==='closeExport') closeExport();
+  if(a==='downloadJson') downloadJson();
+  if(a==='print') printReport();
+});
+
+/* source buttons */
+$('#app').addEventListener('click',(e)=>{
+  const sbtn=e.target.closest('[data-src]');
+  if(!sbtn) return;
+  setSource(sbtn.dataset.src);
+});
+
+/* init */
 setSource('manual');
-renderSentence();
-setStatus('Choose Enter Manually or Sentence Bank.', 'ok');
+renderCurrent();
+setStatus('請先載入 10 題再開始練習。','ok');
 </script>
 </body>
 </html>
