@@ -920,7 +920,8 @@ function diffWords(ref,hyp){
   }
   return out.reverse();
 }
-function analyze(refText,hypText,durationSec){
+/* ===== Scoring 修正處 ===== */
+function analyze(refText, hypText, durationSec){
   const refN=normalizeText(refText), hypN=normalizeText(hypText);
   const refTokens=refN.split(' ').filter(Boolean);
   const hypTokens=hypN.split(' ').filter(Boolean);
@@ -947,9 +948,46 @@ function analyze(refText,hypText,durationSec){
     wer: Number(wer.toFixed(2)),
     del, ins, sub, ok,
     missing, extra, substituted,
-    wpm, durationSec: Number(durationSec.toFixed(2)), // 加了逗號
+    wpm, durationSec: Number(durationSec.toFixed(2)), // 這裡補上了逗號！
     fluency, completeness
-};
+  };
+}
+
+/* ===== Bank load 增強容錯版 ===== */
+async function loadLevel(level){
+  if(store.bankCache.has(level)) return store.bankCache.get(level);
+  try{
+    // 注意：若直接開檔案不架伺服器，fetch 會報錯
+    const resp=await fetch(`level${level}.csv`,{cache:'no-store'});
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const text=await resp.text();
+    const items=parseCSV(text);
+    const unitsMap=new Map();
+    for(const it of items){
+      if(!unitsMap.has(it.unit)) unitsMap.set(it.unit,[]);
+      unitsMap.get(it.unit).push(it);
+    }
+    const pack={items,unitsMap};
+    store.bankCache.set(level,pack);
+    return pack;
+  }catch(e){
+    console.error("載入失敗:", e);
+    setStatus('無法讀取 CSV。若沒架設伺服器，將使用測試資料運作。','warn');
+    
+    // 預設測試資料：確保沒 CSV 時 Sentence Bank 也能動
+    const testItems = [
+      { en: "The quick brown fox jumps over the lazy dog.", number: "1-1", unit: "1" },
+      { en: "Practice makes perfect.", number: "1-2", unit: "1" },
+      { en: "Artificial intelligence is changing the world.", number: "2-1", unit: "2" }
+    ];
+    const unitsMap = new Map();
+    unitsMap.set("1", [testItems[0], testItems[1]]);
+    unitsMap.set("2", [testItems[2]]);
+    
+    const pack = { items: testItems, unitsMap };
+    store.bankCache.set(level, pack);
+    return pack;
+  }
 }
 function formatDiff(diffs){
   return diffs.map(d=>{
