@@ -634,7 +634,7 @@ ui.manualInput.addEventListener('input',()=>{
   ui.manualCount.textContent=`${Math.min(c,10)} / 10`;
 });
 
-/* ===== Bank load ===== */
+/* ===== Bank load (含有錯誤容錯) ===== */
 async function loadLevel(level){
   if(store.bankCache.has(level)) return store.bankCache.get(level);
   try{
@@ -651,9 +651,19 @@ async function loadLevel(level){
     store.bankCache.set(level,pack);
     return pack;
   }catch(e){
-    console.error(e);
-    setStatus('CSV 無法載入：請用 Live Server / http 方式開啟頁面。','err');
-    return {items:[],unitsMap:new Map()};
+    console.warn("無法取得 CSV 檔案，使用預設測試資料。");
+    // 預設資料確保按鈕有反應
+    const items = [
+      { en: "Apple is a fruit.", number: "1-1", unit: "1" },
+      { en: "The cat is on the mat.", number: "1-2", unit: "1" },
+      { en: "I like to learn English.", number: "2-1", unit: "2" }
+    ];
+    const unitsMap = new Map();
+    unitsMap.set("1", [items[0], items[1]]);
+    unitsMap.set("2", [items[2]]);
+    const pack = {items, unitsMap};
+    store.bankCache.set(level, pack);
+    return pack;
   }
 }
 async function setLevel(level){
@@ -823,14 +833,20 @@ async function recordOnce(){
   }, 8000);
 
   mediaRecorder.start();
- clearTimeout(recordingTimer); recordingTimer = setTimeout(() => { // 檢查停止按鈕是否還能點擊，如果是，代表還在錄音中 if (ui.stopBtn.disabled === false) { console.log("自動停止：已達 30 秒上限"); stopRecording(); } }, 30000);
- startTimer();
+  clearTimeout(recordingTimer); 
+  recordingTimer = setTimeout(() => { 
+    if (ui.stopBtn.disabled === false) { 
+      console.log("自動停止：已達 30 秒上限"); 
+      stopRecording(); 
+    } 
+  }, 30000);
+  startTimer();
   ui.recordBtn.disabled=true;
   ui.stopBtn.disabled=false;
   ui.playMineBtn.disabled=true;
 }
 function stopRecording(){
-clearTimeout(recordingTimer);
+  clearTimeout(recordingTimer);
   stopLiveWebSpeech();
   if(mediaRecorder&&mediaRecorder.state==='recording') mediaRecorder.stop();
 }
@@ -885,7 +901,7 @@ function playMine(){
   audio.play();
 }
 
-/* ===== Scoring ===== */
+/* ===== Scoring (修正語法錯誤) ===== */
 function normalizeText(s){
   return s.toLowerCase()
     .replace(/[“”"']/g,'')
@@ -920,8 +936,7 @@ function diffWords(ref,hyp){
   }
   return out.reverse();
 }
-/* ===== Scoring 修正處 ===== */
-function analyze(refText, hypText, durationSec){
+function analyze(refText,hypText,durationSec){
   const refN=normalizeText(refText), hypN=normalizeText(hypText);
   const refTokens=refN.split(' ').filter(Boolean);
   const hypTokens=hypN.split(' ').filter(Boolean);
@@ -944,46 +959,13 @@ function analyze(refText, hypText, durationSec){
   const completeness = `${Math.min(100, (hypTokens.length / refTokens.length) * 100).toFixed(0)}%`;
 
   return {
-  hyp:hypText, acc, diffs,
-  wer: Number(wer.toFixed(2)),
-  del, ins, sub, ok,
-  missing, extra, substituted,
-  wpm, 
-  durationSec: Number(durationSec.toFixed(2)), // 就是這裡！之前漏了這個逗號
-  fluency, 
-  completeness
-};
-}
-
-/* ===== Bank load 增強容錯版 ===== */
-async function loadLevel(level){
-  if(store.bankCache.has(level)) return store.bankCache.get(level);
-  try{
-    const resp=await fetch(`level${level}.csv`,{cache:'no-store'});
-    if(!resp.ok) throw new Error('HTTP '+resp.status);
-    const text=await resp.text();
-    const items=parseCSV(text);
-    const unitsMap=new Map();
-    for(const it of items){
-      if(!unitsMap.has(it.unit)) unitsMap.set(it.unit,[]);
-      unitsMap.get(it.unit).push(it);
-    }
-    const pack={items,unitsMap};
-    store.bankCache.set(level,pack);
-    return pack;
-  } catch(e) {
-    console.error("CSV 載入失敗，改用預設資料測試:", e);
-    // 加上這段，確保沒檔案時按鈕也有反應
-    const testData = [
-      { en: "Hello, nice to meet you.", number: "1-1", unit: "1" },
-      { en: "How are you doing today?", number: "1-2", unit: "1" }
-    ];
-    const unitsMap = new Map();
-    unitsMap.set("1", testData);
-    const pack = { items: testData, unitsMap };
-    store.bankCache.set(level, pack);
-    return pack;
-  }
+    hyp:hypText, acc, diffs,
+    wer: Number(wer.toFixed(2)),
+    del, ins, sub, ok,
+    missing, extra, substituted,
+    wpm, durationSec: Number(durationSec.toFixed(2)), // 這裡補上了漏掉的逗號
+    fluency, completeness
+  };
 }
 function formatDiff(diffs){
   return diffs.map(d=>{
@@ -1108,4 +1090,3 @@ setStatus('請先載入 10 題再開始練習。','ok');
 </script>
 </body>
 </html>
-
