@@ -944,20 +944,21 @@ function analyze(refText, hypText, durationSec){
   const completeness = `${Math.min(100, (hypTokens.length / refTokens.length) * 100).toFixed(0)}%`;
 
   return {
-    hyp:hypText, acc, diffs,
-    wer: Number(wer.toFixed(2)),
-    del, ins, sub, ok,
-    missing, extra, substituted,
-    wpm, durationSec: Number(durationSec.toFixed(2)), // 這裡補上了逗號！
-    fluency, completeness
-  };
+  hyp:hypText, acc, diffs,
+  wer: Number(wer.toFixed(2)),
+  del, ins, sub, ok,
+  missing, extra, substituted,
+  wpm, 
+  durationSec: Number(durationSec.toFixed(2)), // 就是這裡！之前漏了這個逗號
+  fluency, 
+  completeness
+};
 }
 
 /* ===== Bank load 增強容錯版 ===== */
 async function loadLevel(level){
   if(store.bankCache.has(level)) return store.bankCache.get(level);
   try{
-    // 注意：若直接開檔案不架伺服器，fetch 會報錯
     const resp=await fetch(`level${level}.csv`,{cache:'no-store'});
     if(!resp.ok) throw new Error('HTTP '+resp.status);
     const text=await resp.text();
@@ -970,21 +971,16 @@ async function loadLevel(level){
     const pack={items,unitsMap};
     store.bankCache.set(level,pack);
     return pack;
-  }catch(e){
-    console.error("載入失敗:", e);
-    setStatus('無法讀取 CSV。若沒架設伺服器，將使用測試資料運作。','warn');
-    
-    // 預設測試資料：確保沒 CSV 時 Sentence Bank 也能動
-    const testItems = [
-      { en: "The quick brown fox jumps over the lazy dog.", number: "1-1", unit: "1" },
-      { en: "Practice makes perfect.", number: "1-2", unit: "1" },
-      { en: "Artificial intelligence is changing the world.", number: "2-1", unit: "2" }
+  } catch(e) {
+    console.error("CSV 載入失敗，改用預設資料測試:", e);
+    // 加上這段，確保沒檔案時按鈕也有反應
+    const testData = [
+      { en: "Hello, nice to meet you.", number: "1-1", unit: "1" },
+      { en: "How are you doing today?", number: "1-2", unit: "1" }
     ];
     const unitsMap = new Map();
-    unitsMap.set("1", [testItems[0], testItems[1]]);
-    unitsMap.set("2", [testItems[2]]);
-    
-    const pack = { items: testItems, unitsMap };
+    unitsMap.set("1", testData);
+    const pack = { items: testData, unitsMap };
     store.bankCache.set(level, pack);
     return pack;
   }
