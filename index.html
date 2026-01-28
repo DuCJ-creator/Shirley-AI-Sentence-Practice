@@ -285,63 +285,16 @@
     <h1>Shirley’s AI Speaking Coach</h1>
   </header>
 
-  <main>
-    <!-- Left -->
-    <section class="card">
-      <div class="card-title"><span class="dot"></span>Practice (Match Sentences)</div>
-
-      <div class="sentence-box">
-        <div class="sentence" id="sentenceText">請先載入句子再開始。</div>
-      </div>
-
-      <div class="row">
-        <button class="btn btn-ghost" id="prevBtn">◀ Prev</button>
-        <span class="pill" id="progressPill">0 / 0</span>
-        <button class="btn btn-ghost" id="nextBtn">Next ▶</button>
-      </div>
-
-      <div style="height:6px"></div>
-
-      <div class="row">
-        <button class="btn" id="listenTargetBtn">🔊 Listen Target</button>
-        <button class="btn btn-success" id="recordBtn" disabled>🎙️ Record</button>
-        <button class="btn btn-danger" id="stopBtn" disabled>■ Stop</button>
-        <button class="btn btn-ghost" id="playMineBtn" disabled>▶ Play My Voice</button>
-      </div>
-
-      <div class="mic">
-        <div class="meter"><span id="meterBar"></span></div>
-        <span class="pill" id="timerPill">00:00</span>
-      </div>
-
-      <div class="status" id="statusLine"></div>
-
-      <div class="result" id="resultPanel" hidden>
-        <div class="pill">Your Speech (ASR):</div>
-        <div id="hypLine"></div>
-
-        <div class="pill">Accuracy:</div>
-        <div id="accLine" style="font-size:20px;font-weight:900;"></div>
-
-        <details id="fineDetails">
-          <summary class="pill" style="cursor:pointer;">Fine Score (details)</summary>
-          <div class="fine" id="finePanel"></div>
-        </details>
-
-        <div class="pill">Diff:</div>
-        <div class="diff" id="diffLine"></div>
-      </div>
-
-      <div id="sessionDone" hidden style="margin-top:10px;">
-        <div class="pill" style="font-size:18px;color:#fff;">
-          ✅ 本組 10 題完成！請到右側檢視每題狀況，或輸出報表。
-        </div>
-      </div>
-    </section>
-
-    <!-- Right -->
+<main>
     <section class="card">
       <div class="card-title"><span class="dot"></span>Sentence Source</div>
+      
+      <p style="color:var(--neon-cyan); font-weight:800; font-size:15px; margin-bottom:4px;">
+        Load sentences from the Sentence Bank or enter manually.
+      </p>
+      <p style="color:var(--ink-2); font-size:12px; margin-bottom:12px;">
+        (one per line; max 10; max 30-second long each)
+      </p>
 
       <div class="row">
         <button class="btn" id="srcManualBtn">Enter Manually</button>
@@ -386,14 +339,70 @@
       <div class="card-title"><span class="dot"></span>Preview (This Session)</div>
       <div id="rightPanelControls" class="row" style="margin-bottom:6px;">
         <span class="pill" id="sessionPill">0 / 10 completed</span>
-        <button class="btn btn-ghost" id="exportBtn">Export Report</button>
       </div>
 
       <div id="previewList" class="plist">
         <div class="pill">尚未載入題目。</div>
       </div>
     </section>
+
+    <section class="card">
+      <div class="card-title"><span class="dot" style="background:var(--neon-rose)"></span>Practice Session</div>
+
+      <div class="sentence-box">
+        <div class="sentence" id="sentenceText">Load sentences from the Sentence Bank or enter manually. (one per line; max 10; max 30-second long each)</div>
+      </div>
+
+      <div class="row">
+        <button class="btn btn-ghost" id="prevBtn">◀ Prev</button>
+        <span class="pill" id="progressPill">0 / 0</span>
+        <button class="btn btn-ghost" id="nextBtn">Next ▶</button>
+      </div>
+
+      <div style="height:6px"></div>
+
+      <div class="row">
+        <button class="btn" id="listenTargetBtn">🔊 Listen Target</button>
+        <button class="btn btn-success" id="recordBtn" disabled>🎙️ Record</button>
+        <button class="btn btn-danger" id="stopBtn" disabled>■ Stop</button>
+        <button class="btn btn-ghost" id="playMineBtn" disabled>▶ Play My Voice</button>
+      </div>
+
+      <div class="mic">
+        <div class="meter"><span id="meterBar"></span></div>
+        <span class="pill" id="timerPill">00:00</span>
+      </div>
+
+      <div class="status" id="statusLine"></div>
+
+      <div class="result" id="resultPanel" hidden>
+        <div class="pill">Your Speech (ASR):</div>
+        <div id="hypLine"></div>
+
+        <div class="pill">Accuracy:</div>
+        <div id="accLine" style="font-size:20px;font-weight:900;"></div>
+
+        <details id="fineDetails">
+          <summary class="pill" style="cursor:pointer;">Fine Score (details)</summary>
+          <div class="fine" id="finePanel"></div>
+        </details>
+
+        <div class="pill">Diff:</div>
+        <div id="diffLine" class="diff"></div>
+      </div>
+
+      <div id="sessionDone" hidden style="margin-top:10px;">
+        <div class="pill" style="font-size:18px;color:#fff;">
+          ✅ 本組練習完成！
+        </div>
+      </div>
+
+      <div style="margin-top:auto; padding-top:20px; border-top:1px solid rgba(255,255,255,0.1);">
+        <button class="btn btn-ghost" id="exportBtn" style="width:100%; border:1px solid var(--neon-cyan); color:var(--neon-cyan);">View Review Report / Export PDF</button>
+      </div>
+    </section>
   </main>
+
 
   <!-- Disclaimer -->
   <div class="disclaimer" id="disclaimerBox">
@@ -716,6 +725,7 @@ function listenTarget(){
 /* ===== Live WebSpeech ASR ===== */
 let liveRec=null, liveTranscript='';
 let liveTimeout=null;
+let recordingTimer=null;
 function startLiveWebSpeech(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   liveTranscript='';
@@ -813,12 +823,14 @@ async function recordOnce(){
   }, 8000);
 
   mediaRecorder.start();
-  startTimer();
+ clearTimeout(recordingTimer); recordingTimer = setTimeout(() => { // 檢查停止按鈕是否還能點擊，如果是，代表還在錄音中 if (ui.stopBtn.disabled === false) { console.log("自動停止：已達 30 秒上限"); stopRecording(); } }, 30000);
+ startTimer();
   ui.recordBtn.disabled=true;
   ui.stopBtn.disabled=false;
   ui.playMineBtn.disabled=true;
 }
 function stopRecording(){
+clearTimeout(recordingTimer);
   stopLiveWebSpeech();
   if(mediaRecorder&&mediaRecorder.state==='recording') mediaRecorder.stop();
 }
@@ -927,14 +939,17 @@ function analyze(refText,hypText,durationSec){
   const wer=refTokens.length?edits/refTokens.length:1;
   const acc=clamp(Math.round((1-wer)*100),0,100);
   const wpm = Math.round((hypTokens.length / durationSec) * 60);
+  const fluency = wpm > 100 ? "Excellent" : (wpm > 60 ? "Good" : "Needs Practice"); 
+  const completeness = `${Math.min(100, (hypTokens.length / refTokens.length) * 100).toFixed(0)}%`;
 
   return {
     hyp:hypText, acc, diffs,
     wer: Number(wer.toFixed(2)),
     del, ins, sub, ok,
     missing, extra, substituted,
-    wpm, durationSec: Number(durationSec.toFixed(2))
-  };
+    wpm, durationSec: Number(durationSec.toFixed(2)), // 加了逗號
+    fluency, completeness
+};
 }
 function formatDiff(diffs){
   return diffs.map(d=>{
@@ -951,16 +966,15 @@ function formatFine(r){
 
   return `
     <div class="fine-grid">
-      <div><span class="fine-badge">WER</span>${r.wer}</div>
+      <div><span class="fine-badge">Accuracy</span>${r.acc}%</div>
+      <div><span class="fine-badge">Completeness</span>${r.completeness}</div>
+      <div><span class="fine-badge">Fluency</span>${r.fluency}</div>
       <div><span class="fine-badge">WPM</span>${r.wpm}</div>
       <div><span class="fine-badge">Missing</span>${r.del}</div>
-      <div><span class="fine-badge">Extra</span>${r.ins}</div>
-      <div><span class="fine-badge">Sub</span>${r.sub}</div>
-      <div><span class="fine-badge">OK</span>${r.ok}</div>
+      <div><span class="fine-badge">Subst.</span>${r.sub}</div>
     </div>
     <div class="fine-list">
       <div><b>Missing words:</b> ${escapeHtml(miss)}</div>
-      <div><b>Extra words:</b> ${escapeHtml(extra)}</div>
       <div><b>Substituted:</b> ${escapeHtml(subs)}</div>
     </div>
   `;
@@ -1060,3 +1074,4 @@ setStatus('請先載入 10 題再開始練習。','ok');
 </script>
 </body>
 </html>
+
