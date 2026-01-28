@@ -303,17 +303,23 @@
 
       <div style="height:10px"></div>
 
-      <div id="manualPane">
-        <label style="font-size:var(--fs-small);color:var(--ink-1)">
-          Sentences (one per line, max 10)
-        </label>
-        <textarea id="manualInput" rows="7" placeholder="e.g. I like apples."></textarea>
-        <div style="height:8px"></div>
-        <div class="row">
-          <button class="btn btn-ghost" id="applyManualBtn">Use These 10</button>
-          <span class="pill" id="manualCount">0 / 10</span>
-        </div>
-      </div>
+<div id="manualPane">
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 style="margin:0; color:var(--neon-cyan);">Paste Sentences</h3>
+      <span id="manualCount" class="pill">0 / 10</span>
+    </div>
+    <textarea id="manualInput" placeholder="Enter up to 10 sentences, one per line..."></textarea>
+    
+    <button id="applyManualBtn" class="btn" style="width:100%; margin-top:15px; background:linear-gradient(135deg, var(--neon-cyan), var(--neon-violet)); color:white;">
+      Apply & Start Practice
+    </button>
+    
+    <p style="font-size:12px; color:var(--ink-2); margin-top:10px;">
+      Tip: Each line will be treated as one sentence.
+    </p>
+  </div>
+</div>
 
       <div id="bankPane" hidden>
         <label style="font-size:var(--fs-small);color:var(--ink-1)">Choose Level</label>
@@ -963,9 +969,11 @@ function analyze(refText,hypText,durationSec){
     wer: Number(wer.toFixed(2)),
     del, ins, sub, ok,
     missing, extra, substituted,
-    wpm, durationSec: Number(durationSec.toFixed(2)), // 這裡補上了漏掉的逗號
-    fluency, completeness
-  };
+    wpm, 
+    durationSec: Number(durationSec.toFixed(2)), // 這裡一定要有逗號
+    fluency, 
+    completeness
+};
 }
 function formatDiff(diffs){
   return diffs.map(d=>{
