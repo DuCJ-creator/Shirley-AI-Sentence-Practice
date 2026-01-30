@@ -294,173 +294,259 @@
 
     /* ===== PRINT STYLES ===== */
     @media print{
-      body{ 
-        background:#fff !important; 
-        color:#000 !important; 
-        padding:0 !important;
-        margin:0 !important;
-        font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif !important;
+      /* Reset everything for print */
+      * {
+        -webkit-print-color-adjust: exact !important;
+        color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
       }
       
-      /* Hide all unnecessary elements */
-      .wrap, header, main, .card, .modal-backdrop, .modal, 
-      .btn, .meter, .status, .mic, .card-title .dot, 
-      #rightPanelControls, .pill, .pitem, .preview-section,
-      .disclaimer, .modal-header, .modal-footer,
-      .fine-badge, .fine-grid, .score-card,
-      .analysis-section, #manualPane, #bankPane,
-      #rightPanelControls, #sessionDone,
-      #previewList, #fineDetails,
-      .result, .sentence-box, .diff,
-      #exportCloseX, #exportCloseBtn,
-      #downloadJsonBtn, #downloadCsvBtn,
-      #printBtn, #classInput, #seatInput, #nameInput,
-      .row:not(.print-row), .modal-body > .row:first-child {
-        display: none !important;
-      }
-      
-      /* Show only the modal content */
-      .modal-backdrop{ 
-        position:static !important; 
-        display:block !important; 
-        background:none !important; 
-        padding:0 !important;
+      body, html {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        color: black !important;
+        font-family: "Noto Sans TC", "Microsoft JhengHei", "Segoe UI", Arial, sans-serif !important;
+        font-size: 12pt !important;
+        width: 100% !important;
         height: auto !important;
         overflow: visible !important;
       }
       
-      .modal{ 
-        border:0 !important; 
-        box-shadow:none !important; 
-        max-height:none !important;
-        width: 100% !important;
-        background: #fff !important;
-        color: #000 !important;
+      /* Hide absolutely everything except the modal content */
+      body * {
+        visibility: hidden;
+        background: white !important;
+        color: black !important;
       }
       
-      /* Report title and header */
-      .print-report-header {
+      /* Show only the modal backdrop and its contents */
+      .modal-backdrop,
+      .modal-backdrop * {
+        visibility: visible !important;
+        position: static !important;
         display: block !important;
+      }
+      
+      /* Specific styling for the modal in print */
+      .modal-backdrop {
+        display: block !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 100vh !important;
+        background: white !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        z-index: 999999 !important;
+        overflow: visible !important;
+      }
+      
+      .modal {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: none !important;
+        height: auto !important;
+        min-height: 100vh !important;
+        border: none !important;
+        border-radius: 0 !important;
+        background: white !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: block !important;
+        position: relative !important;
+        overflow: visible !important;
+        page-break-inside: avoid !important;
+      }
+      
+      /* Hide modal header/footer in print */
+      .modal-header,
+      .modal-footer,
+      .modal-close,
+      #exportCloseBtn,
+      #exportCloseX,
+      #downloadJsonBtn,
+      #downloadCsvBtn,
+      #printBtn,
+      .btn,
+      .pill,
+      .card-title .dot,
+      .meter,
+      .mic,
+      .status,
+      .result,
+      .analysis-section,
+      .fine-badge,
+      .score-card,
+      #manualPane,
+      #bankPane,
+      #rightPanelControls,
+      #sessionDone,
+      #previewList,
+      #fineDetails,
+      .sentence-box,
+      .diff,
+      .row:first-child,
+      .disclaimer {
+        display: none !important;
+      }
+      
+      /* Show only the print-optimized content */
+      .print-content {
+        display: block !important;
+        visibility: visible !important;
+        color: black !important;
+        background: white !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      
+      /* Hide screen content */
+      .screen-content {
+        display: none !important;
+      }
+      
+      /* Print report header */
+      .print-report-header {
         text-align: center;
         margin-bottom: 24px;
         padding-bottom: 16px;
         border-bottom: 2px solid #333;
+        page-break-after: avoid;
       }
       
       .print-report-title {
-        font-size: 28px !important;
-        font-weight: 900;
-        color: #000;
-        margin: 0 0 8px 0;
+        font-size: 24pt !important;
+        font-weight: 900 !important;
+        color: black !important;
+        margin: 0 0 8px 0 !important;
+        line-height: 1.2;
       }
       
       .print-report-subtitle {
-        font-size: 16px;
-        color: #666;
-        margin: 0;
+        font-size: 14pt !important;
+        color: #666 !important;
+        margin: 0 !important;
       }
       
       /* Student info */
       .print-student-info {
         display: grid !important;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 16px;
-        margin-bottom: 20px;
-        padding: 12px;
-        background: #f8f8f8;
-        border-radius: 8px;
-        border: 1px solid #ddd;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 20px !important;
+        margin-bottom: 24px !important;
+        padding: 16px !important;
+        background: #f8f8f8 !important;
+        border: 1px solid #ddd !important;
+        border-radius: 8px !important;
+        page-break-inside: avoid;
       }
       
       .print-info-item {
-        display: flex;
-        flex-direction: column;
+        display: flex !important;
+        flex-direction: column !important;
       }
       
       .print-info-label {
-        font-size: 14px;
-        color: #666;
-        margin-bottom: 4px;
+        font-size: 11pt !important;
+        color: #666 !important;
+        margin-bottom: 4px !important;
+        font-weight: 600 !important;
       }
       
       .print-info-value {
-        font-size: 18px;
-        font-weight: 700;
-        color: #000;
+        font-size: 14pt !important;
+        font-weight: 700 !important;
+        color: black !important;
       }
       
       /* Session summary */
       .print-summary-section {
         display: block !important;
-        margin-bottom: 24px;
+        margin-bottom: 28px !important;
         page-break-inside: avoid;
       }
       
       .print-section-title {
-        font-size: 20px;
-        font-weight: 800;
-        color: #000;
-        margin: 0 0 12px 0;
-        padding-bottom: 8px;
-        border-bottom: 1px solid #ccc;
+        font-size: 18pt !important;
+        font-weight: 800 !important;
+        color: black !important;
+        margin: 0 0 16px 0 !important;
+        padding-bottom: 8px !important;
+        border-bottom: 1px solid #ccc !important;
       }
       
       .print-summary-grid {
         display: grid !important;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-        margin-bottom: 16px;
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 16px !important;
+        margin-bottom: 16px !important;
       }
       
       .print-summary-item {
-        text-align: center;
-        padding: 12px;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        background: #fff;
+        text-align: center !important;
+        padding: 16px !important;
+        border: 1px solid #ddd !important;
+        border-radius: 6px !important;
+        background: white !important;
       }
       
       .print-summary-value {
-        font-size: 24px;
-        font-weight: 900;
-        color: #2c5282;
-        margin: 4px 0;
+        font-size: 22pt !important;
+        font-weight: 900 !important;
+        color: #2c5282 !important;
+        margin: 8px 0 !important;
+        line-height: 1;
       }
       
       .print-summary-label {
-        font-size: 14px;
-        color: #666;
+        font-size: 11pt !important;
+        color: #666 !important;
       }
       
       /* Practice sentences table */
       .print-sentences-section {
         display: block !important;
-        margin-bottom: 24px;
+        margin-bottom: 28px !important;
         page-break-inside: avoid;
       }
       
       .print-sentences-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 14px;
+        width: 100% !important;
+        border-collapse: collapse !important;
+        border: 1px solid #ddd !important;
+        font-size: 10pt !important;
+        margin: 0 !important;
+        page-break-inside: avoid;
       }
       
       .print-sentences-table th {
-        background: #2c5282;
-        color: white;
-        text-align: left;
-        padding: 10px;
-        font-weight: 700;
+        background: #2c5282 !important;
+        color: white !important;
+        text-align: left !important;
+        padding: 12px 10px !important;
+        font-weight: 700 !important;
+        border: 1px solid #1a365d !important;
       }
       
       .print-sentences-table td {
-        padding: 10px;
-        border: 1px solid #ddd;
-        vertical-align: top;
+        padding: 10px !important;
+        border: 1px solid #ddd !important;
+        vertical-align: top !important;
+        background: white !important;
+        color: black !important;
       }
       
-      .print-sentences-table tr:nth-child(even) {
-        background: #f8f8f8;
+      .print-sentences-table tr:nth-child(even) td {
+        background: #f8f8f8 !important;
       }
       
       /* Common errors */
@@ -469,105 +555,68 @@
         page-break-inside: avoid;
       }
       
-      .print-errors-list {
-        list-style-type: none;
-        padding: 0;
-        margin: 0;
-      }
-      
-      .print-error-item {
-        padding: 8px 0;
-        border-bottom: 1px solid #eee;
-      }
-      
-      .print-error-category {
-        font-weight: 700;
-        color: #c53030;
-        margin-right: 8px;
-      }
-      
-      /* Print only specific table */
-      #exportTable {
-        display: table !important;
-        width: 100%;
-        border-collapse: collapse;
-        margin: 0;
-      }
-      
-      #exportTable th {
-        background: #f0f0f0 !important;
-        color: #000 !important;
-        border: 1px solid #ccc !important;
-        padding: 10px !important;
-        font-weight: 700;
-      }
-      
-      #exportTable td {
-        border: 1px solid #ccc !important;
-        padding: 10px !important;
-        color: #000 !important;
-        background: #fff !important;
-        vertical-align: top;
-      }
-      
-      #exportTable tr:nth-child(even) td {
-        background: #f8f8f8 !important;
-      }
-      
-      /* Page breaks */
-      .page-break {
-        page-break-before: always;
-      }
-      
-      /* Hide modal body original content */
-      .modal-body > *:not(.print-content) {
-        display: none !important;
-      }
-      
-      .print-content {
-        display: block !important;
-        color: #000 !important;
-        background: #fff !important;
-      }
-      
-      /* Common errors grid */
       .print-errors-grid {
         display: grid !important;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 16px;
-        margin-top: 12px;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 20px !important;
+        margin-top: 16px !important;
       }
       
       .print-error-category-box {
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        padding: 12px;
-        background: #fff;
+        border: 1px solid #ddd !important;
+        border-radius: 6px !important;
+        padding: 16px !important;
+        background: white !important;
       }
       
       .print-error-category-title {
-        font-weight: 700;
-        color: #c53030;
-        margin-bottom: 8px;
-        padding-bottom: 4px;
-        border-bottom: 1px solid #eee;
+        font-weight: 700 !important;
+        color: #c53030 !important;
+        margin-bottom: 12px !important;
+        padding-bottom: 6px !important;
+        border-bottom: 1px solid #eee !important;
+        font-size: 12pt !important;
       }
       
       .print-error-words {
-        font-size: 14px;
-        line-height: 1.5;
+        font-size: 10pt !important;
+        line-height: 1.6 !important;
+        color: #333 !important;
       }
       
-      /* Ensure no color backgrounds in print */
-      * {
-        -webkit-print-color-adjust: exact !important;
-        color-adjust: exact !important;
-        print-color-adjust: exact !important;
+      /* Report footer */
+      .print-footer {
+        margin-top: 40px !important;
+        padding-top: 20px !important;
+        border-top: 1px solid #ccc !important;
+        text-align: center !important;
+        color: #666 !important;
+        font-size: 9pt !important;
+        page-break-before: avoid;
       }
       
-      /* Add padding for printable area */
+      /* Page setup */
       @page {
         margin: 1.5cm;
+        size: A4;
+      }
+      
+      /* Handle page breaks */
+      h1, h2, h3, h4 {
+        page-break-after: avoid !important;
+      }
+      
+      table, figure {
+        page-break-inside: avoid !important;
+      }
+      
+      /* Ensure proper spacing */
+      .print-content > * {
+        margin-bottom: 24px !important;
+      }
+      
+      .print-content > *:last-child {
+        margin-bottom: 0 !important;
       }
     }
   </style>
@@ -792,7 +841,7 @@
               <div class="print-summary-value" id="printTotalTime">0s</div>
               <div class="print-summary-label">Total Time</div>
             </div>
-            <div class="print-info-item">
+            <div class="print-summary-item">
               <div class="print-summary-value" id="printCompletedCount">0/0</div>
               <div class="print-summary-label">Completed Sentences</div>
             </div>
@@ -828,7 +877,7 @@
         </div>
         
         <!-- Report Footer -->
-        <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #ccc; text-align: center; color: #666; font-size: 12px;">
+        <div class="print-footer">
           <p>Report generated on <span id="printDate">—</span> by Shirley's AI Speaking Coach</p>
           <p>This report is for educational purposes only. Practice regularly for better results.</p>
         </div>
@@ -1466,7 +1515,7 @@ function playMine(){
 /* ===== Enhanced Scoring System ===== */
 function normalizeText(s){
   return s.toLowerCase()
-    .replace(/[“”"']/g,'')
+    .replace(/["“”"']/g,'')
     .replace(/[^a-z0-9\s]/g,' ')
     .replace(/\s+/g,' ')
     .trim();
@@ -1629,7 +1678,6 @@ function calculateSessionStats(){
   }
   
   // 找出常見錯誤
-  const commonErrors = [];
   const countOccurrences = (arr) => {
     const counts = {};
     arr.forEach(item => {
@@ -1661,10 +1709,12 @@ function preparePrintContent() {
   ui.printNameValue.textContent = ui.nameInput.value.trim() || '—';
   
   // 更新日期
-  ui.printDate.textContent = new Date().toLocaleDateString('zh-TW', {
+  const now = new Date();
+  ui.printDate.textContent = now.toLocaleDateString('zh-TW', {
     year: 'numeric',
     month: 'long',
-    day: 'numeric',
+    day: 'numeric'
+  }) + ' ' + now.toLocaleTimeString('zh-TW', {
     hour: '2-digit',
     minute: '2-digit'
   });
@@ -1678,61 +1728,75 @@ function preparePrintContent() {
     ui.printCompletedCount.textContent = stats.completed;
     
     // 填充練習句子表格
-    ui.printSentencesBody.innerHTML = store.session.map((it,i)=>{
+    ui.printSentencesBody.innerHTML = '';
+    store.session.forEach((it,i)=>{
       const r = store.results.get(i);
       const hyp = r?.hyp || '—';
       const acc = r ? r.acc + '%' : '—';
       const wpm = r ? r.wpm : '—';
       const completeness = r ? r.completeness : '—';
       
-      return `
-        <tr>
-          <td>${i+1}</td>
-          <td>${escapeHtml(it.en)}</td>
-          <td>${escapeHtml(hyp)}</td>
-          <td>${acc}</td>
-          <td>${wpm}</td>
-          <td>${completeness}</td>
-        </tr>
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${i+1}</td>
+        <td>${escapeHtml(it.en)}</td>
+        <td>${escapeHtml(hyp)}</td>
+        <td>${acc}</td>
+        <td>${wpm}</td>
+        <td>${completeness}</td>
       `;
-    }).join('');
+      ui.printSentencesBody.appendChild(row);
+    });
     
     // 填充常見錯誤
-    let errorsHtml = '';
+    ui.printErrorsGrid.innerHTML = '';
+    
     if(stats.commonErrors.missing.length > 0){
-      errorsHtml += `
-        <div class="print-error-category-box">
-          <div class="print-error-category-title">Missing Words</div>
-          <div class="print-error-words">
-            ${stats.commonErrors.missing.map(([word,count])=>`• ${word} (${count}次)`).join('<br>')}
-          </div>
+      const box = document.createElement('div');
+      box.className = 'print-error-category-box';
+      box.innerHTML = `
+        <div class="print-error-category-title">Missing Words</div>
+        <div class="print-error-words">
+          ${stats.commonErrors.missing.map(([word,count])=>`• ${word} (${count}次)`).join('<br>')}
         </div>
       `;
+      ui.printErrorsGrid.appendChild(box);
     }
     
     if(stats.commonErrors.substituted.length > 0){
-      errorsHtml += `
-        <div class="print-error-category-box">
-          <div class="print-error-category-title">Substituted Words</div>
-          <div class="print-error-words">
-            ${stats.commonErrors.substituted.map(([word,count])=>`• ${word} (${count}次)`).join('<br>')}
-          </div>
+      const box = document.createElement('div');
+      box.className = 'print-error-category-box';
+      box.innerHTML = `
+        <div class="print-error-category-title">Substituted Words</div>
+        <div class="print-error-words">
+          ${stats.commonErrors.substituted.map(([word,count])=>`• ${word} (${count}次)`).join('<br>')}
         </div>
       `;
+      ui.printErrorsGrid.appendChild(box);
     }
     
     if(stats.commonErrors.extra.length > 0){
-      errorsHtml += `
-        <div class="print-error-category-box">
-          <div class="print-error-category-title">Extra Words</div>
-          <div class="print-error-words">
-            ${stats.commonErrors.extra.map(([word,count])=>`• ${word} (${count}次)`).join('<br>')}
-          </div>
+      const box = document.createElement('div');
+      box.className = 'print-error-category-box';
+      box.innerHTML = `
+        <div class="print-error-category-title">Extra Words</div>
+        <div class="print-error-words">
+          ${stats.commonErrors.extra.map(([word,count])=>`• ${word} (${count}次)`).join('<br>')}
         </div>
       `;
+      ui.printErrorsGrid.appendChild(box);
     }
     
-    ui.printErrorsGrid.innerHTML = errorsHtml || '<div style="grid-column: 1 / -1; text-align: center; color: #666; padding: 20px;">No common errors detected.</div>';
+    // 如果沒有錯誤，顯示訊息
+    if(ui.printErrorsGrid.children.length === 0){
+      const noErrors = document.createElement('div');
+      noErrors.style.gridColumn = '1 / -1';
+      noErrors.style.textAlign = 'center';
+      noErrors.style.color = '#666';
+      noErrors.style.padding = '20px';
+      noErrors.textContent = 'No common errors detected. Excellent work!';
+      ui.printErrorsGrid.appendChild(noErrors);
+    }
   }
 }
 
@@ -1743,19 +1807,20 @@ function openExport(){
   }
   
   // 填充原始表格（屏幕顯示用）
-  ui.exportTableBody.innerHTML = store.session.map((it,i)=>{
-    const r=store.results.get(i);
-    return `
-      <tr>
-        <td>${i+1}</td>
-        <td>${escapeHtml(it.en)}</td>
-        <td>${escapeHtml(r?.hyp||'—')}</td>
-        <td>${r? (r.acc+'%') : '—'}</td>
-        <td>${r? r.wpm : '—'}</td>
-        <td>${r? r.completeness : '—'}</td>
-      </tr>
+  ui.exportTableBody.innerHTML = '';
+  store.session.forEach((it,i)=>{
+    const r = store.results.get(i);
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${i+1}</td>
+      <td>${escapeHtml(it.en)}</td>
+      <td>${escapeHtml(r?.hyp||'—')}</td>
+      <td>${r? (r.acc+'%') : '—'}</td>
+      <td>${r? r.wpm : '—'}</td>
+      <td>${r? r.completeness : '—'}</td>
     `;
-  }).join('');
+    ui.exportTableBody.appendChild(row);
+  });
   
   // 計算並顯示統計（屏幕顯示用）
   const stats = calculateSessionStats();
@@ -1853,7 +1918,7 @@ function printReport(){
   // 確保打印內容是最新的
   preparePrintContent();
   
-  // 切換到打印視圖
+  // 在打印前顯示打印內容
   $('.print-content').style.display = 'block';
   $('.screen-content').style.display = 'none';
   
