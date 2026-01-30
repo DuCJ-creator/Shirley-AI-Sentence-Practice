@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Shirley’s AI Speaking Coach</title>
+  <title>Shirley's AI Speaking Coach - Enhanced</title>
 
   <style>
     :root{
@@ -190,6 +190,25 @@
       font-size:var(--fs-small); margin-right:6px;
     }
 
+    .score-card{
+      display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
+      gap:10px; margin-bottom:12px;
+    }
+    .score-item{
+      background: rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:10px;
+      padding:10px; text-align:center;
+    }
+    .score-value{
+      font-size:24px; font-weight:900; line-height:1;
+      margin:4px 0;
+    }
+    .score-1{ color:var(--neon-cyan); }
+    .score-2{ color:var(--neon-green); }
+    .score-3{ color:#ffd166; }
+    .score-4{ color:var(--neon-rose); }
+
     .plist{ display:grid; gap:8px; max-height:420px; overflow:auto; padding-right:2px;}
     .pitem{
       padding:10px 12px; border-radius:10px;
@@ -265,6 +284,14 @@
       letter-spacing:.2px;
     }
 
+    .analysis-section{
+      background: rgba(0,0,0,0.2);
+      border-radius:10px;
+      padding:12px;
+      margin-top:10px;
+      border:1px solid rgba(255,255,255,0.08);
+    }
+
     @media print{
       body{ background:#fff; color:#000; }
       .wrap, header, main{ box-shadow:none; border:0; background:#fff; }
@@ -275,6 +302,8 @@
       .modal-footer, .modal-header { display:none !important; }
       .table td, .table th{ background:#fff; border:1px solid #ddd; }
       .disclaimer{ border:0; background:#fff; color:#000; font-size:12px; }
+      .score-card{ grid-template-columns:repeat(4, 1fr); }
+      .score-item{ border:1px solid #ddd; }
     }
   </style>
 </head>
@@ -282,7 +311,7 @@
 <body>
 <div class="wrap" id="app">
   <header>
-    <h1>Shirley’s AI Speaking Coach</h1>
+    <h1>Shirley's AI Speaking Coach - Enhanced</h1>
   </header>
 
 <main>
@@ -382,29 +411,61 @@
       <div class="status" id="statusLine"></div>
 
       <div class="result" id="resultPanel" hidden>
+        <!-- 評分卡片 -->
+        <div class="score-card">
+          <div class="score-item">
+            <div>Accuracy</div>
+            <div class="score-value score-1" id="scoreAccuracy">0%</div>
+            <div>詞彙匹配</div>
+          </div>
+          <div class="score-item">
+            <div>Completeness</div>
+            <div class="score-value score-2" id="scoreCompleteness">0%</div>
+            <div>朗讀完整度</div>
+          </div>
+          <div class="score-item">
+            <div>Fluency</div>
+            <div class="score-value score-3" id="scoreFluency">0</div>
+            <div id="fluencyLabel">WPM</div>
+          </div>
+          <div class="score-item">
+            <div>Pronunciation</div>
+            <div class="score-value score-4" id="scorePronunciation">0%</div>
+            <div>發音評分</div>
+          </div>
+        </div>
+
         <div class="pill">Your Speech (ASR):</div>
         <div id="hypLine"></div>
 
-        <div class="pill">Accuracy:</div>
-        <div id="accLine" style="font-size:20px;font-weight:900;"></div>
-
         <details id="fineDetails">
-          <summary class="pill" style="cursor:pointer;">Fine Score (details)</summary>
+          <summary class="pill" style="cursor:pointer;">Detailed Analysis</summary>
           <div class="fine" id="finePanel"></div>
         </details>
 
-        <div class="pill">Diff:</div>
+        <div class="pill">Text Comparison:</div>
         <div id="diffLine" class="diff"></div>
+
+        <!-- 錯誤分析區塊 -->
+        <div class="analysis-section">
+          <div style="font-weight:800; margin-bottom:8px; color:var(--neon-cyan);">Error Analysis</div>
+          <div id="errorAnalysis"></div>
+        </div>
       </div>
 
       <div id="sessionDone" hidden style="margin-top:10px;">
         <div class="pill" style="font-size:18px;color:#fff;">
-          ✅ 本組練習完成！
+          ✅ Session Completed!
+        </div>
+        <div style="margin-top:8px; color:var(--ink-1); font-size:14px;">
+          You can review your performance and export the report.
         </div>
       </div>
 
       <div style="margin-top:auto; padding-top:20px; border-top:1px solid rgba(255,255,255,0.1);">
-        <button class="btn btn-ghost" id="exportBtn" style="width:100%; border:1px solid var(--neon-cyan); color:var(--neon-cyan);">View Review Report / Export PDF</button>
+        <button class="btn btn-ghost" id="exportBtn" style="width:100%; border:1px solid var(--neon-cyan); color:var(--neon-cyan);">
+          View Detailed Report / Export
+        </button>
       </div>
     </section>
   </main>
@@ -417,38 +478,70 @@
   </div>
 </div>
 
-<!-- Export Modal -->
+<!-- Enhanced Export Modal -->
 <div class="modal-backdrop" id="exportBackdrop">
   <div class="modal" id="exportModal">
     <div class="modal-header">
-      <h2>Export / Print Report</h2>
+      <h2>Comprehensive Practice Report</h2>
       <div class="modal-close" id="exportCloseX" title="Close">✕</div>
     </div>
 
     <div class="modal-body">
       <div class="row">
-        <input id="classInput" placeholder="班級 (e.g. 702)" />
-        <input id="seatInput" placeholder="座號 (e.g. 15)" />
-        <input id="nameInput" placeholder="姓名 (e.g. 王小明)" />
+        <input id="classInput" placeholder="Class (e.g. 702)" />
+        <input id="seatInput" placeholder="Seat No. (e.g. 15)" />
+        <input id="nameInput" placeholder="Name (e.g. John)" />
+      </div>
+
+      <!-- 總結統計 -->
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-title"><span class="dot"></span>Session Summary</div>
+        <div class="score-card">
+          <div class="score-item">
+            <div>Average Accuracy</div>
+            <div class="score-value score-1" id="avgAccuracy">0%</div>
+          </div>
+          <div class="score-item">
+            <div>Average Fluency</div>
+            <div class="score-value score-3" id="avgFluency">0</div>
+          </div>
+          <div class="score-item">
+            <div>Total Time</div>
+            <div class="score-value score-2" id="totalTime">0s</div>
+          </div>
+          <div class="score-item">
+            <div>Completed</div>
+            <div class="score-value score-4" id="completedCount">0/0</div>
+          </div>
+        </div>
       </div>
 
       <table class="table" id="exportTable">
         <thead>
           <tr>
             <th style="width:44px">#</th>
-            <th>Target</th>
-            <th>Your ASR</th>
-            <th style="width:90px">Accuracy</th>
+            <th>Target Sentence</th>
+            <th>Your Speech</th>
+            <th style="width:70px">Accuracy</th>
+            <th style="width:70px">Fluency</th>
+            <th style="width:70px">Completeness</th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
+
+      <!-- 常見錯誤 -->
+      <div id="commonErrorsSection" style="display:none;">
+        <div class="card-title" style="margin-top:16px;"><span class="dot"></span>Common Errors</div>
+        <div id="commonErrors"></div>
+      </div>
     </div>
 
     <div class="modal-footer">
       <button class="btn btn-ghost" id="exportCloseBtn">Close / Back</button>
-      <button class="btn btn-ghost" id="downloadJsonBtn">Download JSON</button>
-      <button class="btn btn-accent" id="printBtn">Print</button>
+      <button class="btn btn-ghost" id="downloadJsonBtn">Download Detailed JSON</button>
+      <button class="btn btn-ghost" id="downloadCsvBtn">Download CSV</button>
+      <button class="btn btn-accent" id="printBtn">Print Report</button>
     </div>
   </div>
 </div>
@@ -456,6 +549,7 @@
 <script>
 /* ===== Helpers ===== */
 const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => r.querySelectorAll(s);
 const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
 const escapeHtml = s => s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
@@ -469,6 +563,7 @@ const store = {
   idx:0,
   results:new Map(),
   lastRecordingBlob:null,
+  sessionStartTime: null,
 };
 
 /* ===== UI refs ===== */
@@ -484,7 +579,6 @@ const ui = {
   statusLine:$('#statusLine'),
   resultPanel:$('#resultPanel'),
   hypLine:$('#hypLine'),
-  accLine:$('#accLine'),
   diffLine:$('#diffLine'),
   finePanel:$('#finePanel'),
   fineDetails:$('#fineDetails'),
@@ -503,6 +597,18 @@ const ui = {
   classInput:$('#classInput'),
   seatInput:$('#seatInput'),
   nameInput:$('#nameInput'),
+  scoreAccuracy:$('#scoreAccuracy'),
+  scoreCompleteness:$('#scoreCompleteness'),
+  scoreFluency:$('#scoreFluency'),
+  scorePronunciation:$('#scorePronunciation'),
+  fluencyLabel:$('#fluencyLabel'),
+  errorAnalysis:$('#errorAnalysis'),
+  avgAccuracy:$('#avgAccuracy'),
+  avgFluency:$('#avgFluency'),
+  totalTime:$('#totalTime'),
+  completedCount:$('#completedCount'),
+  commonErrorsSection:$('#commonErrorsSection'),
+  commonErrors:$('#commonErrors'),
 };
 
 /* ===== Status / Result ===== */
@@ -513,10 +619,15 @@ function setStatus(msg, kind=''){
 function clearResult(){
   ui.resultPanel.hidden=true;
   ui.hypLine.textContent='';
-  ui.accLine.textContent='';
   ui.diffLine.innerHTML='';
   ui.finePanel.innerHTML='';
+  ui.errorAnalysis.innerHTML='';
   ui.fineDetails.open=false;
+  ui.scoreAccuracy.textContent='0%';
+  ui.scoreCompleteness.textContent='0%';
+  ui.scoreFluency.textContent='0';
+  ui.scorePronunciation.textContent='0%';
+  ui.fluencyLabel.textContent='WPM';
 }
 
 /* ===== Parsing ===== */
@@ -552,10 +663,10 @@ function renderPreview(){
   ui.previewList.innerHTML=store.session.map((it,i)=>{
     const r=store.results.get(i);
     const acc=r?`<span class="pill" style="font-weight:900">${r.acc}%</span>`:'';
-    const hyp=r?`<div class="small">You: ${escapeHtml(r.hyp)}</div>`:'<div class="small">Not attempted</div>';
+    const hyp=r?`<div class="small">You: ${escapeHtml(r.hyp.slice(0,50)+(r.hyp.length>50?'...':''))}</div>`:'<div class="small">Not attempted</div>';
     return `
       <div class="pitem ${i===store.idx?'active':''}" data-jump="${i}">
-        <div><b>${i+1}.</b> ${escapeHtml(it.en)}</div>
+        <div><b>${i+1}.</b> ${escapeHtml(it.en.slice(0,60)+(it.en.length>60?'...':''))}</div>
         ${hyp}
         ${acc}
       </div>
@@ -579,10 +690,20 @@ function renderCurrent(){
   if(r){
     ui.resultPanel.hidden=false;
     ui.hypLine.textContent=r.hyp;
-    ui.accLine.textContent=r.acc+'%';
     ui.diffLine.innerHTML=formatDiff(r.diffs);
     ui.finePanel.innerHTML=formatFine(r);
+    ui.errorAnalysis.innerHTML=formatErrorAnalysis(r);
     ui.playMineBtn.disabled=!store.lastRecordingBlob;
+    
+    // 更新評分卡片
+    ui.scoreAccuracy.textContent = r.acc+'%';
+    ui.scoreCompleteness.textContent = r.completeness;
+    ui.scoreFluency.textContent = r.wpm;
+    ui.fluencyLabel.textContent = 'WPM ('+r.fluency+')';
+    
+    // 計算發音評分（基於準確度和完整度）
+    const pronScore = Math.round((r.acc + parseFloat(r.completeness)) / 2);
+    ui.scorePronunciation.textContent = pronScore+'%';
   }
 
   if(store.session.length===10){
@@ -611,6 +732,7 @@ function useSession(items){
   store.idx=0;
   store.results.clear();
   store.lastRecordingBlob=null;
+  store.sessionStartTime = Date.now();
   ui.playMineBtn.disabled=true;
   ui.recordBtn.disabled=false;
   renderCurrent();
@@ -662,11 +784,14 @@ async function loadLevel(level){
     const items = [
       { en: "Apple is a fruit.", number: "1-1", unit: "1" },
       { en: "The cat is on the mat.", number: "1-2", unit: "1" },
-      { en: "I like to learn English.", number: "2-1", unit: "2" }
+      { en: "I like to learn English.", number: "2-1", unit: "2" },
+      { en: "She sells seashells by the seashore.", number: "2-2", unit: "2" },
+      { en: "The quick brown fox jumps over the lazy dog.", number: "3-1", unit: "3" }
     ];
     const unitsMap = new Map();
     unitsMap.set("1", [items[0], items[1]]);
-    unitsMap.set("2", [items[2]]);
+    unitsMap.set("2", [items[2], items[3]]);
+    unitsMap.set("3", [items[4]]);
     const pack = {items, unitsMap};
     store.bankCache.set(level, pack);
     return pack;
@@ -735,6 +860,7 @@ function listenTarget(){
   window.speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(item.en);
   u.lang='en-US'; u.rate=0.95; u.pitch=1.0;
+  u.volume=0.8;
   window.speechSynthesis.speak(u);
 }
 
@@ -753,20 +879,38 @@ function startLiveWebSpeech(){
   liveRec.lang='en-US';
   liveRec.interimResults=true;
   liveRec.maxAlternatives=1;
+  liveRec.continuous=true;
+  
   liveRec.onresult=(e)=>{
     let txt='';
     for(let i=e.resultIndex;i<e.results.length;i++){
-      txt+=e.results[i][0].transcript+' ';
+      const result=e.results[i];
+      if(result.isFinal){
+        txt+=result[0].transcript+' ';
+      }else{
+        txt+=result[0].transcript+' ';
+      }
     }
     liveTranscript=txt.trim();
   };
-  liveRec.onerror=()=>setStatus('ASR error. Please try again.','warn');
-  try{ liveRec.start(); }catch(e){}
+  liveRec.onerror=(e)=>{
+    console.warn('ASR error:', e.error);
+    if(e.error!=='no-speech'){
+      setStatus('ASR error. Please try again.','warn');
+    }
+  };
+  try{ liveRec.start(); }catch(e){
+    setStatus('Failed to start speech recognition','err');
+  }
 }
 function stopLiveWebSpeech(){
   clearTimeout(liveTimeout);
   liveTimeout=null;
-  try{ liveRec&&liveRec.stop(); }catch(e){}
+  try{ 
+    if(liveRec){
+      liveRec.stop();
+    }
+  }catch(e){}
   liveRec=null;
 }
 
@@ -778,7 +922,13 @@ let lastDurationSec=0;
 async function ensureMic(){
   if(streamRef) return streamRef;
   try{
-    streamRef=await navigator.mediaDevices.getUserMedia({audio:true});
+    streamRef=await navigator.mediaDevices.getUserMedia({
+      audio:{
+        echoCancellation:true,
+        noiseSuppression:true,
+        autoGainControl:true
+      }
+    });
     return streamRef;
   }catch(e){
     setStatus('Microphone permission denied. Please allow mic.','err');
@@ -786,25 +936,39 @@ async function ensureMic(){
   }
 }
 function startMeter(stream){
-  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-  const src=audioCtx.createMediaStreamSource(stream);
-  analyser=audioCtx.createAnalyser();
-  analyser.fftSize=1024;
-  src.connect(analyser);
-  const data=new Uint8Array(analyser.fftSize);
-  const tick=()=>{
-    analyser.getByteTimeDomainData(data);
-    let sum=0;
-    for(let i=0;i<data.length;i++){
-      const v=(data[i]-128)/128; sum+=v*v;
-    }
-    const rms=Math.sqrt(sum/data.length);
-    ui.meterBar.style.width=clamp(rms*180,0,100)+'%';
-    meterRAF=requestAnimationFrame(tick);
-  };
-  tick();
+  try{
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const src=audioCtx.createMediaStreamSource(stream);
+    analyser=audioCtx.createAnalyser();
+    analyser.fftSize=256;
+    analyser.smoothingTimeConstant=0.8;
+    src.connect(analyser);
+    
+    const data=new Uint8Array(analyser.frequencyBinCount);
+    const tick=()=>{
+      analyser.getByteFrequencyData(data);
+      let sum=0;
+      for(let i=0;i<data.length;i++){
+        sum+=data[i];
+      }
+      const avg=sum/data.length;
+      const level=clamp(avg/128,0,1);
+      ui.meterBar.style.width=(level*100)+'%';
+      meterRAF=requestAnimationFrame(tick);
+    };
+    tick();
+  }catch(e){
+    console.warn('Audio meter failed:',e);
+  }
 }
-function stopMeter(){ cancelAnimationFrame(meterRAF); ui.meterBar.style.width='0%'; }
+function stopMeter(){ 
+  cancelAnimationFrame(meterRAF); 
+  ui.meterBar.style.width='0%';
+  if(audioCtx){
+    audioCtx.close();
+    audioCtx=null;
+  }
+}
 function startTimer(){
   startedAt=Date.now();
   ui.timerPill.textContent='00:00';
@@ -823,43 +987,56 @@ async function recordOnce(){
   if(!item) return;
 
   setStatus('Recording… speak now.','ok');
-  const stream=await ensureMic();
-  startMeter(stream);
+  try{
+    const stream=await ensureMic();
+    startMeter(stream);
 
-  audioChunks=[];
-  mediaRecorder=new MediaRecorder(stream);
-  mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);
-  mediaRecorder.onstop=handleAudioStop;
+    audioChunks=[];
+    mediaRecorder=new MediaRecorder(stream, {mimeType:'audio/webm;codecs=opus'});
+    mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);
+    mediaRecorder.onstop=handleAudioStop;
 
-  startLiveWebSpeech();
-  liveTimeout=setTimeout(()=>{
-    if(mediaRecorder && mediaRecorder.state==='recording'){
-      stopRecording();
-    }
-  }, 8000);
+    startLiveWebSpeech();
+    liveTimeout=setTimeout(()=>{
+      if(mediaRecorder && mediaRecorder.state==='recording'){
+        stopRecording();
+      }
+    }, 8000);
 
-  mediaRecorder.start();
-  clearTimeout(recordingTimer); 
-  recordingTimer = setTimeout(() => { 
-    if (ui.stopBtn.disabled === false) { 
-      console.log("自動停止：已達 30 秒上限"); 
-      stopRecording(); 
-    } 
-  }, 30000);
-  startTimer();
-  ui.recordBtn.disabled=true;
-  ui.stopBtn.disabled=false;
-  ui.playMineBtn.disabled=true;
+    mediaRecorder.start();
+    clearTimeout(recordingTimer); 
+    recordingTimer = setTimeout(() => { 
+      if (ui.stopBtn.disabled === false) { 
+        console.log("Auto-stop: reached 30 second limit"); 
+        stopRecording(); 
+      } 
+    }, 30000);
+    startTimer();
+    ui.recordBtn.disabled=true;
+    ui.stopBtn.disabled=false;
+    ui.playMineBtn.disabled=true;
+  }catch(e){
+    setStatus('Failed to start recording: '+e.message,'err');
+    ui.recordBtn.disabled=false;
+  }
 }
 function stopRecording(){
   clearTimeout(recordingTimer);
   stopLiveWebSpeech();
-  if(mediaRecorder&&mediaRecorder.state==='recording') mediaRecorder.stop();
+  if(mediaRecorder&&mediaRecorder.state==='recording'){
+    mediaRecorder.stop();
+  }
+  if(streamRef){
+    streamRef.getTracks().forEach(track=>track.stop());
+    streamRef=null;
+  }
+  stopMeter();
+  stopTimer();
+  ui.stopBtn.disabled=true;
 }
 async function handleAudioStop(){
-  stopMeter(); stopTimer();
-  ui.stopBtn.disabled=true;
   ui.recordBtn.disabled=false;
+  ui.stopBtn.disabled=true;
 
   lastDurationSec = Math.max(0.1, (Date.now()-startedAt)/1000);
 
@@ -867,7 +1044,7 @@ async function handleAudioStop(){
   store.lastRecordingBlob=blob;
   ui.playMineBtn.disabled=false;
 
-  setStatus('Transcribing…');
+  setStatus('Analyzing your speech…');
 
   const hypText=liveTranscript||'';
   if(!hypText){
@@ -881,23 +1058,40 @@ async function handleAudioStop(){
 
   ui.resultPanel.hidden=false;
   ui.hypLine.textContent=hypText;
-  ui.accLine.textContent=analysis.acc+'%';
   ui.diffLine.innerHTML=formatDiff(analysis.diffs);
   ui.finePanel.innerHTML=formatFine(analysis);
+  ui.errorAnalysis.innerHTML=formatErrorAnalysis(analysis);
+  
+  // 更新評分卡片
+  ui.scoreAccuracy.textContent = analysis.acc+'%';
+  ui.scoreCompleteness.textContent = analysis.completeness;
+  ui.scoreFluency.textContent = analysis.wpm;
+  ui.fluencyLabel.textContent = 'WPM ('+analysis.fluency+')';
+  
+  const pronScore = Math.round((analysis.acc + parseFloat(analysis.completeness)) / 2);
+  ui.scorePronunciation.textContent = pronScore+'%';
 
-  setStatus('Done. You can listen to your voice and go next.','ok');
+  setStatus('Analysis complete. Review your scores below.','ok');
 
-  if(store.session.length===10){
-    const doneCount=[...store.results.keys()].length;
-    if(doneCount>=10){
-      ui.sessionDone.hidden=false;
+  // 自動前進
+  setTimeout(()=>{
+    if(store.session.length===10){
+      const doneCount=[...store.results.keys()].length;
+      if(doneCount>=10){
+        ui.sessionDone.hidden=false;
+      }else{
+        if(store.idx<store.session.length-1){ 
+          store.idx++; 
+          renderCurrent();
+        }
+      }
     }else{
-      if(store.idx<9){ store.idx++; }
+      if(store.idx<store.session.length-1){ 
+        store.idx++; 
+        renderCurrent();
+      }
     }
-  }else{
-    if(store.idx<store.session.length-1) store.idx++;
-  }
-  renderCurrent();
+  },1500);
 }
 function playMine(){
   if(!store.lastRecordingBlob) return;
@@ -907,7 +1101,7 @@ function playMine(){
   audio.play();
 }
 
-/* ===== Scoring (修正語法錯誤) ===== */
+/* ===== Enhanced Scoring System ===== */
 function normalizeText(s){
   return s.toLowerCase()
     .replace(/[“”"']/g,'')
@@ -960,20 +1154,32 @@ function analyze(refText,hypText,durationSec){
   const edits=del+ins+sub;
   const wer=refTokens.length?edits/refTokens.length:1;
   const acc=clamp(Math.round((1-wer)*100),0,100);
+  
   const wpm = Math.round((hypTokens.length / durationSec) * 60);
-  const fluency = wpm > 100 ? "Excellent" : (wpm > 60 ? "Good" : "Needs Practice"); 
-  const completeness = `${Math.min(100, (hypTokens.length / refTokens.length) * 100).toFixed(0)}%`;
+  let fluency = "Needs Practice";
+  if(wpm > 120) fluency = "Too Fast";
+  else if(wpm > 90) fluency = "Excellent";
+  else if(wpm > 70) fluency = "Good";
+  else if(wpm > 50) fluency = "Fair";
+  
+  const completenessValue = Math.min(100, (hypTokens.length / refTokens.length) * 100);
+  const completeness = `${completenessValue.toFixed(0)}%`;
 
   return {
-    hyp:hypText, acc, diffs,
+    hyp:hypText, 
+    acc, 
+    diffs,
     wer: Number(wer.toFixed(2)),
     del, ins, sub, ok,
     missing, extra, substituted,
     wpm, 
-    durationSec: Number(durationSec.toFixed(2)), // 這裡一定要有逗號
+    durationSec: Number(durationSec.toFixed(2)),
     fluency, 
-    completeness
-};
+    completeness,
+    completenessValue,
+    refWordCount: refTokens.length,
+    hypWordCount: hypTokens.length
+  };
 }
 function formatDiff(diffs){
   return diffs.map(d=>{
@@ -990,36 +1196,149 @@ function formatFine(r){
 
   return `
     <div class="fine-grid">
-      <div><span class="fine-badge">Accuracy</span>${r.acc}%</div>
-      <div><span class="fine-badge">Completeness</span>${r.completeness}</div>
-      <div><span class="fine-badge">Fluency</span>${r.fluency}</div>
-      <div><span class="fine-badge">WPM</span>${r.wpm}</div>
+      <div><span class="fine-badge">Duration</span>${r.durationSec}s</div>
+      <div><span class="fine-badge">Ref Words</span>${r.refWordCount}</div>
+      <div><span class="fine-badge">Your Words</span>${r.hypWordCount}</div>
+      <div><span class="fine-badge">WER</span>${(r.wer*100).toFixed(1)}%</div>
       <div><span class="fine-badge">Missing</span>${r.del}</div>
       <div><span class="fine-badge">Subst.</span>${r.sub}</div>
     </div>
     <div class="fine-list">
       <div><b>Missing words:</b> ${escapeHtml(miss)}</div>
-      <div><b>Substituted:</b> ${escapeHtml(subs)}</div>
+      <div><b>Extra words:</b> ${escapeHtml(extra)}</div>
+      <div><b>Substituted words:</b> ${escapeHtml(subs)}</div>
     </div>
   `;
 }
+function formatErrorAnalysis(r){
+  let html = '<div style="display:grid; gap:6px;">';
+  
+  if(r.missing.length>0){
+    html += `<div><b>❌ Missing Words (${r.missing.length}):</b> <span style="color:#ffadad">${escapeHtml(r.missing.join(', '))}</span></div>`;
+  }
+  
+  if(r.substituted.length>0){
+    html += `<div><b>⚠️ Substituted Words (${r.substituted.length}):</b> <span style="color:#ffd0a4">${escapeHtml(r.substituted.join(', '))}</span></div>`;
+  }
+  
+  if(r.extra.length>0){
+    html += `<div><b>➕ Extra Words (${r.extra.length}):</b> <span style="color:#b7c7ff">${escapeHtml(r.extra.join(', '))}</span></div>`;
+  }
+  
+  html += `<div><b>📊 Word Error Rate:</b> ${(r.wer*100).toFixed(1)}% (lower is better)</div>`;
+  
+  // 提供建議
+  const suggestions = [];
+  if(r.acc < 70) suggestions.push("Focus on pronunciation of individual words");
+  if(r.fluency === "Too Fast") suggestions.push("Try speaking more slowly and clearly");
+  if(r.fluency === "Needs Practice") suggestions.push("Practice speaking at a natural pace");
+  if(r.completenessValue < 80) suggestions.push("Try to include all words from the target sentence");
+  
+  if(suggestions.length>0){
+    html += `<div style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1);">`;
+    html += `<b>💡 Suggestions for improvement:</b><ul style="margin:4px 0 0 0; padding-left:18px;">`;
+    suggestions.forEach(s => html += `<li style="color:var(--ink-1);">${s}</li>`);
+    html += `</ul></div>`;
+  }
+  
+  html += '</div>';
+  return html;
+}
 
-/* ===== Export / Print ===== */
+/* ===== Enhanced Export / Report ===== */
+function calculateSessionStats(){
+  if(store.results.size===0) return null;
+  
+  let totalAcc=0, totalWPM=0, totalTime=0, totalCompleteness=0;
+  const errors = {missing:[], substituted:[], extra:[]};
+  let count=0;
+  
+  for(const [idx, r] of store.results){
+    totalAcc += r.acc;
+    totalWPM += r.wpm;
+    totalTime += r.durationSec;
+    totalCompleteness += r.completenessValue;
+    count++;
+    
+    // 收集錯誤
+    r.missing.forEach(w=>errors.missing.push(w));
+    r.substituted.forEach(w=>errors.substituted.push(w));
+    r.extra.forEach(w=>errors.extra.push(w));
+  }
+  
+  // 找出常見錯誤
+  const commonErrors = [];
+  const countOccurrences = (arr) => {
+    const counts = {};
+    arr.forEach(item => {
+      counts[item] = (counts[item] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .sort((a,b)=>b[1]-a[1])
+      .slice(0,5);
+  };
+  
+  return {
+    avgAccuracy: Math.round(totalAcc/count),
+    avgWPM: Math.round(totalWPM/count),
+    totalTime: Math.round(totalTime),
+    avgCompleteness: Math.round(totalCompleteness/count),
+    completed: `${count}/${store.session.length}`,
+    commonErrors: {
+      missing: countOccurrences(errors.missing),
+      substituted: countOccurrences(errors.substituted),
+      extra: countOccurrences(errors.extra)
+    }
+  };
+}
 function openExport(){
   if(!store.session.length){
     setStatus('No session to export.','warn'); return;
   }
+  
+  // 填充表格
   ui.exportTableBody.innerHTML = store.session.map((it,i)=>{
     const r=store.results.get(i);
     return `
       <tr>
         <td>${i+1}</td>
         <td>${escapeHtml(it.en)}</td>
-        <td>${escapeHtml(r?.hyp||'')}</td>
-        <td>${r? (r.acc+'%') : ''}</td>
+        <td>${escapeHtml(r?.hyp||'—')}</td>
+        <td>${r? (r.acc+'%') : '—'}</td>
+        <td>${r? r.wpm : '—'}</td>
+        <td>${r? r.completeness : '—'}</td>
       </tr>
     `;
   }).join('');
+  
+  // 計算並顯示統計
+  const stats = calculateSessionStats();
+  if(stats){
+    ui.avgAccuracy.textContent = stats.avgAccuracy+'%';
+    ui.avgFluency.textContent = stats.avgWPM;
+    ui.totalTime.textContent = stats.totalTime+'s';
+    ui.completedCount.textContent = stats.completed;
+    
+    // 顯示常見錯誤
+    let errorsHtml = '';
+    if(stats.commonErrors.missing.length>0){
+      errorsHtml += `<div><b>Frequently Missing:</b> ${stats.commonErrors.missing.map(([word,count])=>`${word} (${count})`).join(', ')}</div>`;
+    }
+    if(stats.commonErrors.substituted.length>0){
+      errorsHtml += `<div><b>Frequently Substituted:</b> ${stats.commonErrors.substituted.map(([word,count])=>`${word} (${count})`).join(', ')}</div>`;
+    }
+    if(stats.commonErrors.extra.length>0){
+      errorsHtml += `<div><b>Frequently Added:</b> ${stats.commonErrors.extra.map(([word,count])=>`${word} (${count})`).join(', ')}</div>`;
+    }
+    
+    if(errorsHtml){
+      ui.commonErrors.innerHTML = errorsHtml;
+      ui.commonErrorsSection.style.display = 'block';
+    }else{
+      ui.commonErrorsSection.style.display = 'none';
+    }
+  }
+  
   ui.exportBackdrop.style.display='grid';
 }
 function closeExport(){ ui.exportBackdrop.style.display='none'; }
@@ -1030,13 +1349,18 @@ function downloadJson(){
     seat: ui.seatInput.value.trim(),
     name: ui.nameInput.value.trim(),
   };
+  
+  const stats = calculateSessionStats();
   const payload={
     student,
     source: store.source,
     level: store.source==='bank'?store.level:null,
     unit: store.source==='bank'?store.unit:null,
     session: store.session,
-    results: [...store.results.entries()].map(([i,r])=>({index:i+1,...r}))
+    results: [...store.results.entries()].map(([i,r])=>({index:i+1,...r})),
+    summary: stats,
+    timestamp: new Date().toISOString(),
+    version: '1.1'
   };
 
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
@@ -1047,6 +1371,25 @@ function downloadJson(){
   a.click(); 
   URL.revokeObjectURL(url);
 }
+function downloadCsv(){
+  let csv = 'Index,Target Sentence,Your Speech,Accuracy (%),Fluency (WPM),Completeness (%),Duration (s),Missing Words,Substituted Words\n';
+  
+  store.session.forEach((it,i)=>{
+    const r = store.results.get(i);
+    const missing = r ? r.missing.join('; ') : '';
+    const substituted = r ? r.substituted.map(s=>s.replace(/,/g, '|')).join('; ') : '';
+    
+    csv += `${i+1},"${it.en.replace(/"/g,'""')}","${(r?.hyp||'').replace(/"/g,'""')}",${r?.acc||''},${r?.wpm||''},${r?.completeness||''},${r?.durationSec||''},"${missing}","${substituted}"\n`;
+  });
+  
+  const blob = new Blob(['\ufeff'+csv], {type: 'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `speaking_report_${ui.classInput.value.trim()||'class'}_${ui.seatInput.value.trim()||'seat'}_${ui.nameInput.value.trim()||'name'}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 function printReport(){
   if(!ui.classInput.value.trim() || !ui.seatInput.value.trim() || !ui.nameInput.value.trim()){
     alert('請先填寫班級、座號、姓名再列印。');
@@ -1055,7 +1398,7 @@ function printReport(){
   window.print();
 }
 
-/* ===== Direct bindings (NO delegation) ===== */
+/* ===== Direct bindings ===== */
 $('#prevBtn').onclick = ()=>nav(-1);
 $('#nextBtn').onclick = ()=>nav(1);
 $('#listenTargetBtn').onclick = listenTarget;
@@ -1077,6 +1420,7 @@ $('#exportCloseBtn').onclick = closeExport;
 $('#exportCloseX').onclick = closeExport;
 $('#downloadJsonBtn').onclick = downloadJson;
 $('#printBtn').onclick = printReport;
+$('#downloadCsvBtn').onclick = downloadCsv;
 
 /* click backdrop to close */
 ui.exportBackdrop.addEventListener('click',(e)=>{
@@ -1094,7 +1438,19 @@ ui.previewList.addEventListener('click',(e)=>{
 /* init */
 setSource('manual');
 renderCurrent();
-setStatus('請先載入 10 題再開始練習。','ok');
+setStatus('Ready. Load sentences to begin practice.','ok');
+
+// 鍵盤快捷鍵
+document.addEventListener('keydown',(e)=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+  
+  switch(e.key){
+    case 'ArrowLeft': nav(-1); break;
+    case 'ArrowRight': nav(1); break;
+    case ' ': if(store.session[store.idx]) recordOnce(); break;
+    case 'Escape': if(ui.exportBackdrop.style.display==='grid') closeExport(); break;
+  }
+});
 </script>
 </body>
 </html>
