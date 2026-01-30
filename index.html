@@ -292,18 +292,283 @@
       border:1px solid rgba(255,255,255,0.08);
     }
 
+    /* ===== PRINT STYLES ===== */
     @media print{
-      body{ background:#fff; color:#000; }
-      .wrap, header, main{ box-shadow:none; border:0; background:#fff; }
-      .btn, .meter, .status, .mic, .card-title .dot, #rightPanelControls { display:none !important; }
-      .card{ border:0; }
-      .modal-backdrop{ position:static; display:block; background:none; padding:0; }
-      .modal{ border:0; box-shadow:none; max-height:none; }
-      .modal-footer, .modal-header { display:none !important; }
-      .table td, .table th{ background:#fff; border:1px solid #ddd; }
-      .disclaimer{ border:0; background:#fff; color:#000; font-size:12px; }
-      .score-card{ grid-template-columns:repeat(4, 1fr); }
-      .score-item{ border:1px solid #ddd; }
+      body{ 
+        background:#fff !important; 
+        color:#000 !important; 
+        padding:0 !important;
+        margin:0 !important;
+        font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif !important;
+      }
+      
+      /* Hide all unnecessary elements */
+      .wrap, header, main, .card, .modal-backdrop, .modal, 
+      .btn, .meter, .status, .mic, .card-title .dot, 
+      #rightPanelControls, .pill, .pitem, .preview-section,
+      .disclaimer, .modal-header, .modal-footer,
+      .fine-badge, .fine-grid, .score-card,
+      .analysis-section, #manualPane, #bankPane,
+      #rightPanelControls, #sessionDone,
+      #previewList, #fineDetails,
+      .result, .sentence-box, .diff,
+      #exportCloseX, #exportCloseBtn,
+      #downloadJsonBtn, #downloadCsvBtn,
+      #printBtn, #classInput, #seatInput, #nameInput,
+      .row:not(.print-row), .modal-body > .row:first-child {
+        display: none !important;
+      }
+      
+      /* Show only the modal content */
+      .modal-backdrop{ 
+        position:static !important; 
+        display:block !important; 
+        background:none !important; 
+        padding:0 !important;
+        height: auto !important;
+        overflow: visible !important;
+      }
+      
+      .modal{ 
+        border:0 !important; 
+        box-shadow:none !important; 
+        max-height:none !important;
+        width: 100% !important;
+        background: #fff !important;
+        color: #000 !important;
+      }
+      
+      /* Report title and header */
+      .print-report-header {
+        display: block !important;
+        text-align: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #333;
+      }
+      
+      .print-report-title {
+        font-size: 28px !important;
+        font-weight: 900;
+        color: #000;
+        margin: 0 0 8px 0;
+      }
+      
+      .print-report-subtitle {
+        font-size: 16px;
+        color: #666;
+        margin: 0;
+      }
+      
+      /* Student info */
+      .print-student-info {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 20px;
+        padding: 12px;
+        background: #f8f8f8;
+        border-radius: 8px;
+        border: 1px solid #ddd;
+      }
+      
+      .print-info-item {
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .print-info-label {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 4px;
+      }
+      
+      .print-info-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: #000;
+      }
+      
+      /* Session summary */
+      .print-summary-section {
+        display: block !important;
+        margin-bottom: 24px;
+        page-break-inside: avoid;
+      }
+      
+      .print-section-title {
+        font-size: 20px;
+        font-weight: 800;
+        color: #000;
+        margin: 0 0 12px 0;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #ccc;
+      }
+      
+      .print-summary-grid {
+        display: grid !important;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      
+      .print-summary-item {
+        text-align: center;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: #fff;
+      }
+      
+      .print-summary-value {
+        font-size: 24px;
+        font-weight: 900;
+        color: #2c5282;
+        margin: 4px 0;
+      }
+      
+      .print-summary-label {
+        font-size: 14px;
+        color: #666;
+      }
+      
+      /* Practice sentences table */
+      .print-sentences-section {
+        display: block !important;
+        margin-bottom: 24px;
+        page-break-inside: avoid;
+      }
+      
+      .print-sentences-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      
+      .print-sentences-table th {
+        background: #2c5282;
+        color: white;
+        text-align: left;
+        padding: 10px;
+        font-weight: 700;
+      }
+      
+      .print-sentences-table td {
+        padding: 10px;
+        border: 1px solid #ddd;
+        vertical-align: top;
+      }
+      
+      .print-sentences-table tr:nth-child(even) {
+        background: #f8f8f8;
+      }
+      
+      /* Common errors */
+      .print-errors-section {
+        display: block !important;
+        page-break-inside: avoid;
+      }
+      
+      .print-errors-list {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+      }
+      
+      .print-error-item {
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
+      }
+      
+      .print-error-category {
+        font-weight: 700;
+        color: #c53030;
+        margin-right: 8px;
+      }
+      
+      /* Print only specific table */
+      #exportTable {
+        display: table !important;
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+      }
+      
+      #exportTable th {
+        background: #f0f0f0 !important;
+        color: #000 !important;
+        border: 1px solid #ccc !important;
+        padding: 10px !important;
+        font-weight: 700;
+      }
+      
+      #exportTable td {
+        border: 1px solid #ccc !important;
+        padding: 10px !important;
+        color: #000 !important;
+        background: #fff !important;
+        vertical-align: top;
+      }
+      
+      #exportTable tr:nth-child(even) td {
+        background: #f8f8f8 !important;
+      }
+      
+      /* Page breaks */
+      .page-break {
+        page-break-before: always;
+      }
+      
+      /* Hide modal body original content */
+      .modal-body > *:not(.print-content) {
+        display: none !important;
+      }
+      
+      .print-content {
+        display: block !important;
+        color: #000 !important;
+        background: #fff !important;
+      }
+      
+      /* Common errors grid */
+      .print-errors-grid {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-top: 12px;
+      }
+      
+      .print-error-category-box {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 12px;
+        background: #fff;
+      }
+      
+      .print-error-category-title {
+        font-weight: 700;
+        color: #c53030;
+        margin-bottom: 8px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #eee;
+      }
+      
+      .print-error-words {
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      
+      /* Ensure no color backgrounds in print */
+      * {
+        -webkit-print-color-adjust: exact !important;
+        color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      
+      /* Add padding for printable area */
+      @page {
+        margin: 1.5cm;
+      }
     }
   </style>
 </head>
@@ -487,53 +752,138 @@
     </div>
 
     <div class="modal-body">
-      <div class="row">
-        <input id="classInput" placeholder="Class (e.g. 702)" />
-        <input id="seatInput" placeholder="Seat No. (e.g. 15)" />
-        <input id="nameInput" placeholder="Name (e.g. John)" />
-      </div>
-
-      <!-- 總結統計 -->
-      <div class="card" style="margin-bottom:12px;">
-        <div class="card-title"><span class="dot"></span>Session Summary</div>
-        <div class="score-card">
-          <div class="score-item">
-            <div>Average Accuracy</div>
-            <div class="score-value score-1" id="avgAccuracy">0%</div>
+      <!-- Print-optimized content (hidden in normal view) -->
+      <div class="print-content" style="display:none;">
+        <!-- Report Header -->
+        <div class="print-report-header">
+          <h1 class="print-report-title">A Report Generated by Shirley's AI Speaking Coach</h1>
+          <p class="print-report-subtitle">Comprehensive Speaking Practice Analysis Report</p>
+        </div>
+        
+        <!-- Student Information -->
+        <div class="print-student-info">
+          <div class="print-info-item">
+            <span class="print-info-label">班級 (Class)</span>
+            <span class="print-info-value" id="printClassValue">—</span>
           </div>
-          <div class="score-item">
-            <div>Average Fluency</div>
-            <div class="score-value score-3" id="avgFluency">0</div>
+          <div class="print-info-item">
+            <span class="print-info-label">座號 (Seat No.)</span>
+            <span class="print-info-value" id="printSeatValue">—</span>
           </div>
-          <div class="score-item">
-            <div>Total Time</div>
-            <div class="score-value score-2" id="totalTime">0s</div>
-          </div>
-          <div class="score-item">
-            <div>Completed</div>
-            <div class="score-value score-4" id="completedCount">0/0</div>
+          <div class="print-info-item">
+            <span class="print-info-label">姓名 (Name)</span>
+            <span class="print-info-value" id="printNameValue">—</span>
           </div>
         </div>
+        
+        <!-- Session Summary -->
+        <div class="print-summary-section">
+          <h2 class="print-section-title">Session Summary</h2>
+          <div class="print-summary-grid">
+            <div class="print-summary-item">
+              <div class="print-summary-value" id="printAvgAccuracy">0%</div>
+              <div class="print-summary-label">Average Accuracy</div>
+            </div>
+            <div class="print-summary-item">
+              <div class="print-summary-value" id="printAvgFluency">0</div>
+              <div class="print-summary-label">Average Fluency (WPM)</div>
+            </div>
+            <div class="print-summary-item">
+              <div class="print-summary-value" id="printTotalTime">0s</div>
+              <div class="print-summary-label">Total Time</div>
+            </div>
+            <div class="print-info-item">
+              <div class="print-summary-value" id="printCompletedCount">0/0</div>
+              <div class="print-summary-label">Completed Sentences</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Practice Sentences -->
+        <div class="print-sentences-section">
+          <h2 class="print-section-title">Practice Sentences</h2>
+          <table class="print-sentences-table" id="printSentencesTable">
+            <thead>
+              <tr>
+                <th style="width:5%">#</th>
+                <th style="width:35%">Target Sentence</th>
+                <th style="width:35%">Your Speech</th>
+                <th style="width:8%">Accuracy</th>
+                <th style="width:8%">Fluency</th>
+                <th style="width:9%">Completeness</th>
+              </tr>
+            </thead>
+            <tbody id="printSentencesBody">
+              <!-- Will be populated by JavaScript -->
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Common Errors -->
+        <div class="print-errors-section">
+          <h2 class="print-section-title">Common Errors</h2>
+          <div class="print-errors-grid" id="printErrorsGrid">
+            <!-- Will be populated by JavaScript -->
+          </div>
+        </div>
+        
+        <!-- Report Footer -->
+        <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #ccc; text-align: center; color: #666; font-size: 12px;">
+          <p>Report generated on <span id="printDate">—</span> by Shirley's AI Speaking Coach</p>
+          <p>This report is for educational purposes only. Practice regularly for better results.</p>
+        </div>
       </div>
+      
+      <!-- Original form content (for screen display) -->
+      <div class="screen-content">
+        <div class="row">
+          <input id="classInput" placeholder="班級 (e.g. 702)" />
+          <input id="seatInput" placeholder="座號 (e.g. 15)" />
+          <input id="nameInput" placeholder="姓名 (e.g. 王小明)" />
+        </div>
 
-      <table class="table" id="exportTable">
-        <thead>
-          <tr>
-            <th style="width:44px">#</th>
-            <th>Target Sentence</th>
-            <th>Your Speech</th>
-            <th style="width:70px">Accuracy</th>
-            <th style="width:70px">Fluency</th>
-            <th style="width:70px">Completeness</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+        <!-- 總結統計 -->
+        <div class="card" style="margin-bottom:12px;">
+          <div class="card-title"><span class="dot"></span>Session Summary</div>
+          <div class="score-card">
+            <div class="score-item">
+              <div>Average Accuracy</div>
+              <div class="score-value score-1" id="avgAccuracy">0%</div>
+            </div>
+            <div class="score-item">
+              <div>Average Fluency</div>
+              <div class="score-value score-3" id="avgFluency">0</div>
+            </div>
+            <div class="score-item">
+              <div>Total Time</div>
+              <div class="score-value score-2" id="totalTime">0s</div>
+            </div>
+            <div class="score-item">
+              <div>Completed</div>
+              <div class="score-value score-4" id="completedCount">0/0</div>
+            </div>
+          </div>
+        </div>
 
-      <!-- 常見錯誤 -->
-      <div id="commonErrorsSection" style="display:none;">
-        <div class="card-title" style="margin-top:16px;"><span class="dot"></span>Common Errors</div>
-        <div id="commonErrors"></div>
+        <table class="table" id="exportTable">
+          <thead>
+            <tr>
+              <th style="width:44px">#</th>
+              <th>Target Sentence</th>
+              <th>Your Speech</th>
+              <th style="width:70px">Accuracy</th>
+              <th style="width:70px">Fluency</th>
+              <th style="width:70px">Completeness</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+
+        <!-- 常見錯誤 -->
+        <div id="commonErrorsSection" style="display:none;">
+          <div class="card-title" style="margin-top:16px;"><span class="dot"></span>Common Errors</div>
+          <div id="commonErrors"></div>
+        </div>
       </div>
     </div>
 
@@ -609,6 +959,18 @@ const ui = {
   completedCount:$('#completedCount'),
   commonErrorsSection:$('#commonErrorsSection'),
   commonErrors:$('#commonErrors'),
+  
+  // Print elements
+  printClassValue: $('#printClassValue'),
+  printSeatValue: $('#printSeatValue'),
+  printNameValue: $('#printNameValue'),
+  printAvgAccuracy: $('#printAvgAccuracy'),
+  printAvgFluency: $('#printAvgFluency'),
+  printTotalTime: $('#printTotalTime'),
+  printCompletedCount: $('#printCompletedCount'),
+  printSentencesBody: $('#printSentencesBody'),
+  printErrorsGrid: $('#printErrorsGrid'),
+  printDate: $('#printDate'),
 };
 
 /* ===== Status / Result ===== */
@@ -1291,12 +1653,96 @@ function calculateSessionStats(){
     }
   };
 }
+
+function preparePrintContent() {
+  // 更新打印內容的學生資訊
+  ui.printClassValue.textContent = ui.classInput.value.trim() || '—';
+  ui.printSeatValue.textContent = ui.seatInput.value.trim() || '—';
+  ui.printNameValue.textContent = ui.nameInput.value.trim() || '—';
+  
+  // 更新日期
+  ui.printDate.textContent = new Date().toLocaleDateString('zh-TW', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  
+  // 計算並顯示統計
+  const stats = calculateSessionStats();
+  if(stats){
+    ui.printAvgAccuracy.textContent = stats.avgAccuracy + '%';
+    ui.printAvgFluency.textContent = stats.avgWPM;
+    ui.printTotalTime.textContent = stats.totalTime + 's';
+    ui.printCompletedCount.textContent = stats.completed;
+    
+    // 填充練習句子表格
+    ui.printSentencesBody.innerHTML = store.session.map((it,i)=>{
+      const r = store.results.get(i);
+      const hyp = r?.hyp || '—';
+      const acc = r ? r.acc + '%' : '—';
+      const wpm = r ? r.wpm : '—';
+      const completeness = r ? r.completeness : '—';
+      
+      return `
+        <tr>
+          <td>${i+1}</td>
+          <td>${escapeHtml(it.en)}</td>
+          <td>${escapeHtml(hyp)}</td>
+          <td>${acc}</td>
+          <td>${wpm}</td>
+          <td>${completeness}</td>
+        </tr>
+      `;
+    }).join('');
+    
+    // 填充常見錯誤
+    let errorsHtml = '';
+    if(stats.commonErrors.missing.length > 0){
+      errorsHtml += `
+        <div class="print-error-category-box">
+          <div class="print-error-category-title">Missing Words</div>
+          <div class="print-error-words">
+            ${stats.commonErrors.missing.map(([word,count])=>`• ${word} (${count}次)`).join('<br>')}
+          </div>
+        </div>
+      `;
+    }
+    
+    if(stats.commonErrors.substituted.length > 0){
+      errorsHtml += `
+        <div class="print-error-category-box">
+          <div class="print-error-category-title">Substituted Words</div>
+          <div class="print-error-words">
+            ${stats.commonErrors.substituted.map(([word,count])=>`• ${word} (${count}次)`).join('<br>')}
+          </div>
+        </div>
+      `;
+    }
+    
+    if(stats.commonErrors.extra.length > 0){
+      errorsHtml += `
+        <div class="print-error-category-box">
+          <div class="print-error-category-title">Extra Words</div>
+          <div class="print-error-words">
+            ${stats.commonErrors.extra.map(([word,count])=>`• ${word} (${count}次)`).join('<br>')}
+          </div>
+        </div>
+      `;
+    }
+    
+    ui.printErrorsGrid.innerHTML = errorsHtml || '<div style="grid-column: 1 / -1; text-align: center; color: #666; padding: 20px;">No common errors detected.</div>';
+  }
+}
+
 function openExport(){
   if(!store.session.length){
-    setStatus('No session to export.','warn'); return;
+    setStatus('No session to export.','warn'); 
+    return;
   }
   
-  // 填充表格
+  // 填充原始表格（屏幕顯示用）
   ui.exportTableBody.innerHTML = store.session.map((it,i)=>{
     const r=store.results.get(i);
     return `
@@ -1311,7 +1757,7 @@ function openExport(){
     `;
   }).join('');
   
-  // 計算並顯示統計
+  // 計算並顯示統計（屏幕顯示用）
   const stats = calculateSessionStats();
   if(stats){
     ui.avgAccuracy.textContent = stats.avgAccuracy+'%';
@@ -1319,7 +1765,7 @@ function openExport(){
     ui.totalTime.textContent = stats.totalTime+'s';
     ui.completedCount.textContent = stats.completed;
     
-    // 顯示常見錯誤
+    // 顯示常見錯誤（屏幕顯示用）
     let errorsHtml = '';
     if(stats.commonErrors.missing.length>0){
       errorsHtml += `<div><b>Frequently Missing:</b> ${stats.commonErrors.missing.map(([word,count])=>`${word} (${count})`).join(', ')}</div>`;
@@ -1339,9 +1785,15 @@ function openExport(){
     }
   }
   
+  // 準備打印內容
+  preparePrintContent();
+  
   ui.exportBackdrop.style.display='grid';
 }
-function closeExport(){ ui.exportBackdrop.style.display='none'; }
+
+function closeExport(){ 
+  ui.exportBackdrop.style.display='none'; 
+}
 
 function downloadJson(){
   const student={
@@ -1371,6 +1823,7 @@ function downloadJson(){
   a.click(); 
   URL.revokeObjectURL(url);
 }
+
 function downloadCsv(){
   let csv = 'Index,Target Sentence,Your Speech,Accuracy (%),Fluency (WPM),Completeness (%),Duration (s),Missing Words,Substituted Words\n';
   
@@ -1390,12 +1843,30 @@ function downloadCsv(){
   a.click();
   URL.revokeObjectURL(url);
 }
+
 function printReport(){
   if(!ui.classInput.value.trim() || !ui.seatInput.value.trim() || !ui.nameInput.value.trim()){
     alert('請先填寫班級、座號、姓名再列印。');
     return;
   }
-  window.print();
+  
+  // 確保打印內容是最新的
+  preparePrintContent();
+  
+  // 切換到打印視圖
+  $('.print-content').style.display = 'block';
+  $('.screen-content').style.display = 'none';
+  
+  // 觸發打印
+  setTimeout(() => {
+    window.print();
+    
+    // 打印後恢復正常視圖
+    setTimeout(() => {
+      $('.print-content').style.display = 'none';
+      $('.screen-content').style.display = 'block';
+    }, 100);
+  }, 100);
 }
 
 /* ===== Direct bindings ===== */
