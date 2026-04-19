@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Shirley's AI Speaking Coach · Open Studio | 自主句子工坊</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* ========= 開放工作室 · 暖調 · 有機質感 ========= */
+    :root {
+      --bg-canvas: #fff6ed;
+      --bg-studio: #fef1e4;
+      --panel-warm: rgba(255, 248, 240, 0.96);
+      --ink-deep: #2c2418;
+      --ink-soft: #7f6b55;
+      --ink-dust: #b6a086;
+      --terracotta: #e07a5f;
+      --honey: #f4a261;
+      --clay: #d4a373;
+      --sage: #81b29a;
+      --olive: #a3b18a;
+      --shadow-warm: 0 20px 35px -12px rgba(60, 40, 25, 0.12);
+      --shadow-glow: 0 10px 25px -8px rgba(224, 122, 95, 0.2);
+      --radius-xl: 2rem;
+      --radius-md: 1.25rem;
+      --font-serif: 'Instrument Serif', 'Georgia', 'Times New Roman', serif;
+      --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(125deg, #fff1e0 0%, #ffe2cf 100%);
+      font-family: var(--font-sans);
+      color: var(--ink-deep);
+      min-height: 100vh;
+      padding: 1.8rem;
+    }
+
+    @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+
+    /* 主佈局 — 不對稱但充滿呼吸感 */
+    .open-studio {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1.15fr;
+      gap: 2rem;
+      align-items: start;
+    }
+
+    /* 卡片：手工紙＋微光影 */
+    .studio-card {
+      background: var(--panel-warm);
+      backdrop-filter: blur(2px);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-warm);
+      border: 1px solid rgba(224, 122, 95, 0.2);
+      transition: transform 0.2s ease, box-shadow 0.2s;
+      overflow: hidden;
+    }
+
+    .studio-card:hover {
+      box-shadow: var(--shadow-glow);
+    }
+
+    /* 標頭區塊 — 招牌設計感 */
+    .card-header {
+      padding: 1.2rem 1.8rem;
+      border-bottom: 2px dotted var(--clay);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      background: rgba(255, 245, 235, 0.7);
+    }
+
+    .brand-title {
+      font-family: var(--font-serif);
+      font-weight: 600;
+      font-size: 1.7rem;
+      letter-spacing: -0.01em;
+      color: var(--terracotta);
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-title small {
+      font-size: 0.85rem;
+      font-family: var(--font-sans);
+      background: #fae8dd;
+      padding: 0.2rem 0.8rem;
+      border-radius: 40px;
+      font-weight: 500;
+      color: #b45a42;
+    }
+
+    .badge-warm {
+      background: #fae8dd;
+      border-radius: 60px;
+      padding: 0.25rem 1rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--terracotta);
+      border: 1px solid var(--clay);
+      white-space: nowrap;
+    }
+
+    /* 輸入區塊 */
+    .input-atelier {
+      padding: 1.5rem;
+    }
+
+    .textarea-studio {
+      width: 100%;
+      background: #fffdf9;
+      border: 1.5px solid #edd7c4;
+      border-radius: 24px;
+      padding: 1rem 1.2rem;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: var(--ink-deep);
+      resize: vertical;
+      transition: 0.2s;
+      font-family: var(--font-sans);
+    }
+
+    .textarea-studio:focus {
+      outline: none;
+      border-color: var(--terracotta);
+      box-shadow: 0 0 0 3px rgba(224, 122, 95, 0.15);
+    }
+
+    .counter-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 0.8rem 0 1.2rem;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .btn-warm {
+      background: var(--terracotta);
+      border: none;
+      padding: 0.65rem 1.4rem;
+      border-radius: 40px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: white;
+      cursor: pointer;
+      transition: 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+
+    .btn-warm:hover {
+      background: #c45d44;
+      transform: translateY(-2px);
+    }
+
+    .btn-outline-warm {
+      background: transparent;
+      border: 1.5px solid var(--clay);
+      color: var(--terracotta);
+      box-shadow: none;
+    }
+
+    .btn-outline-warm:hover {
+      background: #fae8dd;
+      transform: translateY(-1px);
+    }
+
+    /* 句子清單 — 開放畫廊風格 */
+    .sentence-gallery {
+      max-height: 460px;
+      overflow-y: auto;
+      padding: 0.8rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+
+    .gallery-item {
+      background: #fffcf5;
+      border-radius: 18px;
+      padding: 0.8rem 1rem;
+      border: 1px solid #f0e0d0;
+      cursor: pointer;
+      transition: 0.1s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .gallery-item.active {
+      background: #fff3e8;
+      border-left: 6px solid var(--honey);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+
+    .sentence-preview {
+      font-size: 0.9rem;
+      font-weight: 500;
+      flex: 1;
+    }
+
+    /* 右側 studio 核心 */
+    .practice-studio {
+      padding: 1.6rem;
+    }
+
+    .target-canvas {
+      background: #fffaf2;
+      border-radius: 28px;
+      padding: 1.4rem;
+      margin-bottom: 1.8rem;
+      border: 1px solid #f2e0cf;
+      box-shadow: inset 0 1px 4px rgba(0,0,0,0.02), 0 8px 20px rgba(0,0,0,0.03);
+    }
+
+    .target-phrase {
+      font-family: var(--font-serif);
+      font-size: 1.65rem;
+      font-weight: 600;
+      line-height: 1.4;
+      color: #4a3727;
+    }
+
+    .action-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+      margin: 1rem 0;
+    }
+
+    .meter-warm {
+      background: #e9dbcf;
+      border-radius: 40px;
+      height: 8px;
+      width: 100%;
+      overflow: hidden;
+      margin: 0.6rem 0;
+    }
+
+    .meter-fill-warm {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--terracotta), var(--honey));
+      border-radius: 40px;
+    }
+
+    .status-msg {
+      font-size: 0.75rem;
+      color: var(--ink-soft);
+      margin-top: 6px;
+    }
+
+    /* 評分卡片 */
+    .score-board {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 18px 0 16px;
+    }
+
+    .score-tile {
+      background: #fff5ea;
+      border-radius: 20px;
+      padding: 10px 4px;
+      text-align: center;
+      border: 1px solid #f0ddcc;
+    }
+
+    .score-digit {
+      font-size: 1.7rem;
+      font-weight: 800;
+      color: var(--terracotta);
+    }
+
+    .analysis-card {
+      background: #fef6ed;
+      border-radius: 20px;
+      padding: 12px;
+      font-size: 0.8rem;
+      margin-top: 12px;
+      border: 1px solid #f0e0cf;
+    }
+
+    /* 自訂滾動 */
+    ::-webkit-scrollbar {
+      width: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1e2d4;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--clay);
+      border-radius: 10px;
+    }
+
+    @media (max-width: 880px) {
+      .open-studio {
+        grid-template-columns: 1fr;
+        gap: 1.2rem;
+      }
+      body {
+        padding: 1rem;
+      }
+    }
+
+    /* 模態窗 */
+    .report-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(60, 45, 35, 0.7);
+      backdrop-filter: blur(5px);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-container {
+      background: #fffaf0;
+      max-width: 900px;
+      width: 90%;
+      max-height: 85vh;
+      border-radius: 36px;
+      overflow: hidden;
+      box-shadow: 0 30px 50px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #e9d5c0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-body {
+      padding: 1rem 1.5rem;
+      overflow: auto;
+    }
+    .modal-footer {
+      padding: 12px 1.5rem;
+      border-top: 1px solid #e9d5c0;
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+  </style>
+</head>
+<body>
+
+<div class="open-studio">
+  <!-- 左翼：句子輸入工坊 -->
+  <div class="studio-card">
+    <div class="card-header">
+      <span class="brand-title">📝 Shirley's AI Speaking Coach·Sentence Entry <small>Open Studio</small></span>
+      <span class="badge-warm" id="manualCounter">0 / 15</span>
+    </div>
+    <div class="input-atelier">
+      <textarea id="freeSentencesInput" class="textarea-studio" rows="6" placeholder="每行一個英文句子，最多15句&#10;例如：&#10;The morning light feels gentle on my skin.&#10;I want to improve my speaking fluency.&#10;Could you share your thoughts about this design?"></textarea>
+      <div class="counter-actions">
+        <span class="badge-warm">✍️ 一行一句 · 自由發揮</span>
+        <button id="applySentencesBtn" class="btn-warm">✨ 載入句子 & 開始練習</button>
+      </div>
+      <div class="badge-warm" style="display: inline-block; margin-top: 4px;">💡 貼上後點擊「載入句子」，系統會建立專屬練習清單</div>
+    </div>
+
+    <div class="card-header" style="border-top: 1px dotted #edd7c4;">
+      <span class="brand-title" style="font-size:1.3rem;">🎯 本回語句清單</span>
+      <span class="badge-warm" id="sessionProgressBadge">0 / 0 練習</span>
+    </div>
+    <div id="freePreviewList" class="sentence-gallery">
+      <div class="badge-warm" style="text-align:center;">尚未載入句子，請在上方輸入</div>
+    </div>
+  </div>
+
+  <!-- 右翼：口說錄音室 (Studio Vibe) -->
+  <div class="studio-card">
+    <div class="card-header">
+      <span class="brand-title">🎙️ 語音工作室 · 即時回饋</span>
+      <span class="badge-warm" id="studioCounter">就緒</span>
+    </div>
+    <div class="practice-studio">
+      <div class="target-canvas">
+        <div class="target-phrase" id="currentSentenceDisplay">—— 載入句子後開始 ——</div>
+        <div class="action-strip">
+          <button id="listenTargetSpeech" class="btn-warm btn-outline-warm">🔊 範例發音</button>
+          <button id="prevSentenceBtn" class="btn-warm btn-outline-warm" disabled>◀ 上一句</button>
+          <span class="badge-warm" id="sentenceIndex">0/0</span>
+          <button id="nextSentenceBtn" class="btn-warm btn-outline-warm" disabled>下一句 ▶</button>
+        </div>
+        <div class="action-strip">
+          <button id="recordSpeechBtn" class="btn-warm" disabled>🎙️ 錄音練習</button>
+          <button id="stopSpeechBtn" class="btn-warm btn-outline-warm" disabled>⏹️ 停止</button>
+          <button id="playbackSpeechBtn" class="btn-warm btn-outline-warm" disabled>▶ 播放我的聲音</button>
+        </div>
+        <div class="meter-warm"><div class="meter-fill-warm" id="warmMeterFill"></div></div>
+        <div class="status-msg" id="liveStatusMsg">✨ 輸入句子後點擊「載入句子」</div>
+      </div>
+
+      <!-- 評分結果面板 (保留原始評分機制) -->
+      <div id="warmResultPanel" style="display: none;">
+        <div class="score-board">
+          <div class="score-tile"><div>ACCURACY</div><div class="score-digit" id="warmAccuracy">0%</div><div>詞彙匹配</div></div>
+          <div class="score-tile"><div>COMPLETENESS</div><div class="score-digit" id="warmCompleteness">0%</div><div>朗讀完整度</div></div>
+          <div class="score-tile"><div>FLUENCY</div><div class="score-digit" id="warmFluency">0</div><div>WPM</div></div>
+          <div class="score-tile"><div>PRONUNCIATION</div><div class="score-digit" id="warmPronunciation">0%</div><div>綜合評分</div></div>
+        </div>
+        <div class="badge-warm" style="margin-bottom:6px;">🗣️ 語音辨識結果</div>
+        <div id="warmHypText" style="background:#fff5ea; padding:12px; border-radius:20px; font-size:0.85rem; margin-bottom:12px;"></div>
+        <div class="badge-warm">📖 逐詞比對</div>
+        <div id="warmDiffBlock" style="background:#fef1e4; padding:10px; border-radius:18px; font-size:0.75rem; margin:12px 0;"></div>
+        <div id="warmErrorAnalysis" class="analysis-card"></div>
+      </div>
+
+      <div id="warmSessionComplete" style="display: none; margin-top: 16px; text-align:center;">
+        <div class="badge-warm" style="background:#e7d9ce; font-size:1rem;">🎉 全數練習完成！可匯出詳細報告</div>
+      </div>
+
+      <div style="margin-top: 24px; border-top: 1px solid #edd7c4; padding-top: 16px;">
+        <button id="exportWarmReportBtn" class="btn-warm" style="width:100%; background: #d4a373;">📄 檢視完整報告 / 匯出</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 報告模態窗 (延續溫暖風格) -->
+<div id="warmModal" class="report-modal">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h2 style="font-family: var(--font-serif); color:#a55338;">📋 自主練習報告 · Shirley's Open Studio</h2>
+      <span id="closeWarmModal" style="font-size:28px; cursor:pointer;">&times;</span>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+        <input id="warmClass" placeholder="班級" style="background:#fff; border:1px solid #e2cfbc; border-radius: 40px; padding:8px 12px;" />
+        <input id="warmSeat" placeholder="座號" style="background:#fff; border:1px solid #e2cfbc; border-radius: 40px; padding:8px 12px;" />
+        <input id="warmName" placeholder="姓名" style="background:#fff; border:1px solid #e2cfbc; border-radius: 40px; padding:8px 12px;" />
+      </div>
+      <div class="studio-card" style="margin-bottom:16px; padding:12px;">
+        <div class="brand-title" style="font-size:1.2rem;">📊 綜合統計</div>
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:8px;">
+          <div class="score-tile"><div>平均準確度</div><div id="reportAvgAcc">0%</div></div>
+          <div class="score-tile"><div>平均流暢度(WPM)</div><div id="reportAvgFlu">0</div></div>
+          <div class="score-tile"><div>總練習時間</div><div id="reportTotalTime">0s</div></div>
+          <div class="score-tile"><div>完成進度</div><div id="reportCompleted">0/0</div></div>
+        </div>
+      </div>
+      <table style="width:100%; border-collapse: separate; border-spacing:0 8px;">
+        <thead><tr style="background:#f0e1d2;"><th>#</th><th>目標句子</th><th>您的發音</th><th>準確率</th><th>流暢度</th><th>完整度</th></tr></thead>
+        <tbody id="reportTableBody"></tbody>
+      </table>
+      <div id="warmCommonErrors" style="margin-top:16px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button id="closeModalBtn" class="btn-warm btn-outline-warm">關閉</button>
+      <button id="downloadWarmJson" class="btn-warm">下載 JSON</button>
+      <button id="downloadWarmCsv" class="btn-warm">下載 CSV</button>
+      <button id="printWarmReport" class="btn-warm">🖨️ 列印報告</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ==================== 自主句子版本 (保留原始評分 + 報表) ====================
+  let activeSentences = [];      // [{ en }]
+  let currentIndex = 0;
+  let sessionResults = new Map(); // idx -> analysis
+  let lastBlob = null;
+  let mediaRecorder, audioChunks, liveStream;
+  let speechRecognizer = null;
+  let liveTranscript = "";
+  let isRecording = false;
+  let recordStartTime = 0;
+  let meterAnimation = null;
+  let audioContext, analyserNode;
+
+  // DOM 元素
+  const freeInput = document.getElementById('freeSentencesInput');
+  const applyBtn = document.getElementById('applySentencesBtn');
+  const previewListDiv = document.getElementById('freePreviewList');
+  const currentDisplay = document.getElementById('currentSentenceDisplay');
+  const prevBtn = document.getElementById('prevSentenceBtn');
+  const nextBtn = document.getElementById('nextSentenceBtn');
+  const recordBtn = document.getElementById('recordSpeechBtn');
+  const stopBtn = document.getElementById('stopSpeechBtn');
+  const playBtn = document.getElementById('playbackSpeechBtn');
+  const listenBtn = document.getElementById('listenTargetSpeech');
+  const meterFill = document.getElementById('warmMeterFill');
+  const statusMsg = document.getElementById('liveStatusMsg');
+  const resultPanel = document.getElementById('warmResultPanel');
+  const warmAccuracy = document.getElementById('warmAccuracy');
+  const warmCompleteness = document.getElementById('warmCompleteness');
+  const warmFluency = document.getElementById('warmFluency');
+  const warmPronunciation = document.getElementById('warmPronunciation');
+  const warmHypText = document.getElementById('warmHypText');
+  const warmDiffBlock = document.getElementById('warmDiffBlock');
+  const warmErrorAnalysis = document.getElementById('warmErrorAnalysis');
+  const sessionProgressBadge = document.getElementById('sessionProgressBadge');
+  const sentenceIndexSpan = document.getElementById('sentenceIndex');
+  const studioCounter = document.getElementById('studioCounter');
+  const warmSessionComplete = document.getElementById('warmSessionComplete');
+  const exportBtn = document.getElementById('exportWarmReportBtn');
+  const warmModal = document.getElementById('warmModal');
+  const closeModalBtn = document.getElementById('closeModalBtn');
+  const closeWarmModal = document.getElementById('closeWarmModal');
+  const reportTableBody = document.getElementById('reportTableBody');
+  const reportAvgAcc = document.getElementById('reportAvgAcc');
+  const reportAvgFlu = document.getElementById('reportAvgFlu');
+  const reportTotalTime = document.getElementById('reportTotalTime');
+  const reportCompleted = document.getElementById('reportCompleted');
+  const warmCommonErrorsDiv = document.getElementById('warmCommonErrors');
+  const warmClass = document.getElementById('warmClass');
+  const warmSeat = document.getElementById('warmSeat');
+  const warmName = document.getElementById('warmName');
+
+  // ---------- 核心評分引擎 (完全繼承原始標準) ----------
+  function normalizeText(s) {
+    return s.toLowerCase().replace(/["“”"']/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function diffWords(ref, hyp) {
+    const a = ref, b = hyp;
+    const m = a.length, n = b.length;
+    const dp = Array(m+1).fill().map(()=>Array(n+1).fill(0));
+    const bt = Array(m+1).fill().map(()=>Array(n+1).fill(null));
+    for(let i=0;i<=m;i++){ dp[i][0]=i; bt[i][0]='del'; }
+    for(let j=0;j<=n;j++){ dp[0][j]=j; bt[0][j]='ins'; }
+    for(let i=1;i<=m;i++){
+      for(let j=1;j<=n;j++){
+        const cost = a[i-1]===b[j-1]?0:1;
+        const del=dp[i-1][j]+1, ins=dp[i][j-1]+1, sub=dp[i-1][j-1]+cost;
+        let op, val;
+        if(del<=ins && del<=sub){ val=del; op='del'; }
+        else if(ins<=del && ins<=sub){ val=ins; op='ins'; }
+        else { val=sub; op=cost===0?'ok':'sub'; }
+        dp[i][j]=val; bt[i][j]=op;
+      }
+    }
+    let i=m, j=n, out=[];
+    while(i>0 || j>0){
+      const op=bt[i][j];
+      if(op==='ok'||op==='sub'){ out.push({op, ref:a[i-1], hyp:b[j-1]}); i--; j--; }
+      else if(op==='del'){ out.push({op:'del', ref:a[i-1], hyp:''}); i--; }
+      else { out.push({op:'ins', ref:'', hyp:b[j-1]}); j--; }
+    }
+    return out.reverse();
+  }
+  function analyze(refText, hypText, durationSec){
+    const refN=normalizeText(refText), hypN=normalizeText(hypText);
+    const refTokens=refN.split(' ').filter(Boolean);
+    const hypTokens=hypN.split(' ').filter(Boolean);
+    const diffs=diffWords(refTokens, hypTokens);
+    let del=0, ins=0, sub=0, missing=[], extra=[], substituted=[];
+    for(const d of diffs){
+      if(d.op==='del'){ del++; missing.push(d.ref); }
+      else if(d.op==='ins'){ ins++; extra.push(d.hyp); }
+      else if(d.op==='sub'){ sub++; substituted.push(`${d.ref} → ${d.hyp}`); }
+    }
+    const edits=del+ins+sub;
+    const wer=refTokens.length?edits/refTokens.length:1;
+    const acc=Math.min(100, Math.max(0, Math.round((1-wer)*100)));
+    const wpm=hypTokens.length?Math.round((hypTokens.length/durationSec)*60):0;
+    let fluency="Needs Practice";
+    if(wpm>120) fluency="Too Fast";
+    else if(wpm>90) fluency="Excellent";
+    else if(wpm>70) fluency="Good";
+    else if(wpm>50) fluency="Fair";
+    const completenessValue=Math.min(100, (hypTokens.length/(refTokens.length||1))*100);
+    const completeness=`${completenessValue.toFixed(0)}%`;
+    const pronScore=Math.round((acc+completenessValue)/2);
+    return { acc, completeness, completenessValue, wpm, fluency, pronScore, diffs, hyp:hypText, missing, extra, substituted, wer, durationSec };
+  }
+  function formatDiffHtml(diffs){
+    return diffs.map(d=>{
+      if(d.op==='ok') return `<span style="color:#4a6741;">${escapeHtml(d.hyp)}</span>`;
+      if(d.op==='sub') return `<span style="color:#d97706; text-decoration:underline;">${escapeHtml(d.hyp)}</span>`;
+      if(d.op==='del') return `<span style="color:#c75c3c; text-decoration:line-through;">${escapeHtml(d.ref)}</span>`;
+      if(d.op==='ins') return `<span style="color:#81b29a;">${escapeHtml(d.hyp)}</span>`;
+    }).join(' ');
+  }
+  function escapeHtml(s){ return s.replace(/[&<>]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+
+  // 渲染左側清單 + 右側狀態
+  function renderPreview() {
+    if(!activeSentences.length){
+      previewListDiv.innerHTML = `<div class="badge-warm" style="text-align:center;">📭 請在上方輸入句子並點擊「載入句子」</div>`;
+      sessionProgressBadge.innerText = `0 / 0 練習`;
+      return;
+    }
+    previewListDiv.innerHTML = activeSentences.map((item, idx) => {
+      const done = sessionResults.has(idx);
+      return `<div class="gallery-item ${idx===currentIndex ? 'active' : ''}" data-idx="${idx}">
+        <div class="sentence-preview">${escapeHtml(item.en.length>70?item.en.slice(0,70)+'…':item.en)}</div>
+        <span class="badge-warm">${done ? '✓' : '○'}</span>
+      </div>`;
+    }).join('');
+    sessionProgressBadge.innerText = `${sessionResults.size} / ${activeSentences.length} 練習`;
+    sentenceIndexSpan.innerText = activeSentences.length ? `${currentIndex+1}/${activeSentences.length}` : '0/0';
+    studioCounter.innerText = activeSentences.length ? `${sessionResults.size} 完成` : '待載入';
+    currentDisplay.innerText = activeSentences.length ? activeSentences[currentIndex].en : '—— 載入句子後開始 ——';
+    prevBtn.disabled = !activeSentences.length || currentIndex===0;
+    nextBtn.disabled = !activeSentences.length || currentIndex===activeSentences.length-1;
+    recordBtn.disabled = !activeSentences.length;
+    if(sessionResults.has(currentIndex)){
+      const r = sessionResults.get(currentIndex);
+      resultPanel.style.display = 'block';
+      warmHypText.innerText = r.hyp;
+      warmDiffBlock.innerHTML = formatDiffHtml(r.diffs);
+      warmAccuracy.innerText = r.acc+'%';
+      warmCompleteness.innerText = r.completeness;
+      warmFluency.innerText = r.wpm;
+      warmPronunciation.innerText = r.pronScore+'%';
+      warmErrorAnalysis.innerHTML = `<div><b>❌ 缺詞:</b> ${r.missing.slice(0,5).join(', ') || '—'}</div>
+                                      <div><b>🔄 替換:</b> ${r.substituted.slice(0,5).join(', ') || '—'}</div>
+                                      <div><b>➕ 贅詞:</b> ${r.extra.slice(0,5).join(', ') || '—'}</div>
+                                      <div><b>📊 詞錯誤率:</b> ${(r.wer*100).toFixed(1)}%</div>`;
+    } else {
+      resultPanel.style.display = 'none';
+    }
+    warmSessionComplete.style.display = (sessionResults.size === activeSentences.length && activeSentences.length>0) ? 'block' : 'none';
+  }
+
+  function loadSentencesFromInput(){
+    const raw = freeInput.value;
+    const lines = raw.split(/\r?\n/).filter(l=>l.trim().length>0).slice(0,15);
+    if(lines.length===0){ statusMsg.innerText = '請至少輸入一個句子'; return; }
+    activeSentences = lines.map(en => ({ en: en.trim() }));
+    currentIndex = 0;
+    sessionResults.clear();
+    lastBlob = null;
+    playBtn.disabled = true;
+    renderPreview();
+    statusMsg.innerText = `✅ 已載入 ${activeSentences.length} 個句子，點擊錄音開始練習`;
+    document.getElementById('manualCounter').innerText = `${lines.length} / 15`;
+  }
+
+  // 錄音核心 (與原始一致)
+  async function startRecording(){
+    if(!activeSentences.length) return;
+    resultPanel.style.display = 'none';
+    statusMsg.innerText = '🔴 錄音中，請清晰朗讀...';
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      liveStream = stream;
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = handleStop;
+      mediaRecorder.start();
+      recordStartTime = Date.now();
+      isRecording = true;
+      recordBtn.disabled = true; stopBtn.disabled = false; playBtn.disabled = true;
+      startMeterAndASR(stream);
+      setTimeout(()=>{ if(isRecording) stopRecording(); }, 30000);
+    }catch(e){ statusMsg.innerText = '麥克風錯誤'; }
+  }
+  function startMeterAndASR(stream){
+    audioContext = new (AudioContext||webkitAudioContext)();
+    const src = audioContext.createMediaStreamSource(stream);
+    analyserNode = audioContext.createAnalyser();
+    analyserNode.fftSize = 128;
+    src.connect(analyserNode);
+    const dataArr = new Uint8Array(analyserNode.frequencyBinCount);
+    function updateMeter(){
+      if(!isRecording){ if(meterAnimation) cancelAnimationFrame(meterAnimation); return; }
+      analyserNode.getByteFrequencyData(dataArr);
+      let avg = dataArr.reduce((a,b)=>a+b,0)/dataArr.length;
+      let percent = Math.min(1, avg/140);
+      meterFill.style.width = (percent*100)+'%';
+      meterAnimation = requestAnimationFrame(updateMeter);
+    }
+    updateMeter();
+    const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(SR){
+      speechRecognizer = new SR();
+      speechRecognizer.lang='en-US'; speechRecognizer.interimResults=true; speechRecognizer.continuous=true;
+      speechRecognizer.onresult = e => { let txt=''; for(let i=e.resultIndex;i<e.results.length;i++) txt+=e.results[i][0].transcript+' '; liveTranscript = txt.trim(); };
+      speechRecognizer.start();
+    } else liveTranscript = "(不支援即時辨識)";
+  }
+  function stopRecording(){
+    if(mediaRecorder && mediaRecorder.state==='recording') mediaRecorder.stop();
+    if(speechRecognizer) speechRecognizer.stop();
+    if(liveStream) liveStream.getTracks().forEach(t=>t.stop());
+    isRecording = false;
+    if(meterAnimation) cancelAnimationFrame(meterAnimation);
+    meterFill.style.width = '0%';
+    stopBtn.disabled = true; recordBtn.disabled = false;
+    statusMsg.innerText = '分析語音中...';
+  }
+  async function handleStop(){
+    const duration = Math.max(0.5, (Date.now()-recordStartTime)/1000);
+    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+    lastBlob = blob;
+    playBtn.disabled = false;
+    const hyp = liveTranscript || "(未偵測到語音)";
+    const ref = activeSentences[currentIndex].en;
+    const analysis = analyze(ref, hyp, duration);
+    sessionResults.set(currentIndex, analysis);
+    renderPreview();
+    statusMsg.innerText = '✅ 評分完成！可播放錄音複習。';
+  }
+  function playRecording(){ if(lastBlob){ const url=URL.createObjectURL(lastBlob); new Audio(url).play(); setTimeout(()=>URL.revokeObjectURL(url), 5000); } }
+  function speakTarget(){ if(activeSentences[currentIndex]){ const utter=new SpeechSynthesisUtterance(activeSentences[currentIndex].en); utter.lang='en-US'; speechSynthesis.cancel(); speechSynthesis.speak(utter); } }
+  function nav(delta){ let n=currentIndex+delta; if(n>=0 && n<activeSentences.length){ currentIndex=n; renderPreview(); } }
+
+  // 報表相關
+  function buildReport(){
+    const rows = [];
+    let totalAcc=0, totalWPM=0, totalTime=0, count=0;
+    for(let [idx, r] of sessionResults.entries()){
+      totalAcc+=r.acc; totalWPM+=r.wpm; totalTime+=r.durationSec; count++;
+      rows.push({idx:idx+1, target:activeSentences[idx].en, hyp:r.hyp, acc:r.acc, wpm:r.wpm, comp:r.completeness});
+    }
+    const avgAcc = count?Math.round(totalAcc/count):0;
+    const avgFlu = count?Math.round(totalWPM/count):0;
+    const totalSec = Math.round(totalTime);
+    reportAvgAcc.innerText = avgAcc+'%';
+    reportAvgFlu.innerText = avgFlu;
+    reportTotalTime.innerText = totalSec+'s';
+    reportCompleted.innerText = `${count}/${activeSentences.length}`;
+    reportTableBody.innerHTML = rows.map(r=>`<tr><td>${r.idx}</td><td>${escapeHtml(r.target)}</td><td>${escapeHtml(r.hyp)}</td><td>${r.acc}%</td><td>${r.wpm}</td><td>${r.comp}</td></tr>`).join('');
+    warmCommonErrorsDiv.innerHTML = `<div class="badge-warm">⭐ 自主練習常見錯誤：請參考個別句子分析，持續練習會更進步</div>`;
+  }
+  function openReportModal(){ if(!activeSentences.length){ alert('尚無練習資料'); return; } buildReport(); warmModal.style.display = 'flex'; }
+  function closeModal(){ warmModal.style.display = 'none'; }
+  function downloadJSON(){
+    const data = { student: { class:warmClass.value, seat:warmSeat.value, name:warmName.value }, sentences: activeSentences, results: Array.from(sessionResults.entries()) };
+    const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`open_studio_${Date.now()}.json`; a.click(); URL.revokeObjectURL(blob);
+  }
+  function downloadCSV(){
+    let csv = "Index,Target,YourSpeech,Accuracy,Fluency(WPM),Completeness\n";
+    sessionResults.forEach((r,idx)=>{ csv += `${idx+1},"${activeSentences[idx].en}","${r.hyp}",${r.acc},${r.wpm},${r.completeness}\n`; });
+    const blob=new Blob(["\uFEFF"+csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`open_studio_report.csv`; a.click(); URL.revokeObjectURL(blob);
+  }
+  function printReport(){
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`<html><head><title>Shirley's Open Studio 練習報告</title><style>body{font-family:system-ui; padding:2rem}</style></head><body>${document.querySelector('#warmModal .modal-body')?.innerHTML || ''}</body></html>`);
+    printWindow.print();
+  }
+
+  // 事件註冊
+  applyBtn.onclick = loadSentencesFromInput;
+  recordBtn.onclick = startRecording;
+  stopBtn.onclick = stopRecording;
+  playBtn.onclick = playRecording;
+  listenBtn.onclick = speakTarget;
+  prevBtn.onclick = ()=>nav(-1);
+  nextBtn.onclick = ()=>nav(1);
+  exportBtn.onclick = openReportModal;
+  closeModalBtn.onclick = closeModal;
+  closeWarmModal.onclick = closeModal;
+  document.getElementById('downloadWarmJson').onclick = downloadJSON;
+  document.getElementById('downloadWarmCsv').onclick = downloadCSV;
+  document.getElementById('printWarmReport').onclick = printReport;
+  previewListDiv.addEventListener('click', (e)=>{
+    const item = e.target.closest('[data-idx]');
+    if(item && activeSentences.length){ currentIndex = parseInt(item.dataset.idx); renderPreview(); }
+  });
+  freeInput.addEventListener('input', ()=>{
+    const lines = freeInput.value.split(/\r?\n/).filter(l=>l.trim()).length;
+    document.getElementById('manualCounter').innerText = `${Math.min(lines,15)} / 15`;
+  });
+  renderPreview();
+</script>
+</body>
+</html>
