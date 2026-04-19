@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Shirley's AI Coach · 句子庫精準版｜選定 Level + Unit 後載入</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* 設計語言：精密儀器感 + 語音實驗室氛圍 */
+    :root {
+      --bg-canvas: #0b0d15;
+      --bg-elevated: #121520;
+      --glass-edge: rgba(72, 187, 255, 0.15);
+      --ink-primary: #f0f3fa;
+      --ink-muted: #8d9bb0;
+      --accent-teal: #2dd4bf;
+      --accent-blue: #3b82f6;
+      --accent-gold: #fbbf24;
+      --accent-rose: #f472b6;
+      --border-subtle: #252b3d;
+      --radius-card: 24px;
+      --radius-sm: 14px;
+    }
+
+    body {
+      background: radial-gradient(circle at 10% 30%, #11141f, #05070c);
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--ink-primary);
+      padding: 1.5rem;
+      min-height: 100vh;
+    }
+
+    @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap');
+
+    .dashboard {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 1.8rem;
+      align-items: start;
+    }
+
+    /* 卡片模組 */
+    .card {
+      background: rgba(18, 22, 35, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-edge);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      transition: box-shadow 0.2s;
+      box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .card-header {
+      padding: 1.2rem 1.5rem;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .card-title {
+      font-weight: 800;
+      font-size: 1.4rem;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--accent-teal), #90e0ef);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .badge {
+      background: rgba(45, 212, 191, 0.12);
+      border: 1px solid rgba(45, 212, 191, 0.3);
+      border-radius: 40px;
+      padding: 0.2rem 0.9rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--accent-teal);
+    }
+
+    /* 控制欄 */
+    .toolbar {
+      padding: 1rem 1.5rem;
+      background: rgba(0, 0, 0, 0.25);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .select-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+      align-items: center;
+      margin-top: 0.5rem;
+    }
+
+    .custom-select {
+      background: #0a0d18;
+      border: 1px solid var(--border-subtle);
+      padding: 0.5rem 1rem;
+      border-radius: 40px;
+      color: white;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn {
+      background: #1a1f2e;
+      border: 1px solid var(--border-subtle);
+      padding: 0.45rem 1.2rem;
+      border-radius: 40px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      color: var(--ink-primary);
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .btn-primary {
+      background: #0f292b;
+      border-color: var(--accent-teal);
+      color: var(--accent-teal);
+    }
+
+    .btn-primary:hover {
+      background: #1a4042;
+      transform: translateY(-1px);
+    }
+
+    .btn-success {
+      background: #1a3a2a;
+      border-color: #4ade80;
+      color: #4ade80;
+    }
+
+    /* 句子列表 */
+    .sentence-pool {
+      max-height: 480px;
+      overflow-y: auto;
+      padding: 0.8rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .sentence-row {
+      background: rgba(0, 0, 0, 0.35);
+      border-left: 3px solid var(--accent-blue);
+      padding: 0.7rem 1rem;
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: 0.1s;
+    }
+
+    .sentence-row.active {
+      background: rgba(59, 130, 246, 0.15);
+      border-left-color: var(--accent-teal);
+      box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.3);
+    }
+
+    .sentence-row .status-dot {
+      font-size: 0.7rem;
+      width: 24px;
+      text-align: center;
+    }
+
+    /* 練習區 */
+    .practice-area {
+      padding: 1.5rem;
+    }
+
+    .target-box {
+      background: #060a12;
+      border-radius: var(--radius-sm);
+      padding: 1.2rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid rgba(45, 212, 191, 0.25);
+    }
+
+    .target-sentence {
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .button-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.7rem;
+      margin: 1rem 0;
+    }
+
+    .meter-bar {
+      background: #1e2335;
+      height: 6px;
+      border-radius: 10px;
+      margin: 0.5rem 0;
+    }
+
+    .meter-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-teal), #818cf8);
+      border-radius: 10px;
+      transition: width 0.07s linear;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 16px 0 12px;
+    }
+
+    .stat-tile {
+      background: rgba(0, 0, 0, 0.45);
+      border-radius: 14px;
+      padding: 8px 4px;
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 1.6rem;
+      font-weight: 800;
+    }
+
+    .diff-panel {
+      background: #02040c;
+      font-family: monospace;
+      padding: 12px;
+      border-radius: 14px;
+      font-size: 0.75rem;
+      margin: 12px 0;
+      overflow-x: auto;
+    }
+
+    .error-panel {
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 14px;
+      padding: 12px;
+      font-size: 0.75rem;
+    }
+
+    .status-text {
+      font-size: 0.7rem;
+      color: var(--ink-muted);
+    }
+
+    @media (max-width: 860px) {
+      .dashboard { grid-template-columns: 1fr; }
+      body { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="dashboard">
+  <!-- 左：句子庫瀏覽器 (先選Level，再選Unit，然後載入) -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">📚 句子庫 · Level + Unit</span>
+      <span id="totalCount" class="badge">未載入</span>
+    </div>
+    <div class="toolbar">
+      <div class="select-group">
+        <label>📌 LEVEL</label>
+        <select id="levelSelect" class="custom-select">
+          <option value="1">Level 1</option><option value="2">Level 2</option><option value="3">Level 3</option>
+          <option value="4">Level 4</option><option value="5">Level 5</option><option value="6">Level 6</option>
+        </select>
+        <label>🔢 UNIT</label>
+        <select id="unitSelect" class="custom-select" disabled>
+          <option>— 請先選擇 Level —</option>
+        </select>
+        <button id="loadUnitBtn" class="btn btn-primary">📖 載入此單元</button>
+      </div>
+      <div class="select-group" style="margin-top: 8px;">
+        <span class="badge" id="unitInfoBadge">選擇單元後載入</span>
+      </div>
+    </div>
+    <div class="sentence-pool" id="sentenceList">
+      <div class="badge" style="text-align:center;">⬅️ 選擇 Level → 選擇 Unit → 點擊「載入此單元」</div>
+    </div>
+  </div>
+
+  <!-- 右：口說教練核心 -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">🎙️ 口說教練 · 即時評測</span>
+      <span id="sessionBadge" class="badge">0 / 0</span>
+    </div>
+    <div class="practice-area">
+      <div class="target-box">
+        <div class="target-sentence" id="targetSentence">—— 請先載入句子 ——</div>
+        <div class="button-strip">
+          <button id="listenBtn" class="btn">🔊 範例發音</button>
+          <button id="prevBtn" class="btn" disabled>◀ 上一句</button>
+          <span id="indexBadge" class="badge">0/0</span>
+          <button id="nextBtn" class="btn" disabled>下一句 ▶</button>
+        </div>
+        <div class="button-strip">
+          <button id="recordBtn" class="btn btn-primary" disabled>🎙️ 錄音練習</button>
+          <button id="stopBtn" class="btn" disabled>⏹️ 停止</button>
+          <button id="playBtn" class="btn" disabled>▶ 播放錄音</button>
+        </div>
+        <div class="meter-bar"><div class="meter-fill" id="meterFill"></div></div>
+        <div class="status-text" id="statusMsg">✅ 就緒 · 請先從左側載入句子</div>
+      </div>
+
+      <div id="resultPanel" style="display: none;">
+        <div class="stats-row">
+          <div class="stat-tile"><div>ACCURACY</div><div class="stat-number" id="scoreAcc">0%</div></div>
+          <div class="stat-tile"><div>COMPLETENESS</div><div class="stat-number" id="scoreComp">0%</div></div>
+          <div class="stat-tile"><div>FLUENCY(WPM)</div><div class="stat-number" id="scoreFlu">0</div></div>
+          <div class="stat-tile"><div>PRONUNCIATION</div><div class="stat-number" id="scorePron">0%</div></div>
+        </div>
+        <div class="badge" style="margin-bottom:6px;">🗣️ 語音轉錄</div>
+        <div id="asrText" style="background:#02040c; padding:10px; border-radius:12px; font-size:0.8rem; margin-bottom:12px;"></div>
+        <div class="badge">📖 逐詞比對</div>
+        <div id="diffBlock" class="diff-panel"></div>
+        <div id="errorBlock" class="error-panel"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ================== 1. CSV 動態載入器 (從 GitHub 抓取 level1~6.csv) ==================
+  const CORPUS_CACHE = new Map(); // level -> { items, unitsMap }
+
+  async function fetchCSV(level) {
+    if (CORPUS_CACHE.has(level)) return CORPUS_CACHE.get(level);
+    const url = `https://ducj-creator.github.io/Shirley-AI-Sentence-Practice/level${level}.csv`;
+    try {
+      const response = await fetch(url, { cache: 'no-store', mode: 'cors' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const text = await response.text();
+      const items = parseCSVToItems(text);
+      // 建立 unitsMap: key = unit 編號 (字串), value = 該 unit 的所有句子陣列
+      const unitsMap = new Map();
+      for (const it of items) {
+        const unitKey = it.unit;
+        if (!unitsMap.has(unitKey)) unitsMap.set(unitKey, []);
+        unitsMap.get(unitKey).push(it);
+      }
+      const pack = { items, unitsMap };
+      CORPUS_CACHE.set(level, pack);
+      console.log(`✅ 成功載入 Level ${level}，共 ${items.length} 句，${unitsMap.size} 個單元`);
+      return pack;
+    } catch (err) {
+      console.warn(`⚠️ 無法載入 ${url}，使用內建示範語料 (支援多單元、各單元句子數不同)`);
+      const fallback = generateFallbackCorpus(level);
+      CORPUS_CACHE.set(level, fallback);
+      return fallback;
+    }
+  }
+
+  // 解析 CSV: 格式 "單元-序號, 句子內容" → unit 為 dash 後面的數字
+  function parseCSVToItems(raw) {
+    const lines = raw.split(/\r?\n/).filter(l => l.trim().length > 0);
+    const result = [];
+    for (const line of lines) {
+      const commaIndex = line.indexOf(',');
+      if (commaIndex === -1) continue;
+      const code = line.slice(0, commaIndex).trim();
+      const sentence = line.slice(commaIndex + 1).trim();
+      if (!sentence) continue;
+      let unit = "0";
+      const dashIdx = code.indexOf('-');
+      if (dashIdx !== -1) unit = code.slice(dashIdx + 1).trim();
+      result.push({ en: sentence, number: code, unit });
+    }
+    return result;
+  }
+
+  // 內建語料：每個 Level 有不同數量的 Unit，每個 Unit 句子數量也不同 (模擬真實情況)
+  function generateFallbackCorpus(level) {
+    // 不同等級的主題詞庫
+    const stemsByLevel = {
+      1: ["The cat sits on the mat.", "I like apples.", "She runs fast.", "We have a dog.", "He is my friend.", "Look at the bird.", "This is a pen.", "My mom cooks well.", "The sun is hot.", "Let's play outside."],
+      2: ["I usually wake up at 7 AM.", "She enjoys reading books.", "They visited the museum.", "He works at a hospital.", "We need to buy groceries.", "Could you help me please?", "The movie was exciting.", "My favorite subject is science.", "Let's prepare dinner together.", "The weather is nice today."],
+      3: ["Effective communication builds trust.", "The company launched a new product.", "She managed to finish the marathon.", "Climate change is a global issue.", "Regular exercise improves health.", "The committee reached a decision.", "Artificial intelligence transforms industries.", "He apologized for being late.", "The research suggests new treatments.", "Teamwork leads to success."],
+      4: ["The algorithm optimizes performance.", "Negotiation strategies require patience.", "Quantum mechanics challenges intuition.", "The manuscript was discovered in a library.", "Photosynthesis converts light into energy.", "Urban planning must address sustainability.", "The neural network learns patterns.", "Diplomatic relations depend on trust.", "Cryptography ensures data security.", "The economic model predicts trends."],
+      5: ["Metacognitive strategies enhance learning.", "The geopolitical landscape is shifting rapidly.", "Phenomenology examines lived experience.", "Bayesian inference updates probabilities.", "The artist's oeuvre redefined modern art.", "Epigenetics influences gene expression.", "Supply chain resilience is critical.", "Postmodernism questions grand narratives.", "The neurobiological basis of memory.", "Heteroscedasticity appears in financial data."],
+      6: ["Neurophenomenology bridges consciousness and brain.", "Autopoietic systems are self-organizing.", "Exoplanetary spectroscopy reveals atmospheres.", "Morphogenetic fields guide development.", "The epistemological break introduced new paradigms.", "Quantum field theory predicts particle interactions.", "Generative adversarial networks create synthetic data.", "Thermodynamic limits of computation.", "Cryptoeconomic primitives enable decentralization.", "The philosophical framework of existentialism."]
+    };
+    const stems = stemsByLevel[level] || stemsByLevel[3];
+    
+    // 每個單元的句子數量不同 (模擬真實 CSV 情境)
+    const unitSentencesCount = {
+      1: 5, 2: 4, 3: 6, 4: 3, 5: 7, 6: 4, 7: 5, 8: 3, 9: 6, 10: 4,
+      11: 5, 12: 4, 13: 6, 14: 3, 15: 5, 16: 4, 17: 7, 18: 3, 19: 5, 20: 4,
+      21: 6, 22: 4, 23: 5, 24: 3, 25: 6, 26: 4, 27: 5, 28: 4, 29: 6, 30: 3,
+      31: 5, 32: 4, 33: 6, 34: 3, 35: 5, 36: 4, 37: 7, 38: 3, 39: 5, 40: 4,
+      41: 6, 42: 4, 43: 5, 44: 3, 45: 6, 46: 4, 47: 5, 48: 4, 49: 6, 50: 5
+    };
+    
+    const allItems = [];
+    const unitsMap = new Map();
+    
+    for (let u = 1; u <= 50; u++) {
+      const count = unitSentencesCount[u] || 5;
+      const unitItems = [];
+      for (let i = 0; i < Math.min(count, stems.length); i++) {
+        const sentence = stems[i % stems.length] + ` (Level ${level} Unit ${u})`;
+        const item = { en: sentence, number: `${level}-${u}-${i+1}`, unit: String(u) };
+        unitItems.push(item);
+        allItems.push(item);
+      }
+      unitsMap.set(String(u), unitItems);
+    }
+    return { items: allItems, unitsMap };
+  }
+
+  // ================== 2. 應用狀態 ==================
+  let activeSession = [];      // 當前載入的句子陣列
+  let currentIdx = 0;
+  let resultsMap = new Map();  // index -> 分析結果
+  let lastRecordingBlob = null;
+  let mediaRecorder, audioChunks, stream;
+  let speechRecognizer = null;
+  let liveTranscript = "";
+  let isRecording = false;
+  let recordStart = 0;
+  let meterAnimation = null;
+  let audioContext, analyserNode;
+
+  // DOM 元素
+  const levelSelect = document.getElementById('levelSelect');
+  const unitSelect = document.getElementById('unitSelect');
+  const loadUnitBtn = document.getElementById('loadUnitBtn');
+  const sentenceListDiv = document.getElementById('sentenceList');
+  const targetSpan = document.getElementById('targetSentence');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const recordBtn = document.getElementById('recordBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const playBtn = document.getElementById('playBtn');
+  const listenBtn = document.getElementById('listenBtn');
+  const meterFill = document.getElementById('meterFill');
+  const statusMsg = document.getElementById('statusMsg');
+  const resultPanel = document.getElementById('resultPanel');
+  const scoreAcc = document.getElementById('scoreAcc');
+  const scoreComp = document.getElementById('scoreComp');
+  const scoreFlu = document.getElementById('scoreFlu');
+  const scorePron = document.getElementById('scorePron');
+  const asrTextDiv = document.getElementById('asrText');
+  const diffBlock = document.getElementById('diffBlock');
+  const errorBlock = document.getElementById('errorBlock');
+  const sessionBadge = document.getElementById('sessionBadge');
+  const indexBadge = document.getElementById('indexBadge');
+  const totalCountSpan = document.getElementById('totalCount');
+  const unitInfoBadge = document.getElementById('unitInfoBadge');
+
+  // ================== 3. 核心評分引擎 ==================
+  function normalizeStr(s) {
+    return s.toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  
+  function diffWordsDetailed(refTok, hypTok) {
+    const m = refTok.length, n = hypTok.length;
+    const dp = Array(m+1).fill().map(()=>Array(n+1).fill(0));
+    const bt = Array(m+1).fill().map(()=>Array(n+1).fill(null));
+    for(let i=0;i<=m;i++){ dp[i][0]=i; bt[i][0]='del'; }
+    for(let j=0;j<=n;j++){ dp[0][j]=j; bt[0][j]='ins'; }
+    for(let i=1;i<=m;i++) for(let j=1;j<=n;j++) {
+      const cost = refTok[i-1]===hypTok[j-1] ? 0 : 1;
+      const del=dp[i-1][j]+1, ins=dp[i][j-1]+1, sub=dp[i-1][j-1]+cost;
+      if(del<=ins && del<=sub){ dp[i][j]=del; bt[i][j]='del'; }
+      else if(ins<=del && ins<=sub){ dp[i][j]=ins; bt[i][j]='ins'; }
+      else { dp[i][j]=sub; bt[i][j]=cost===0?'ok':'sub'; }
+    }
+    let i=m, j=n, ops=[];
+    while(i>0 || j>0){
+      const op = bt[i][j];
+      if(op==='ok'||op==='sub'){ ops.push({op, ref:refTok[i-1], hyp:hypTok[j-1]}); i--; j--; }
+      else if(op==='del'){ ops.push({op:'del', ref:refTok[i-1], hyp:''}); i--; }
+      else { ops.push({op:'ins', ref:'', hyp:hypTok[j-1]}); j--; }
+    }
+    return ops.reverse();
+  }
+  
+  function analyzeUtterance(ref, hyp, durationSec) {
+    const refTok = normalizeStr(ref).split(' ').filter(Boolean);
+    const hypTok = normalizeStr(hyp).split(' ').filter(Boolean);
+    const diffs = diffWordsDetailed(refTok, hypTok);
+    let del=0, ins=0, sub=0, miss=[], extra=[], subst=[];
+    for(const d of diffs){
+      if(d.op==='del'){ del++; miss.push(d.ref); }
+      else if(d.op==='ins'){ ins++; extra.push(d.hyp); }
+      else if(d.op==='sub'){ sub++; subst.push(`${d.ref}→${d.hyp}`); }
+    }
+    const edits = del+ins+sub;
+    const wer = refTok.length ? edits/refTok.length : 1;
+    const accuracy = Math.round((1 - Math.min(1, wer)) * 100);
+    const wpm = hypTok.length ? Math.round((hypTok.length / durationSec) * 60) : 0;
+    const completenessVal = Math.min(100, (hypTok.length/(refTok.length||1))*100);
+    const completeness = `${Math.round(completenessVal)}%`;
+    const pronunciation = Math.round((accuracy + completenessVal)/2);
+    return { accuracy, completeness, completenessVal, wpm, pronunciation, diffs, hyp, miss, extra, subst, wer, durationSec };
+  }
+  
+  function formatDiffHtml(diffs){
+    return diffs.map(d=>{
+      if(d.op==='ok') return `<span style="color:#b9c7e6;">${escapeHtml(d.hyp)}</span>`;
+      if(d.op==='sub') return `<span style="color:#facc15; border-bottom:1px dotted;">${escapeHtml(d.hyp)}</span>`;
+      if(d.op==='del') return `<span style="color:#f87171; text-decoration:line-through;">${escapeHtml(d.ref)}</span>`;
+      if(d.op==='ins') return `<span style="color:#6ee7b7;">${escapeHtml(d.hyp)}</span>`;
+    }).join(' ');
+  }
+  
+  function escapeHtml(s){ return s.replace(/[&<>]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+
+  // ================== 4. 單元選單與載入邏輯 ==================
+  async function rebuildUnitSelect() {
+    const level = Number(levelSelect.value);
+    const pack = await fetchCSV(level);
+    const units = Array.from(pack.unitsMap.keys())
+      .map(Number)
+      .sort((a,b) => a - b);
+    
+    unitSelect.disabled = false;
+    let options = `<option value="">— 請選擇 Unit —</option>`;
+    for (let u of units) {
+      const count = pack.unitsMap.get(String(u)).length;
+      options += `<option value="${u}">Unit ${u} (${count} 句)</option>`;
+    }
+    unitSelect.innerHTML = options;
+    unitSelect.value = "";
+    unitInfoBadge.innerText = `📊 Level ${level} 共有 ${units.length} 個單元`;
+    
+    // 清空句子列表
+    activeSession = [];
+    renderSentenceList();
+    statusMsg.innerText = `請選擇 Unit 後點擊「載入此單元」`;
+  }
+
+  async function loadSelectedUnit() {
+    const level = Number(levelSelect.value);
+    const selectedUnit = unitSelect.value;
+    
+    if (!selectedUnit) {
+      statusMsg.innerText = '⚠️ 請先選擇一個 Unit';
+      return;
+    }
+    
+    const pack = await fetchCSV(level);
+    const sentences = pack.unitsMap.get(selectedUnit);
+    
+    if (!sentences || sentences.length === 0) {
+      statusMsg.innerText = `⚠️ Unit ${selectedUnit} 沒有句子`;
+      return;
+    }
+    
+    activeSession = sentences.slice(); // 載入該單元所有句子
+    currentIdx = 0;
+    resultsMap.clear();
+    lastRecordingBlob = null;
+    playBtn.disabled = true;
+    
+    renderSentenceList();
+    statusMsg.innerText = `✅ 已載入 Unit ${selectedUnit}，共 ${activeSession.length} 個句子`;
+    unitInfoBadge.innerText = `📖 Unit ${selectedUnit} · ${activeSession.length} 句`;
+  }
+
+  function renderSentenceList() {
+    if (!activeSession.length) {
+      sentenceListDiv.innerHTML = `<div class="badge" style="text-align:center;">📭 尚未載入句子，請選擇 Level → Unit → 載入</div>`;
+      totalCountSpan.innerText = '0 句';
+      sessionBadge.innerText = '0 / 0';
+      indexBadge.innerText = '0/0';
+      targetSpan.innerText = '—— 請先載入句子 ——';
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      recordBtn.disabled = true;
+      resultPanel.style.display = 'none';
+      return;
+    }
+    
+    sentenceListDiv.innerHTML = activeSession.map((item, idx) => {
+      const done = resultsMap.has(idx);
+      return `<div class="sentence-row ${idx===currentIdx ? 'active' : ''}" data-index="${idx}">
+        <div style="font-size:0.85rem; flex:1;">${escapeHtml(item.en)}</div>
+        <div class="status-dot">${done ? '✓' : '○'}</div>
+      </div>`;
+    }).join('');
+    
+    totalCountSpan.innerText = `${activeSession.length} 句`;
+    sessionBadge.innerText = `${resultsMap.size} / ${activeSession.length}`;
+    indexBadge.innerText = `${currentIdx+1}/${activeSession.length}`;
+    targetSpan.innerText = activeSession[currentIdx].en;
+    
+    prevBtn.disabled = (currentIdx === 0);
+    nextBtn.disabled = (currentIdx === activeSession.length - 1);
+    recordBtn.disabled = false;
+    
+    if (resultsMap.has(currentIdx)) {
+      const r = resultsMap.get(currentIdx);
+      resultPanel.style.display = 'block';
+      asrTextDiv.innerText = r.hyp || '(無語音)';
+      diffBlock.innerHTML = formatDiffHtml(r.diffs);
+      scoreAcc.innerText = r.accuracy+'%';
+      scoreComp.innerText = r.completeness;
+      scoreFlu.innerText = r.wpm;
+      scorePron.innerText = r.pronunciation+'%';
+      errorBlock.innerHTML = `<div><b>🔴 缺詞:</b> ${r.miss.slice(0,5).join(', ') || '—'}</div>
+                              <div><b>🟡 替換:</b> ${r.subst.slice(0,5).join(', ') || '—'}</div>
+                              <div><b>🟢 贅詞:</b> ${r.extra.slice(0,5).join(', ') || '—'}</div>
+                              <div><b>📉 詞錯誤率(WER):</b> ${(r.wer*100).toFixed(1)}%</div>`;
+    } else {
+      resultPanel.style.display = 'none';
+    }
+  }
+
+  function nav(delta) {
+    const n = currentIdx + delta;
+    if (n >= 0 && n < activeSession.length) {
+      currentIdx = n;
+      renderSentenceList();
+    }
+  }
+
+  // ================== 5. 錄音相關邏輯 ==================
+  async function startRecording() {
+    if (!activeSession.length) return;
+    resultPanel.style.display = 'none';
+    statusMsg.innerText = '🔴 錄音中，請清晰朗讀句子...';
+    try {
+      const streamObj = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = streamObj;
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => handleStop();
+      mediaRecorder.start();
+      recordStart = Date.now();
+      isRecording = true;
+      recordBtn.disabled = true;
+      stopBtn.disabled = false;
+      playBtn.disabled = true;
+      startMeterAndASR(stream);
+      setTimeout(() => { if (isRecording) stopRecording(); }, 30000);
+    } catch(e) { 
+      statusMsg.innerText = '❌ 麥克風錯誤: ' + e.message;
+    }
+  }
+
+  function startMeterAndASR(stream) {
+    audioContext = new (AudioContext || webkitAudioContext)();
+    const source = audioContext.createMediaStreamSource(stream);
+    analyserNode = audioContext.createAnalyser();
+    analyserNode.fftSize = 128;
+    source.connect(analyserNode);
+    const dataArr = new Uint8Array(analyserNode.frequencyBinCount);
+    function updateMeter() {
+      if (!isRecording) { if (meterAnimation) cancelAnimationFrame(meterAnimation); return; }
+      analyserNode.getByteFrequencyData(dataArr);
+      let avg = dataArr.reduce((a,b)=>a+b,0)/dataArr.length;
+      let percent = Math.min(1, avg/140);
+      meterFill.style.width = (percent*100)+'%';
+      meterAnimation = requestAnimationFrame(updateMeter);
+    }
+    updateMeter();
+    
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SR) {
+      speechRecognizer = new SR();
+      speechRecognizer.lang = 'en-US';
+      speechRecognizer.interimResults = true;
+      speechRecognizer.continuous = true;
+      speechRecognizer.onresult = (e) => {
+        let txt = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          txt += e.results[i][0].transcript + ' ';
+        }
+        liveTranscript = txt.trim();
+      };
+      speechRecognizer.start();
+    } else {
+      liveTranscript = "(瀏覽器不支援即時語音辨識)";
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+    if (speechRecognizer) speechRecognizer.stop();
+    if (stream) stream.getTracks().forEach(t=>t.stop());
+    isRecording = false;
+    if (meterAnimation) cancelAnimationFrame(meterAnimation);
+    meterFill.style.width = '0%';
+    stopBtn.disabled = true;
+    recordBtn.disabled = false;
+    statusMsg.innerText = '📊 分析語音中...';
+  }
+
+  async function handleStop() {
+    const duration = Math.max(0.5, (Date.now() - recordStart) / 1000);
+    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+    lastRecordingBlob = blob;
+    playBtn.disabled = false;
+    const hypothesis = liveTranscript || "(未偵測到語音)";
+    const ref = activeSession[currentIdx].en;
+    const analysis = analyzeUtterance(ref, hypothesis, duration);
+    resultsMap.set(currentIdx, analysis);
+    renderSentenceList();
+    statusMsg.innerText = '✅ 評分完成！可點擊播放複聽自己的錄音。';
+  }
+
+  function playRecording() {
+    if (lastRecordingBlob) {
+      const url = URL.createObjectURL(lastRecordingBlob);
+      const audio = new Audio(url);
+      audio.play();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+  }
+
+  function speakTarget() {
+    if (activeSession[currentIdx]) {
+      const utter = new SpeechSynthesisUtterance(activeSession[currentIdx].en);
+      utter.lang = 'en-US';
+      utter.rate = 0.9;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(utter);
+    }
+  }
+
+  // ================== 6. 事件綁定 ==================
+  levelSelect.addEventListener('change', () => {
+    rebuildUnitSelect();
+  });
+  
+  unitSelect.addEventListener('change', () => {
+    const unit = unitSelect.value;
+    if (unit) {
+      unitInfoBadge.innerText = `📌 已選 Unit ${unit}，點擊「載入此單元」`;
+    } else {
+      unitInfoBadge.innerText = `請選擇 Unit`;
+    }
+  });
+  
+  loadUnitBtn.onclick = loadSelectedUnit;
+  recordBtn.onclick = startRecording;
+  stopBtn.onclick = stopRecording;
+  playBtn.onclick = playRecording;
+  listenBtn.onclick = speakTarget;
+  prevBtn.onclick = () => nav(-1);
+  nextBtn.onclick = () => nav(1);
+  
+  sentenceListDiv.addEventListener('click', (e) => {
+    const row = e.target.closest('[data-index]');
+    if (row && activeSession.length) {
+      currentIdx = parseInt(row.dataset.index);
+      renderSentenceList();
+    }
+  });
+  
+  // 初始化
+  rebuildUnitSelect();
+</script>
+</body>
+</html>
