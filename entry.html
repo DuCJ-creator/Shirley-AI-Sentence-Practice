@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>Shirley's AI Speaking Coach · Open Studio | 自主句子工坊</title>
+  <title>Shirley's AI Speaking Coach · 自由聲紋所 | Open Studio</title>
   <style>
     * {
       margin: 0;
@@ -11,175 +11,195 @@
       box-sizing: border-box;
     }
 
-    /* ========= 開放工作室 · 暖調 · 有機質感 ========= */
+    /* ============================================
+       設計方向：復古未來主義 × 有機暖調 × 聲波流動感
+       對比句子庫版的冷冽科技藍，這裡使用陶土色 + 琥珀 + 深海綠
+       特色：不規則邊框、聲紋動態、顆粒質感、大膽留白
+    ============================================ */
     :root {
-      --bg-canvas: #fff6ed;
-      --bg-studio: #fef1e4;
-      --panel-warm: rgba(255, 248, 240, 0.96);
-      --ink-deep: #2c2418;
-      --ink-soft: #7f6b55;
-      --ink-dust: #b6a086;
-      --terracotta: #e07a5f;
-      --honey: #f4a261;
-      --clay: #d4a373;
-      --sage: #81b29a;
-      --olive: #a3b18a;
-      --shadow-warm: 0 20px 35px -12px rgba(60, 40, 25, 0.12);
-      --shadow-glow: 0 10px 25px -8px rgba(224, 122, 95, 0.2);
-      --radius-xl: 2rem;
-      --radius-md: 1.25rem;
-      --font-serif: 'Instrument Serif', 'Georgia', 'Times New Roman', serif;
-      --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --clay-dark: #3d2a1f;
+      --terracotta: #cd5c3c;
+      --burnt-orange: #e2854f;
+      --amber-glow: #f5bc70;
+      --sage-mist: #8aa29e;
+      --deep-teal: #2c4c4a;
+      --cream-paper: #fdf6ed;
+      --ink-rich: #2a241e;
+      --ink-soft: #7e6b5a;
+      --grain-overlay: repeating-linear-gradient(45deg, rgba(0,0,0,0.02) 0px, rgba(0,0,0,0.02) 2px, transparent 2px, transparent 8px);
+      --shadow-retro: 12px 12px 0px rgba(61, 42, 31, 0.15);
+      --shadow-float: 0 20px 35px -12px rgba(0,0,0,0.2);
+      --radius-brutal: 28px 12px 32px 12px;
+      --radius-soft: 32px 16px 32px 16px;
     }
 
     body {
-      background: linear-gradient(125deg, #fff1e0 0%, #ffe2cf 100%);
-      font-family: var(--font-sans);
-      color: var(--ink-deep);
+      background: #ece2d4;
+      background-image: var(--grain-overlay), radial-gradient(circle at 10% 20%, #f3e9dd 0%, #e5d5c0 100%);
+      font-family: 'Instrument Serif', 'Georgia', 'Times New Roman', serif;
       min-height: 100vh;
-      padding: 1.8rem;
+      padding: 2rem;
+      position: relative;
     }
 
-    @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+    /* 裝飾性聲紋線條 */
+    body::before {
+      content: "";
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: repeating-linear-gradient(90deg, transparent, transparent 20px, var(--terracotta) 20px, var(--terracotta) 22px, transparent 22px, transparent 40px);
+      opacity: 0.3;
+      pointer-events: none;
+      z-index: 0;
+    }
 
-    /* 主佈局 — 不對稱但充滿呼吸感 */
+    @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Mono:wght@400;700&display=swap');
+
+    /* 主佈局 — 不對稱 + 交疊感 */
     .open-studio {
-      max-width: 1440px;
+      max-width: 1480px;
       margin: 0 auto;
       display: grid;
-      grid-template-columns: 1fr 1.15fr;
+      grid-template-columns: 1fr 1.1fr;
       gap: 2rem;
-      align-items: start;
+      position: relative;
+      z-index: 2;
     }
 
-    /* 卡片：手工紙＋微光影 */
-    .studio-card {
-      background: var(--panel-warm);
-      backdrop-filter: blur(2px);
-      border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-warm);
-      border: 1px solid rgba(224, 122, 95, 0.2);
-      transition: transform 0.2s ease, box-shadow 0.2s;
+    /* 卡片 — 粗獷主義輪廓 + 溫暖內裡 */
+    .vocal-card {
+      background: var(--cream-paper);
+      border-radius: var(--radius-brutal);
+      box-shadow: var(--shadow-retro);
+      transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+      border: 1px solid rgba(205, 92, 60, 0.3);
       overflow: hidden;
+      backdrop-filter: blur(0px);
     }
 
-    .studio-card:hover {
-      box-shadow: var(--shadow-glow);
+    .vocal-card:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 16px 16px 0px rgba(61, 42, 31, 0.12);
     }
 
-    /* 標頭區塊 — 招牌設計感 */
+    /* 標頭 — 聲波紋路 */
     .card-header {
       padding: 1.2rem 1.8rem;
-      border-bottom: 2px dotted var(--clay);
+      border-bottom: 3px double var(--terracotta);
       display: flex;
       justify-content: space-between;
       align-items: baseline;
       flex-wrap: wrap;
-      gap: 0.6rem;
-      background: rgba(255, 245, 235, 0.7);
+      gap: 0.8rem;
+      background: rgba(253, 246, 237, 0.9);
     }
 
     .brand-title {
-      font-family: var(--font-serif);
+      font-family: 'Instrument Serif', serif;
       font-weight: 600;
-      font-size: 1.7rem;
+      font-size: 1.8rem;
       letter-spacing: -0.01em;
-      color: var(--terracotta);
+      color: var(--clay-dark);
       display: inline-flex;
       align-items: center;
       gap: 10px;
     }
 
-    .brand-title small {
-      font-size: 0.85rem;
-      font-family: var(--font-sans);
-      background: #fae8dd;
-      padding: 0.2rem 0.8rem;
-      border-radius: 40px;
-      font-weight: 500;
-      color: #b45a42;
+    .brand-title .accent {
+      color: var(--terracotta);
+      font-style: italic;
     }
 
-    .badge-warm {
-      background: #fae8dd;
-      border-radius: 60px;
+    .badge-retro {
+      background: var(--deep-teal);
+      border-radius: 40px;
       padding: 0.25rem 1rem;
       font-size: 0.7rem;
       font-weight: 600;
-      color: var(--terracotta);
-      border: 1px solid var(--clay);
-      white-space: nowrap;
+      font-family: 'Space Mono', monospace;
+      color: var(--amber-glow);
+      letter-spacing: 0.5px;
+      border: 1px solid var(--burnt-orange);
     }
 
-    /* 輸入區塊 */
-    .input-atelier {
+    /* 輸入區塊 — 聲紋輸入感 */
+    .input-soundbox {
       padding: 1.5rem;
     }
 
-    .textarea-studio {
+    .textarea-vocal {
       width: 100%;
-      background: #fffdf9;
-      border: 1.5px solid #edd7c4;
+      background: #fffaf3;
+      border: 2px solid #e2cfbc;
       border-radius: 24px;
       padding: 1rem 1.2rem;
       font-size: 0.95rem;
-      line-height: 1.6;
-      color: var(--ink-deep);
+      line-height: 1.65;
+      color: var(--ink-rich);
       resize: vertical;
       transition: 0.2s;
-      font-family: var(--font-sans);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.85rem;
     }
 
-    .textarea-studio:focus {
+    .textarea-vocal:focus {
       outline: none;
       border-color: var(--terracotta);
-      box-shadow: 0 0 0 3px rgba(224, 122, 95, 0.15);
+      box-shadow: 0 0 0 4px rgba(205, 92, 60, 0.15);
     }
 
     .counter-actions {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin: 0.8rem 0 1.2rem;
+      margin: 1rem 0 1.2rem;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 12px;
     }
 
-    .btn-warm {
+    .btn-vocal {
       background: var(--terracotta);
       border: none;
-      padding: 0.65rem 1.4rem;
-      border-radius: 40px;
+      padding: 0.7rem 1.6rem;
+      border-radius: 60px;
       font-weight: 700;
       font-size: 0.85rem;
+      font-family: 'Space Mono', monospace;
       color: white;
       cursor: pointer;
       transition: 0.2s;
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    }
-
-    .btn-warm:hover {
-      background: #c45d44;
+      box-shadow: 0 4px 0 #8b3a22;
       transform: translateY(-2px);
     }
 
-    .btn-outline-warm {
+    .btn-vocal:hover {
+      background: #b04a2e;
+      transform: translateY(0px);
+      box-shadow: 0 2px 0 #8b3a22;
+    }
+
+    .btn-outline-vocal {
       background: transparent;
-      border: 1.5px solid var(--clay);
+      border: 2px solid var(--terracotta);
       color: var(--terracotta);
       box-shadow: none;
+      transform: none;
     }
 
-    .btn-outline-warm:hover {
+    .btn-outline-vocal:hover {
       background: #fae8dd;
       transform: translateY(-1px);
+      box-shadow: 0 2px 0 var(--terracotta);
     }
 
-    /* 句子清單 — 開放畫廊風格 */
-    .sentence-gallery {
+    /* 句子清單 — 聲波條紋 */
+    .wave-gallery {
       max-height: 460px;
       overflow-y: auto;
       padding: 0.8rem 1rem;
@@ -188,11 +208,11 @@
       gap: 0.7rem;
     }
 
-    .gallery-item {
-      background: #fffcf5;
-      border-radius: 18px;
-      padding: 0.8rem 1rem;
-      border: 1px solid #f0e0d0;
+    .gallery-wave {
+      background: #fffaf3;
+      border-radius: 20px;
+      padding: 0.9rem 1rem;
+      border-left: 8px solid var(--sage-mist);
       cursor: pointer;
       transition: 0.1s;
       display: flex;
@@ -200,38 +220,40 @@
       align-items: center;
     }
 
-    .gallery-item.active {
+    .gallery-wave.active {
+      border-left-color: var(--terracotta);
       background: #fff3e8;
-      border-left: 6px solid var(--honey);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
 
     .sentence-preview {
       font-size: 0.9rem;
       font-weight: 500;
+      font-family: 'Space Mono', monospace;
       flex: 1;
     }
 
-    /* 右側 studio 核心 */
-    .practice-studio {
+    /* 右側工作室 — 類比聲控台 */
+    .practice-console {
       padding: 1.6rem;
     }
 
-    .target-canvas {
-      background: #fffaf2;
-      border-radius: 28px;
+    .target-vinyl {
+      background: #fdf3e8;
+      border-radius: 32px;
       padding: 1.4rem;
       margin-bottom: 1.8rem;
-      border: 1px solid #f2e0cf;
-      box-shadow: inset 0 1px 4px rgba(0,0,0,0.02), 0 8px 20px rgba(0,0,0,0.03);
+      border: 1px solid #ecd9c6;
+      box-shadow: inset 0 0 0 2px rgba(255,255,240,0.8), 0 10px 20px rgba(0,0,0,0.05);
     }
 
     .target-phrase {
-      font-family: var(--font-serif);
-      font-size: 1.65rem;
+      font-family: 'Instrument Serif', serif;
+      font-size: 1.75rem;
       font-weight: 600;
-      line-height: 1.4;
-      color: #4a3727;
+      line-height: 1.35;
+      color: #3d2a1f;
+      letter-spacing: -0.2px;
     }
 
     .action-strip {
@@ -241,243 +263,217 @@
       margin: 1rem 0;
     }
 
-    .meter-warm {
-      background: #e9dbcf;
+    /* 類比儀表 */
+    .analog-meter {
+      background: #d9cdbc;
       border-radius: 40px;
-      height: 8px;
+      height: 10px;
       width: 100%;
       overflow: hidden;
-      margin: 0.6rem 0;
+      margin: 0.7rem 0;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
     }
 
-    .meter-fill-warm {
+    .meter-needle {
       width: 0%;
       height: 100%;
-      background: linear-gradient(90deg, var(--terracotta), var(--honey));
+      background: repeating-linear-gradient(90deg, var(--terracotta), var(--amber-glow), var(--terracotta));
       border-radius: 40px;
+      transition: width 0.06s linear;
     }
 
-    .status-msg {
-      font-size: 0.75rem;
+    .status-retro {
+      font-size: 0.7rem;
+      font-family: 'Space Mono', monospace;
       color: var(--ink-soft);
       margin-top: 6px;
     }
 
-    /* 評分卡片 */
-    .score-board {
+    /* 評分面板 */
+    .score-console {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 12px;
       margin: 18px 0 16px;
     }
 
-    .score-tile {
-      background: #fff5ea;
-      border-radius: 20px;
+    .score-retro {
+      background: #fef2e6;
+      border-radius: 24px;
       padding: 10px 4px;
       text-align: center;
-      border: 1px solid #f0ddcc;
+      border: 1px solid #e7d5c2;
+      font-family: 'Space Mono', monospace;
     }
 
     .score-digit {
-      font-size: 1.7rem;
+      font-size: 1.8rem;
       font-weight: 800;
       color: var(--terracotta);
+      font-family: 'Instrument Serif', serif;
     }
 
-    .analysis-card {
+    .analysis-retro {
       background: #fef6ed;
-      border-radius: 20px;
-      padding: 12px;
-      font-size: 0.8rem;
+      border-radius: 24px;
+      padding: 14px;
+      font-size: 0.75rem;
+      font-family: 'Space Mono', monospace;
+      border-left: 6px solid var(--amber-glow);
       margin-top: 12px;
-      border: 1px solid #f0e0cf;
-    }
-
-    /* 自訂滾動 */
-    ::-webkit-scrollbar {
-      width: 5px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #f1e2d4;
-      border-radius: 10px;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: var(--clay);
-      border-radius: 10px;
-    }
-
-    @media (max-width: 880px) {
-      .open-studio {
-        grid-template-columns: 1fr;
-        gap: 1.2rem;
-      }
-      body {
-        padding: 1rem;
-      }
     }
 
     /* 模態窗 */
-    .report-modal {
+    .modal-retro {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(60, 45, 35, 0.7);
-      backdrop-filter: blur(5px);
+      background: rgba(45, 35, 28, 0.85);
+      backdrop-filter: blur(4px);
       align-items: center;
       justify-content: center;
       z-index: 1000;
     }
-    .modal-container {
-      background: #fffaf0;
-      max-width: 900px;
+    .modal-retro-content {
+      background: var(--cream-paper);
+      max-width: 920px;
       width: 90%;
       max-height: 85vh;
       border-radius: 36px;
       overflow: hidden;
-      box-shadow: 0 30px 50px rgba(0,0,0,0.2);
-      display: flex;
-      flex-direction: column;
+      box-shadow: 20px 20px 0 rgba(61, 42, 31, 0.2);
+      border: 1px solid var(--terracotta);
     }
-    .modal-header {
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid #e9d5c0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .modal-body {
-      padding: 1rem 1.5rem;
-      overflow: auto;
-    }
-    .modal-footer {
-      padding: 12px 1.5rem;
-      border-top: 1px solid #e9d5c0;
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #e5d5c0; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb { background: var(--terracotta); border-radius: 10px; }
+
+    @media (max-width: 880px) {
+      .open-studio { grid-template-columns: 1fr; gap: 1.5rem; }
+      body { padding: 1rem; }
     }
   </style>
 </head>
 <body>
 
 <div class="open-studio">
-  <!-- 左翼：句子輸入工坊 -->
-  <div class="studio-card">
+  <!-- 左翼：聲紋輸入工坊 -->
+  <div class="vocal-card">
     <div class="card-header">
-      <span class="brand-title">📝 Shirley's AI Speaking Coach·Sentence Entry <small>Open Studio</small></span>
-      <span class="badge-warm" id="manualCounter">0 / 15</span>
+      <span class="brand-title">🎙️ Shirley's AI Speaking Coach--Sentence Entry<span class="accent">Open Studio</span></span>
+      <span class="badge-retro" id="manualCounter">0 / 15</span>
     </div>
-    <div class="input-atelier">
-      <textarea id="freeSentencesInput" class="textarea-studio" rows="6" placeholder="每行一個英文句子，最多15句&#10;例如：&#10;The morning light feels gentle on my skin.&#10;I want to improve my speaking fluency.&#10;Could you share your thoughts about this design?"></textarea>
+    <div class="input-soundbox">
+      <textarea id="freeSentencesInput" class="textarea-vocal" rows="6" placeholder="╰┈➤ 每行一個句子 · 自由書寫你的語料
+The velvet dusk settles over the quiet harbor.
+I’ve been practicing intonation for weeks.
+This voice coach feels like a digital studio companion."></textarea>
       <div class="counter-actions">
-        <span class="badge-warm">✍️ 一行一句 · 自由發揮</span>
-        <button id="applySentencesBtn" class="btn-warm">✨ 載入句子 & 開始練習</button>
+        <span class="badge-retro">✧ 一行一句 · 最多15句</span>
+        <button id="applySentencesBtn" class="btn-vocal">✦ 載入聲紋 ✦</button>
       </div>
-      <div class="badge-warm" style="display: inline-block; margin-top: 4px;">💡 貼上後點擊「載入句子」，系統會建立專屬練習清單</div>
+      <div class="badge-retro" style="display: inline-block; background: #b0a28f; color:#fdf6ed;">🎧 貼上後點擊載入，開啟練習</div>
     </div>
 
-    <div class="card-header" style="border-top: 1px dotted #edd7c4;">
-      <span class="brand-title" style="font-size:1.3rem;">🎯 本回語句清單</span>
-      <span class="badge-warm" id="sessionProgressBadge">0 / 0 練習</span>
+    <div class="card-header" style="border-top: 2px dotted #e2cfbc;">
+      <span class="brand-title" style="font-size:1.3rem;">📼 本回語句磁帶</span>
+      <span class="badge-retro" id="sessionProgressBadge">0 / 0</span>
     </div>
-    <div id="freePreviewList" class="sentence-gallery">
-      <div class="badge-warm" style="text-align:center;">尚未載入句子，請在上方輸入</div>
+    <div id="freePreviewList" class="wave-gallery">
+      <div class="badge-retro" style="text-align:center;">尚未載入句子，請在上方輸入</div>
     </div>
   </div>
 
-  <!-- 右翼：口說錄音室 (Studio Vibe) -->
-  <div class="studio-card">
+  <!-- 右翼：類比錄音室 -->
+  <div class="vocal-card">
     <div class="card-header">
-      <span class="brand-title">🎙️ 語音工作室 · 即時回饋</span>
-      <span class="badge-warm" id="studioCounter">就緒</span>
+      <span class="brand-title">⚡ 錄音室 · 即時回饋</span>
+      <span class="badge-retro" id="studioCounter">待機中</span>
     </div>
-    <div class="practice-studio">
-      <div class="target-canvas">
-        <div class="target-phrase" id="currentSentenceDisplay">—— 載入句子後開始 ——</div>
+    <div class="practice-console">
+      <div class="target-vinyl">
+        <div class="target-phrase" id="currentSentenceDisplay">—— 載入句子後啟動 ——</div>
         <div class="action-strip">
-          <button id="listenTargetSpeech" class="btn-warm btn-outline-warm">🔊 範例發音</button>
-          <button id="prevSentenceBtn" class="btn-warm btn-outline-warm" disabled>◀ 上一句</button>
-          <span class="badge-warm" id="sentenceIndex">0/0</span>
-          <button id="nextSentenceBtn" class="btn-warm btn-outline-warm" disabled>下一句 ▶</button>
+          <button id="listenTargetSpeech" class="btn-vocal btn-outline-vocal">🔊 範例聲紋</button>
+          <button id="prevSentenceBtn" class="btn-vocal btn-outline-vocal" disabled>◀ 上一軌</button>
+          <span class="badge-retro" id="sentenceIndex">0/0</span>
+          <button id="nextSentenceBtn" class="btn-vocal btn-outline-vocal" disabled>下一軌 ▶</button>
         </div>
         <div class="action-strip">
-          <button id="recordSpeechBtn" class="btn-warm" disabled>🎙️ 錄音練習</button>
-          <button id="stopSpeechBtn" class="btn-warm btn-outline-warm" disabled>⏹️ 停止</button>
-          <button id="playbackSpeechBtn" class="btn-warm btn-outline-warm" disabled>▶ 播放我的聲音</button>
+          <button id="recordSpeechBtn" class="btn-vocal" disabled>🎤 錄音練習</button>
+          <button id="stopSpeechBtn" class="btn-vocal btn-outline-vocal" disabled>⏹️ 停止</button>
+          <button id="playbackSpeechBtn" class="btn-vocal btn-outline-vocal" disabled>▶ 播放聲紋</button>
         </div>
-        <div class="meter-warm"><div class="meter-fill-warm" id="warmMeterFill"></div></div>
-        <div class="status-msg" id="liveStatusMsg">✨ 輸入句子後點擊「載入句子」</div>
+        <div class="analog-meter"><div class="meter-needle" id="warmMeterFill"></div></div>
+        <div class="status-retro" id="liveStatusMsg">✨ 等待聲紋載入 · 點擊「載入聲紋」開始</div>
       </div>
 
-      <!-- 評分結果面板 (保留原始評分機制) -->
+      <!-- 評分結果面板 (繼承原始評分引擎) -->
       <div id="warmResultPanel" style="display: none;">
-        <div class="score-board">
-          <div class="score-tile"><div>ACCURACY</div><div class="score-digit" id="warmAccuracy">0%</div><div>詞彙匹配</div></div>
-          <div class="score-tile"><div>COMPLETENESS</div><div class="score-digit" id="warmCompleteness">0%</div><div>朗讀完整度</div></div>
-          <div class="score-tile"><div>FLUENCY</div><div class="score-digit" id="warmFluency">0</div><div>WPM</div></div>
-          <div class="score-tile"><div>PRONUNCIATION</div><div class="score-digit" id="warmPronunciation">0%</div><div>綜合評分</div></div>
+        <div class="score-console">
+          <div class="score-retro"><div>ACCURACY</div><div class="score-digit" id="warmAccuracy">0%</div><div>匹配率</div></div>
+          <div class="score-retro"><div>COMPLETENESS</div><div class="score-digit" id="warmCompleteness">0%</div><div>完整度</div></div>
+          <div class="score-retro"><div>FLUENCY</div><div class="score-digit" id="warmFluency">0</div><div>WPM</div></div>
+          <div class="score-retro"><div>PRONUNCIATION</div><div class="score-digit" id="warmPronunciation">0%</div><div>發音評分</div></div>
         </div>
-        <div class="badge-warm" style="margin-bottom:6px;">🗣️ 語音辨識結果</div>
-        <div id="warmHypText" style="background:#fff5ea; padding:12px; border-radius:20px; font-size:0.85rem; margin-bottom:12px;"></div>
-        <div class="badge-warm">📖 逐詞比對</div>
-        <div id="warmDiffBlock" style="background:#fef1e4; padding:10px; border-radius:18px; font-size:0.75rem; margin:12px 0;"></div>
-        <div id="warmErrorAnalysis" class="analysis-card"></div>
+        <div class="badge-retro" style="margin-bottom:6px;">🎙️ 語音轉錄</div>
+        <div id="warmHypText" style="background:#fef1e4; padding:12px; border-radius:20px; font-size:0.8rem; margin-bottom:12px; font-family: monospace;"></div>
+        <div class="badge-retro">📖 逐詞比對</div>
+        <div id="warmDiffBlock" style="background:#fef1e4; padding:10px; border-radius:18px; font-size:0.75rem; margin:12px 0; font-family: monospace;"></div>
+        <div id="warmErrorAnalysis" class="analysis-retro"></div>
       </div>
 
-      <div id="warmSessionComplete" style="display: none; margin-top: 16px; text-align:center;">
-        <div class="badge-warm" style="background:#e7d9ce; font-size:1rem;">🎉 全數練習完成！可匯出詳細報告</div>
+      <div id="warmSessionComplete" style="display: none; margin-top: 18px; text-align:center;">
+        <div class="badge-retro" style="background: var(--deep-teal);">🎧 全數完成！可匯出完整報告</div>
       </div>
 
-      <div style="margin-top: 24px; border-top: 1px solid #edd7c4; padding-top: 16px;">
-        <button id="exportWarmReportBtn" class="btn-warm" style="width:100%; background: #d4a373;">📄 檢視完整報告 / 匯出</button>
+      <div style="margin-top: 28px; border-top: 2px dotted #e2cfbc; padding-top: 18px;">
+        <button id="exportWarmReportBtn" class="btn-vocal" style="width:100%; background: var(--deep-teal); box-shadow: 0 4px 0 #1d3a38;">📀 檢視報告／匯出</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- 報告模態窗 (延續溫暖風格) -->
-<div id="warmModal" class="report-modal">
-  <div class="modal-container">
-    <div class="modal-header">
-      <h2 style="font-family: var(--font-serif); color:#a55338;">📋 自主練習報告 · Shirley's Open Studio</h2>
-      <span id="closeWarmModal" style="font-size:28px; cursor:pointer;">&times;</span>
+<!-- 報告模態窗（復古暖調） -->
+<div id="warmModal" class="modal-retro">
+  <div class="modal-retro-content">
+    <div class="card-header" style="border-bottom: 2px solid var(--terracotta);">
+      <h2 style="font-family: 'Instrument Serif', serif; color:#3d2a1f;">📀 Shirley's AI Speaking Coach (Open Studio)· 練習報告</h2>
+      <span id="closeWarmModal" style="font-size:32px; cursor:pointer; color:var(--terracotta);">&times;</span>
     </div>
-    <div class="modal-body">
-      <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
-        <input id="warmClass" placeholder="班級" style="background:#fff; border:1px solid #e2cfbc; border-radius: 40px; padding:8px 12px;" />
-        <input id="warmSeat" placeholder="座號" style="background:#fff; border:1px solid #e2cfbc; border-radius: 40px; padding:8px 12px;" />
-        <input id="warmName" placeholder="姓名" style="background:#fff; border:1px solid #e2cfbc; border-radius: 40px; padding:8px 12px;" />
+    <div class="input-soundbox" style="overflow: auto; max-height: 65vh;">
+      <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+        <input id="warmClass" placeholder="班級" style="background:#fff; border:1px solid #e2cfbc; border-radius: 60px; padding:8px 14px; font-family: monospace;" />
+        <input id="warmSeat" placeholder="座號" style="background:#fff; border:1px solid #e2cfbc; border-radius: 60px; padding:8px 14px; font-family: monospace;" />
+        <input id="warmName" placeholder="姓名" style="background:#fff; border:1px solid #e2cfbc; border-radius: 60px; padding:8px 14px; font-family: monospace;" />
       </div>
-      <div class="studio-card" style="margin-bottom:16px; padding:12px;">
-        <div class="brand-title" style="font-size:1.2rem;">📊 綜合統計</div>
-        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:8px;">
-          <div class="score-tile"><div>平均準確度</div><div id="reportAvgAcc">0%</div></div>
-          <div class="score-tile"><div>平均流暢度(WPM)</div><div id="reportAvgFlu">0</div></div>
-          <div class="score-tile"><div>總練習時間</div><div id="reportTotalTime">0s</div></div>
-          <div class="score-tile"><div>完成進度</div><div id="reportCompleted">0/0</div></div>
-        </div>
+      <div class="score-retro" style="margin-bottom:16px; display:grid; grid-template-columns:repeat(4,1fr); gap:10px;">
+        <div><div>平均準確率</div><div class="score-digit" id="reportAvgAcc">0%</div></div>
+        <div><div>平均流暢度</div><div class="score-digit" id="reportAvgFlu">0</div></div>
+        <div><div>總練習時間</div><div class="score-digit" id="reportTotalTime">0s</div></div>
+        <div><div>完成進度</div><div class="score-digit" id="reportCompleted">0/0</div></div>
       </div>
-      <table style="width:100%; border-collapse: separate; border-spacing:0 8px;">
-        <thead><tr style="background:#f0e1d2;"><th>#</th><th>目標句子</th><th>您的發音</th><th>準確率</th><th>流暢度</th><th>完整度</th></tr></thead>
+      <table style="width:100%; border-collapse: collapse; font-size:0.75rem; font-family: monospace;">
+        <thead><tr style="background:#ecd9c6;"><th>#</th><th>目標句子</th><th>您的發音</th><th>準確率</th><th>流暢度</th><th>完整度</th></tr></thead>
         <tbody id="reportTableBody"></tbody>
       </table>
-      <div id="warmCommonErrors" style="margin-top:16px;"></div>
+      <div id="warmCommonErrors" style="margin-top:20px;"></div>
     </div>
-    <div class="modal-footer">
-      <button id="closeModalBtn" class="btn-warm btn-outline-warm">關閉</button>
-      <button id="downloadWarmJson" class="btn-warm">下載 JSON</button>
-      <button id="downloadWarmCsv" class="btn-warm">下載 CSV</button>
-      <button id="printWarmReport" class="btn-warm">🖨️ 列印報告</button>
+    <div class="counter-actions" style="padding: 12px 1.5rem; justify-content: flex-end; border-top: 1px solid #e2cfbc;">
+      <button id="closeModalBtn" class="btn-vocal btn-outline-vocal">關閉</button>
+      <button id="downloadWarmJson" class="btn-vocal">下載 JSON</button>
+      <button id="downloadWarmCsv" class="btn-vocal">下載 CSV</button>
+      <button id="printWarmReport" class="btn-vocal">🖨️ 列印報告</button>
     </div>
   </div>
 </div>
 
 <script>
-  // ==================== 自主句子版本 (保留原始評分 + 報表) ====================
-  let activeSentences = [];      // [{ en }]
+  // ========== 自主句子版本 · 保留原始評分標準 ==========
+  let activeSentences = [];
   let currentIndex = 0;
-  let sessionResults = new Map(); // idx -> analysis
+  let sessionResults = new Map();
   let lastBlob = null;
   let mediaRecorder, audioChunks, liveStream;
   let speechRecognizer = null;
@@ -526,7 +522,7 @@
   const warmSeat = document.getElementById('warmSeat');
   const warmName = document.getElementById('warmName');
 
-  // ---------- 核心評分引擎 (完全繼承原始標準) ----------
+  // ---------- 評分引擎 (與原版完全一致) ----------
   function normalizeText(s) {
     return s.toLowerCase().replace(/["“”"']/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
   }
@@ -592,24 +588,24 @@
   }
   function escapeHtml(s){ return s.replace(/[&<>]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
 
-  // 渲染左側清單 + 右側狀態
+  // 渲染句子清單與當前狀態
   function renderPreview() {
     if(!activeSentences.length){
-      previewListDiv.innerHTML = `<div class="badge-warm" style="text-align:center;">📭 請在上方輸入句子並點擊「載入句子」</div>`;
-      sessionProgressBadge.innerText = `0 / 0 練習`;
+      previewListDiv.innerHTML = `<div class="badge-retro" style="text-align:center;">📼 尚未載入聲紋，請輸入句子後點擊載入</div>`;
+      sessionProgressBadge.innerText = `0 / 0`;
       return;
     }
     previewListDiv.innerHTML = activeSentences.map((item, idx) => {
       const done = sessionResults.has(idx);
-      return `<div class="gallery-item ${idx===currentIndex ? 'active' : ''}" data-idx="${idx}">
-        <div class="sentence-preview">${escapeHtml(item.en.length>70?item.en.slice(0,70)+'…':item.en)}</div>
-        <span class="badge-warm">${done ? '✓' : '○'}</span>
+      return `<div class="gallery-wave ${idx===currentIndex ? 'active' : ''}" data-idx="${idx}">
+        <div class="sentence-preview">${escapeHtml(item.en.length>65?item.en.slice(0,65)+'…':item.en)}</div>
+        <span class="badge-retro">${done ? '✓' : '○'}</span>
       </div>`;
     }).join('');
-    sessionProgressBadge.innerText = `${sessionResults.size} / ${activeSentences.length} 練習`;
+    sessionProgressBadge.innerText = `${sessionResults.size} / ${activeSentences.length}`;
     sentenceIndexSpan.innerText = activeSentences.length ? `${currentIndex+1}/${activeSentences.length}` : '0/0';
-    studioCounter.innerText = activeSentences.length ? `${sessionResults.size} 完成` : '待載入';
-    currentDisplay.innerText = activeSentences.length ? activeSentences[currentIndex].en : '—— 載入句子後開始 ——';
+    studioCounter.innerText = activeSentences.length ? `${sessionResults.size} 完成` : '待機';
+    currentDisplay.innerText = activeSentences.length ? activeSentences[currentIndex].en : '—— 載入句子後啟動 ——';
     prevBtn.disabled = !activeSentences.length || currentIndex===0;
     nextBtn.disabled = !activeSentences.length || currentIndex===activeSentences.length-1;
     recordBtn.disabled = !activeSentences.length;
@@ -626,9 +622,7 @@
                                       <div><b>🔄 替換:</b> ${r.substituted.slice(0,5).join(', ') || '—'}</div>
                                       <div><b>➕ 贅詞:</b> ${r.extra.slice(0,5).join(', ') || '—'}</div>
                                       <div><b>📊 詞錯誤率:</b> ${(r.wer*100).toFixed(1)}%</div>`;
-    } else {
-      resultPanel.style.display = 'none';
-    }
+    } else { resultPanel.style.display = 'none'; }
     warmSessionComplete.style.display = (sessionResults.size === activeSentences.length && activeSentences.length>0) ? 'block' : 'none';
   }
 
@@ -642,11 +636,11 @@
     lastBlob = null;
     playBtn.disabled = true;
     renderPreview();
-    statusMsg.innerText = `✅ 已載入 ${activeSentences.length} 個句子，點擊錄音開始練習`;
+    statusMsg.innerText = `✅ 已載入 ${activeSentences.length} 個句子，可開始錄音`;
     document.getElementById('manualCounter').innerText = `${lines.length} / 15`;
   }
 
-  // 錄音核心 (與原始一致)
+  // 錄音核心（完整保留）
   async function startRecording(){
     if(!activeSentences.length) return;
     resultPanel.style.display = 'none';
@@ -716,30 +710,26 @@
   function speakTarget(){ if(activeSentences[currentIndex]){ const utter=new SpeechSynthesisUtterance(activeSentences[currentIndex].en); utter.lang='en-US'; speechSynthesis.cancel(); speechSynthesis.speak(utter); } }
   function nav(delta){ let n=currentIndex+delta; if(n>=0 && n<activeSentences.length){ currentIndex=n; renderPreview(); } }
 
-  // 報表相關
+  // 報表
   function buildReport(){
-    const rows = [];
-    let totalAcc=0, totalWPM=0, totalTime=0, count=0;
+    const rows = []; let totalAcc=0, totalWPM=0, totalTime=0, count=0;
     for(let [idx, r] of sessionResults.entries()){
       totalAcc+=r.acc; totalWPM+=r.wpm; totalTime+=r.durationSec; count++;
       rows.push({idx:idx+1, target:activeSentences[idx].en, hyp:r.hyp, acc:r.acc, wpm:r.wpm, comp:r.completeness});
     }
-    const avgAcc = count?Math.round(totalAcc/count):0;
-    const avgFlu = count?Math.round(totalWPM/count):0;
-    const totalSec = Math.round(totalTime);
-    reportAvgAcc.innerText = avgAcc+'%';
-    reportAvgFlu.innerText = avgFlu;
-    reportTotalTime.innerText = totalSec+'s';
+    reportAvgAcc.innerText = count?Math.round(totalAcc/count)+'%':'0%';
+    reportAvgFlu.innerText = count?Math.round(totalWPM/count):0;
+    reportTotalTime.innerText = Math.round(totalTime)+'s';
     reportCompleted.innerText = `${count}/${activeSentences.length}`;
     reportTableBody.innerHTML = rows.map(r=>`<tr><td>${r.idx}</td><td>${escapeHtml(r.target)}</td><td>${escapeHtml(r.hyp)}</td><td>${r.acc}%</td><td>${r.wpm}</td><td>${r.comp}</td></tr>`).join('');
-    warmCommonErrorsDiv.innerHTML = `<div class="badge-warm">⭐ 自主練習常見錯誤：請參考個別句子分析，持續練習會更進步</div>`;
+    warmCommonErrorsDiv.innerHTML = `<div class="badge-retro">🎧 自主練習紀錄已就緒，可下載JSON或CSV。</div>`;
   }
   function openReportModal(){ if(!activeSentences.length){ alert('尚無練習資料'); return; } buildReport(); warmModal.style.display = 'flex'; }
   function closeModal(){ warmModal.style.display = 'none'; }
   function downloadJSON(){
     const data = { student: { class:warmClass.value, seat:warmSeat.value, name:warmName.value }, sentences: activeSentences, results: Array.from(sessionResults.entries()) };
     const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`open_studio_${Date.now()}.json`; a.click(); URL.revokeObjectURL(blob);
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`voice_studio_${Date.now()}.json`; a.click(); URL.revokeObjectURL(blob);
   }
   function downloadCSV(){
     let csv = "Index,Target,YourSpeech,Accuracy,Fluency(WPM),Completeness\n";
@@ -748,11 +738,10 @@
   }
   function printReport(){
     const printWindow = window.open('', '_blank');
-    printWindow.document.write(`<html><head><title>Shirley's Open Studio 練習報告</title><style>body{font-family:system-ui; padding:2rem}</style></head><body>${document.querySelector('#warmModal .modal-body')?.innerHTML || ''}</body></html>`);
+    printWindow.document.write(`<html><head><title>Shirley's AI Speaking Coach (Open Studio)報告</title><style>body{font-family:monospace; padding:2rem}</style></head><body>${document.querySelector('#warmModal .input-soundbox')?.innerHTML || ''}</body></html>`);
     printWindow.print();
   }
 
-  // 事件註冊
   applyBtn.onclick = loadSentencesFromInput;
   recordBtn.onclick = startRecording;
   stopBtn.onclick = stopRecording;
