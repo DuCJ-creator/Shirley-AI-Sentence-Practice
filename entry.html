@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -522,6 +523,68 @@ This voice coach feels like a digital studio companion."></textarea>
   const warmSeat = document.getElementById('warmSeat');
   const warmName = document.getElementById('warmName');
 
+  const iframeContext = (() => {
+    let inIframe = false;
+    try { inIframe = window.self !== window.top; } catch (e) { inIframe = true; }
+    return { inIframe };
+  })();
+
+  function isSecureEnough(){
+    return window.isSecureContext || location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  }
+
+  function setStatus(msg){
+    statusMsg.innerText = msg;
+  }
+
+  function getMicHelpMessage(err){
+    const name = err && err.name ? err.name : '';
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      return '此瀏覽器不支援麥克風錄音（getUserMedia）。';
+    }
+    if(!isSecureEnough()){
+      return '目前不是安全環境，麥克風只能在 HTTPS 或 localhost 使用。';
+    }
+    if(name === 'NotAllowedError' || name === 'SecurityError'){
+      if(iframeContext.inIframe){
+        return '此頁目前在 iframe 中，外層網站很可能沒有允許 microphone 權限，所以瀏覽器直接阻擋，未顯示授權視窗。請在外層 iframe 加上 allow="microphone"，並確認站台 Permissions-Policy 沒有封鎖麥克風。';
+      }
+      return '麥克風權限被拒絕，請檢查瀏覽器網址列旁的麥克風設定並重新允許。';
+    }
+    if(name === 'NotFoundError' || name === 'DevicesNotFoundError'){
+      return '找不到可用的麥克風裝置。';
+    }
+    if(name === 'NotReadableError' || name === 'TrackStartError'){
+      return '麥克風目前被其他程式占用，請先關閉其他錄音或會議軟體。';
+    }
+    if(name === 'OverconstrainedError' || name === 'ConstraintNotSatisfiedError'){
+      return '目前裝置不支援要求的錄音條件。';
+    }
+    return `麥克風啟動失敗${name ? '：' + name : ''}`;
+  }
+
+  async function ensureMicrophoneAccess(){
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      throw new Error('getUserMedia unsupported');
+    }
+    return navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+    });
+  }
+
+  async function probeMicrophonePermissions(){
+    if(!navigator.permissions || !navigator.permissions.query) return null;
+    try {
+      return await navigator.permissions.query({ name: 'microphone' });
+    } catch (e) {
+      return null;
+    }
+  }
+
   // ---------- 評分引擎 (與原版完全一致) ----------
   function normalizeText(s) {
     return s.toLowerCase().replace(/["“”"']/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -636,6 +699,9 @@ This voice coach feels like a digital studio companion."></textarea>
     lastBlob = null;
     playBtn.disabled = true;
     renderPreview();
+  if (iframeContext.inIframe) {
+    setStatus('此頁目前在 iframe 中。若錄音無法啟動，請確認外層 iframe 已設定 allow="microphone"。');
+  }
     statusMsg.innerText = `✅ 已載入 ${activeSentences.length} 個句子，可開始錄音`;
     document.getElementById('manualCounter').innerText = `${lines.length} / 15`;
   }
@@ -644,12 +710,35 @@ This voice coach feels like a digital studio companion."></textarea>
   async function startRecording(){
     if(!activeSentences.length) return;
     resultPanel.style.display = 'none';
-    statusMsg.innerText = '🔴 錄音中，請清晰朗讀...';
+    setStatus('🔴 正在初始化麥克風...');
+
+    if(!isSecureEnough()){
+      setStatus('目前不是安全環境，請改用 HTTPS 或 localhost，否則無法使用麥克風。');
+      return;
+    }
+
     try{
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const perm = await probeMicrophonePermissions();
+      if(perm && perm.state === 'denied'){
+        if(iframeContext.inIframe){
+          setStatus('麥克風權限已被封鎖，而且目前在 iframe 中。請檢查外層 iframe 是否加上 allow="microphone"。');
+        } else {
+          setStatus('瀏覽器目前已封鎖麥克風，請先到網址列旁的權限設定改成允許。');
+        }
+        return;
+      }
+
+      const stream = await ensureMicrophoneAccess();
       liveStream = stream;
       audioChunks = [];
-      mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      liveTranscript = '';
+      setStatus('🔴 錄音中，請清晰朗讀...');
+
+      let recorderOptions = {};
+      if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        recorderOptions.mimeType = 'audio/webm;codecs=opus';
+      }
+      mediaRecorder = new MediaRecorder(stream, recorderOptions);
       mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
       mediaRecorder.onstop = handleStop;
       mediaRecorder.start();
@@ -658,10 +747,16 @@ This voice coach feels like a digital studio companion."></textarea>
       recordBtn.disabled = true; stopBtn.disabled = false; playBtn.disabled = true;
       startMeterAndASR(stream);
       setTimeout(()=>{ if(isRecording) stopRecording(); }, 30000);
-    }catch(e){ statusMsg.innerText = '麥克風錯誤'; }
+    }catch(e){
+      console.warn('Microphone start error:', e);
+      setStatus(getMicHelpMessage(e));
+      recordBtn.disabled = false;
+      stopBtn.disabled = true;
+      playBtn.disabled = !lastBlob;
+    }
   }
   function startMeterAndASR(stream){
-    audioContext = new (AudioContext||webkitAudioContext)();
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const src = audioContext.createMediaStreamSource(stream);
     analyserNode = audioContext.createAnalyser();
     analyserNode.fftSize = 128;
@@ -681,18 +776,19 @@ This voice coach feels like a digital studio companion."></textarea>
       speechRecognizer = new SR();
       speechRecognizer.lang='en-US'; speechRecognizer.interimResults=true; speechRecognizer.continuous=true;
       speechRecognizer.onresult = e => { let txt=''; for(let i=e.resultIndex;i<e.results.length;i++) txt+=e.results[i][0].transcript+' '; liveTranscript = txt.trim(); };
-      speechRecognizer.start();
+      try { speechRecognizer.start(); } catch (e) { console.warn('SpeechRecognition start failed:', e); }
     } else liveTranscript = "(不支援即時辨識)";
   }
   function stopRecording(){
-    if(mediaRecorder && mediaRecorder.state==='recording') mediaRecorder.stop();
-    if(speechRecognizer) speechRecognizer.stop();
+    try { if(mediaRecorder && mediaRecorder.state==='recording') mediaRecorder.stop(); } catch (e) {}
+    try { if(speechRecognizer) speechRecognizer.stop(); } catch (e) {}
     if(liveStream) liveStream.getTracks().forEach(t=>t.stop());
+    liveStream = null;
     isRecording = false;
     if(meterAnimation) cancelAnimationFrame(meterAnimation);
     meterFill.style.width = '0%';
     stopBtn.disabled = true; recordBtn.disabled = false;
-    statusMsg.innerText = '分析語音中...';
+    setStatus('分析語音中...');
   }
   async function handleStop(){
     const duration = Math.max(0.5, (Date.now()-recordStartTime)/1000);
