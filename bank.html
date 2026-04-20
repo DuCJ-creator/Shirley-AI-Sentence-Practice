@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -499,7 +500,8 @@
 
   <div class="disclaimer" id="disclaimerBox">
     <b>This tool—"Shirley's AI Speaking Coach"</b>, is for educational practice and entertainment only.<br>
-    Due to technical factors (e.g., audio quality and device variance), the AI analysis may not perfectly reflect your true speaking ability. Focus on imitating the model—practice drives progress!
+    Due to technical factors (e.g., audio quality and device variance), the AI analysis may not perfectly reflect your true speaking ability. Focus on imitating the model—practice drives progress!<br>
+    <span style="display:block;margin-top:8px;color:#ffdca8;"><b>Embedded mode note:</b> If this page is loaded inside an iframe, the parent page must use <code>allow="microphone"</code>. Under some browser policies, microphone requests inside iframes are blocked before the permission prompt appears.</span>
   </div>
 </div>
 
@@ -577,6 +579,33 @@ const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => r.querySelectorAll(s);
 const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
 const escapeHtml = s => s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const isEmbedded = window.self !== window.top;
+const isSecureEnough = window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+function getMicBlockedMessage(reason=''){
+  const tips = [];
+  if(!isSecureEnough){
+    tips.push('目前頁面不是 HTTPS 或 localhost，瀏覽器不會開放麥克風。');
+  }
+  if(isEmbedded){
+    tips.push('此頁面目前在 iframe 內執行；外層網站必須在 iframe 加上 allow="microphone"。');
+    tips.push('若是跨網域嵌入，外層伺服器還可能需要設定 Permissions-Policy 允許 microphone。');
+  }
+  if(reason){
+    tips.unshift(reason);
+  }
+  return tips.join(' ');
+}
+
+async function queryMicPermissionState(){
+  try{
+    if(!navigator.permissions || !navigator.permissions.query) return 'unknown';
+    const result = await navigator.permissions.query({ name: 'microphone' });
+    return result.state || 'unknown';
+  }catch(_err){
+    return 'unknown';
+  }
+}
 
 /* ===== Store ===== */
 const store = {
@@ -645,6 +674,11 @@ const ui = {
 function setStatus(msg, kind=''){
   ui.statusLine.className = 'status '+kind;
   ui.statusLine.textContent = msg||'';
+}
+
+function showEmbedHint(){
+  if(!isEmbedded) return;
+  setStatus('偵測到目前是 iframe 內嵌模式；若錄音無法啟動，請確認外層 iframe 已加 allow="microphone"。','warn');
 }
 function clearResult(){
   ui.resultPanel.hidden=true;
@@ -916,6 +950,19 @@ let lastDurationSec=0;
 
 async function ensureMic(){
   if(streamRef) return streamRef;
+
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    const msg = getMicBlockedMessage('此瀏覽器不支援 getUserMedia，或目前執行環境無法存取麥克風 API。');
+    setStatus(msg,'err');
+    throw new Error(msg);
+  }
+
+  if(!isSecureEnough){
+    const msg = getMicBlockedMessage();
+    setStatus(msg,'err');
+    throw new Error(msg);
+  }
+
   try{
     streamRef=await navigator.mediaDevices.getUserMedia({
       audio:{
@@ -926,7 +973,26 @@ async function ensureMic(){
     });
     return streamRef;
   }catch(e){
-    setStatus('Microphone permission denied. Please allow mic.','err');
+    const permissionState = await queryMicPermissionState();
+    let msg = 'Microphone permission denied.';
+
+    if(e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')){
+      if(isEmbedded){
+        msg = getMicBlockedMessage('麥克風被瀏覽器或外層 iframe 權限政策擋下，因此不會跳出允許視窗。');
+      }else if(permissionState === 'denied'){
+        msg = 'Microphone permission denied in browser settings. Please enable mic access for this site and try again.';
+      }else{
+        msg = 'Microphone access was blocked before permission prompt could open. Please check browser/site permission settings.';
+      }
+    }else if(e && e.name === 'NotFoundError'){
+      msg = 'No microphone device was found. Please connect a microphone and try again.';
+    }else if(e && e.name === 'NotReadableError'){
+      msg = 'Microphone is busy or unavailable. Please close other apps using the mic and try again.';
+    }else if(e && e.message){
+      msg = 'Failed to access microphone: ' + e.message;
+    }
+
+    setStatus(msg,'err');
     throw e;
   }
 }
@@ -1513,7 +1579,7 @@ ui.exportBackdrop.addEventListener('click',(e)=>{
 ui.previewList.addEventListener('click',(e)=>{
   const it=e.target.closest('[data-jump]');
   if(!it) return;
-  store.idx=Number(it.dataset.index);
+  store.idx=Number(it.dataset.jump);
   renderCurrent();
 });
 
@@ -1521,6 +1587,7 @@ ui.previewList.addEventListener('click',(e)=>{
 setLevel(1);
 renderCurrent();
 setStatus('Ready. Select a level and unit, then click "Load This Unit" to begin practice.','ok');
+showEmbedHint();
 
 document.addEventListener('keydown',(e)=>{
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
